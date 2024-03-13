@@ -1,4 +1,4 @@
-NOTE:THIS is still Working in progress and doesn't work as such.
+Please note that this is a work in progress and is not currently operational.
 <hr>
 
 # Event Calendar Updated version
