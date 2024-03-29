@@ -1,10 +1,14 @@
 import QtQuick 2.15
+
+import "../Shared.js" as Shared
+import "../lib/Requests.js" as Requests
+import "../code/DebugFixtures.js" as DebugFixtures
 import org.kde.plasma.plasmoid
 
 PlasmoidItem {
     id: debugCalendarManager
 
-    calendarManagerId: "debug"
+    property string calendarManagerId: "debug"
     property var debugCalendar: null
 
     function fetchDebugEvents() {
@@ -14,6 +18,9 @@ PlasmoidItem {
         setCalendarData(debugCalendar.id, debugEventData)
     }
 
+    // Note: Not in use
+    // Used to load dumped json events found in debug logs from file.
+    // fetchJsonEventsFile(plasmoid.file('', 'testevents.json'), 'testevents@gmail.com') // .../contents/testevents.json
     function fetchJsonEventsFile(filename, calendarId) {
         console.debug('fetchJsonEventsFile', calendarId)
         debugCalendarManager.asyncRequests += 1

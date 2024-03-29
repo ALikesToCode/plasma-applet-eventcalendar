@@ -60,7 +60,7 @@ PlasmoidItem {
     }
 
     function clear() {
-        console.debug('clear()')
+        console.debug(calendarManager, 'clear()')
         calendarManager.clearingData = true
         calendarManager.asyncRequests = 0
         calendarManager.asyncRequestsDone = 0
@@ -87,7 +87,7 @@ PlasmoidItem {
 
     // Remove from model only
     function removeEvent(calendarId, eventId) {
-        console.debug('removeEvent', calendarId, eventId)
+        console.debug(calendarManager, 'removeEvent', calendarId, eventId)
         var events = calendarManager.eventsByCalendar[calendarId].items
         for (var i = 0; i < events.length; i++) {
             if (events[i].id == eventId) {
@@ -97,12 +97,12 @@ PlasmoidItem {
                 return
             }
         }
-        console.log('removeEvent', 'event didn\'t exist')
+        console.log(calendarManager, 'removeEvent', 'event didn\'t exist')
     }
 
     //---
     function fetchAll(dateMin, dateMax) {
-        console.debug('fetchAllEvents', dateMin, dateMax)
+        console.debug(calendarManager, 'fetchAllEvents', dateMin, dateMax)
         fetchingData()
         clear()
         if (typeof dateMin !== "undefined") {
@@ -125,22 +125,25 @@ PlasmoidItem {
     // CalendarManager.defaultEventParsing
     // SubClass.onCalendarParsing
     onCalendarParsing: {
+        // console.debug('CalendarManager.calendarParsing(', calendarManager, ')', calendarId)
         data.items.forEach(function(event) {
             eventParsing(calendarId, event)
             defaultEventParsing(calendarId, event)
         })
     }
     onEventParsing: {
+        // console.debug('CalendarManager.eventParsing(', calendarManager, ')', calendarId)
     }
 
     // To simplify repeated code amongst implementations,
     // we'll put the reused code here.
     function defaultEventParsing(calendarId, event) {
+        // console.debug('CalendarManager.defaultEventParsing')
         event.calendarManagerId = calendarManagerId
         event.calendarId = calendarId
 
         event._summary = event.summary
-        event.summary = event.summary || i18n("event with no summary", "(No title)")
+        event.summary = event.summary || i18nc("event with no summary", "(No title)")
 
         if (event.start.date) {
             event.startDateTime = new Date(event.start.date + 'T00:00:00')
@@ -163,18 +166,19 @@ PlasmoidItem {
 
     //---
     function createEvent(calendarId, date, text) {
-        console.log('createEvent(', date, text, ') is not implemented')
+        console.log(calendarManager, 'createEvent(', date, text, ') is not implemented')
     }
 
     function deleteEvent(calendarId, eventId) {
-        console.log('deleteEvent(', calendarId, eventId, ') is not implemented')
+        console.log(calendarManager, 'deleteEvent(', calendarId, eventId, ') is not implemented')
     }
 
     function setEventProperty(calendarId, eventId, key, value) {
-        console.log('setEventProperty(', calendarId, eventId, key, value, ') is not implemented')
+        console.log(calendarManager, 'setEventProperty(', calendarId, eventId, key, value, ') is not implemented')
     }
 
     function setEventProperties(calendarId, eventId, args) {
-        console.log('setEventProperties(', calendarId, eventId, args, ') is not implemented')
+        console.log(calendarManager, 'setEventProperties(', calendarId, eventId, args, ') is not implemented')
     }
+
 }
