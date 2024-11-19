@@ -1,9 +1,29 @@
 #!/bin/bash
+set -euo pipefail
+
+# Set up logging
+LOG_FILE="/tmp/plasma-widget-install.log"
+exec 1> >(tee -a "$LOG_FILE")
+exec 2> >(tee -a "$LOG_FILE" >&2)
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+cleanup() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log "ERROR: Script failed with exit code $exit_code"
+    fi
+    exit $exit_code
+}
+
+trap cleanup EXIT
 
 # Function to check if a command was successful
 check_command_success() {
     if [ "$1" != "0" ]; then
-        echo "Error executing command: $2"
+        log "ERROR executing command: $2"
         exit 1
     fi
 }
@@ -23,72 +43,105 @@ install_requirements() {
     # Normalize distro names to lowercase
     DISTRO=$(echo "$DISTRO" | tr '[:upper:]' '[:lower:]')
 
-    case "$DISTRO" in
-        "debian"|"ubuntu"|"kali"|"raspbian")
-            required_commands=("kreadconfig5" "kpackagetool5")
-            packages_to_install=("libkf5coreaddons-bin-dev" "kpackagetool5")
-            install_cmd="sudo apt-get update && sudo apt-get install -y"
-            ;;
-        "arch")
-            required_commands=("kreadconfig5" "kpackagetool5")
-            packages_to_install=("kcoreaddons" "kpackagetool5")
-            install_cmd="sudo pacman -S"
-            ;;
-        "fedora")
-            required_commands=("kreadconfig5" "kpackagetool5")
-            packages_to_install=("kf5-kcoreaddons" "kf5-kpackage")
-            install_cmd="sudo dnf install"
-            ;;
-        *)
-            echo "Unsupported distribution: $DISTRO"
-            return 1
-            ;;
-    esac
+    declare -A package_map
+    package_map=(
+        ["debian"]="libkf5coreaddons-bin-dev kpackagetool5"
+        ["ubuntu"]="libkf5coreaddons-bin-dev kpackagetool5"
+        ["kali"]="libkf5coreaddons-bin-dev kpackagetool5"
+        ["raspbian"]="libkf5coreaddons-bin-dev kpackagetool5"
+        ["arch"]="kcoreaddons kpackagetool5"
+        ["fedora"]="kf5-kcoreaddons kf5-kpackage"
+    )
 
-    for i in "${!required_commands[@]}"; do
-        if ! command -v "${required_commands[$i]}" &> /dev/null; then
-            echo "${required_commands[$i]} is not installed. Attempting to install..."
-            $install_cmd "${packages_to_install[$i]}"
-            check_command_success "$?" "Failed to install ${packages_to_install[$i]}"
+    if [ -z "${package_map[$DISTRO]:-}" ]; then
+        log "ERROR: Unsupported distribution: $DISTRO"
+        return 1
+    fi
+
+    required_commands=("kreadconfig5" "kpackagetool5")
+    missing_commands=()
+
+    for cmd in "${required_commands[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            missing_commands+=("$cmd")
         fi
     done
+
+    if [ ${#missing_commands[@]} -ne 0 ]; then
+        log "Installing missing commands: ${missing_commands[*]}"
+        case "$DISTRO" in
+            "debian"|"ubuntu"|"kali"|"raspbian")
+                sudo apt-get update && sudo apt-get install -y ${package_map[$DISTRO]}
+                ;;
+            "arch")
+                sudo pacman -S --needed ${package_map[$DISTRO]}
+                ;;
+            "fedora")
+                sudo dnf install -y ${package_map[$DISTRO]}
+                ;;
+        esac
+        check_command_success "$?" "Package installation failed"
+    fi
 }
 
 # Install script requirements
 install_requirements
 
-# Parse arguments for restart option
+# Parse arguments
 restartPlasmashell=false
-for arg in "$@"; do
-    case "$arg" in
-        -r|--restart) restartPlasmashell=true;;
-        *) ;;
+METADATA_FILE="$PWD/package/metadata.desktop"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -r|--restart) restartPlasmashell=true; shift ;;
+        *) log "WARNING: Unknown parameter: $1"; shift ;;
     esac
 done
 
-# Determine if the package is already installed
-packageNamespace=$(kreadconfig5 --file="$PWD/package/metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name")
-packageServiceType=$(kreadconfig5 --file="$PWD/package/metadata.desktop" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
+# Verify metadata file exists
+if [ ! -f "$METADATA_FILE" ]; then
+    log "ERROR: metadata.desktop file not found"
+    exit 1
+fi
+
+# Read package information
+packageNamespace=$(kreadconfig5 --file="$METADATA_FILE" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name")
+packageServiceType=$(kreadconfig5 --file="$METADATA_FILE" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
+
+if [ -z "$packageNamespace" ] || [ -z "$packageServiceType" ]; then
+    log "ERROR: Failed to read package information from metadata.desktop"
+    exit 1
+fi
+
+# Check if package is already installed
 kpackagetool5 --type="${packageServiceType}" --show="$packageNamespace" &> /dev/null
 isAlreadyInstalled=$?
 
 # Convert metadata.desktop to metadata.json
-if command -v desktoptojson &> /dev/null ; then
-    desktoptojson --serviceType="plasma-applet.desktop" -i "$PWD/package/metadata.desktop" -o "$PWD/package/metadata.json"
+if command -v desktoptojson &> /dev/null; then
+    log "Converting metadata.desktop to metadata.json..."
+    desktoptojson --serviceType="plasma-applet.desktop" -i "$METADATA_FILE" -o "$PWD/package/metadata.json"
     check_command_success "$?" "desktoptojson conversion failed"
-    sed -i 's/ \{4\}/\t/g' "$PWD/package/metadata.json" # Tabify metadata.json
+    sed -i 's/ \{4\}/\t/g' "$PWD/package/metadata.json"
 fi
 
 # Install or update the package
 if [ "$isAlreadyInstalled" == "0" ]; then
+    log "Updating existing package..."
     kpackagetool5 -t "${packageServiceType}" -u package
     restartPlasmashell=true
 else
+    log "Installing new package..."
     kpackagetool5 -t "${packageServiceType}" -i package
 fi
 
 # Restart Plasma shell if required
 if $restartPlasmashell; then
-    killall plasmashell
-    ( cd $HOME && kstart5 plasmashell )
+    log "Restarting Plasma shell..."
+    if pgrep -x "plasmashell" > /dev/null; then
+        killall plasmashell
+        kstart5 plasmashell > /dev/null 2>&1 &
+    fi
 fi
+
+log "Installation completed successfully."

@@ -1,15 +1,46 @@
 #!/bin/bash
-set -e # Exit on error
+set -euo pipefail # Stricter error handling
 
-echo "Pulling updates from the master branch..."
-git pull origin master || { echo "Git pull failed"; exit 1; }
+# Set up logging
+LOG_FILE="/tmp/plasma-widget-update.log"
+exec 1> >(tee -a "$LOG_FILE")
+exec 2> >(tee -a "$LOG_FILE" >&2)
 
-if [ -f "./install" ]; then
-    echo "Running the install script..."
-    source ./install || { echo "Install script failed"; exit 1; }
-else
-    echo "Install script not found"
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+cleanup() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log "ERROR: Script failed with exit code $exit_code"
+    fi
+    exit $exit_code
+}
+
+trap cleanup EXIT
+
+# Ensure we're in a git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    log "ERROR: Not in a git repository"
     exit 1
 fi
 
-echo "Update and installation completed successfully."
+log "Pulling updates from the master branch..."
+if ! git pull origin master; then
+    log "ERROR: Git pull failed"
+    exit 1
+fi
+
+if [ -f "./install" ]; then
+    log "Running the install script..."
+    if ! bash ./install --restart; then
+        log "ERROR: Install script failed"
+        exit 1
+    fi
+else
+    log "ERROR: Install script not found"
+    exit 1
+fi
+
+log "Update and installation completed successfully."

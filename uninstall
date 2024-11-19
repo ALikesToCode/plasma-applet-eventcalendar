@@ -1,21 +1,60 @@
 #!/bin/bash
+set -euo pipefail
 
-metadataFile="$PWD/package/metadata.desktop"
-if [ ! -f "$metadataFile" ]; then
-    echo "Error: metadata.desktop file not found in the package directory."
+# Set up logging
+LOG_FILE="/tmp/plasma-widget-uninstall.log"
+exec 1> >(tee -a "$LOG_FILE")
+exec 2> >(tee -a "$LOG_FILE" >&2)
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+cleanup() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log "ERROR: Script failed with exit code $exit_code"
+    fi
+    exit $exit_code
+}
+
+trap cleanup EXIT
+
+# Configuration
+METADATA_FILE="$PWD/package/metadata.desktop"
+BACKUP_DIR="$HOME/.local/share/plasma-widget-backups/$(date +%Y%m%d_%H%M%S)"
+
+# Verify metadata file exists
+if [ ! -f "$METADATA_FILE" ]; then
+    log "ERROR: metadata.desktop file not found in the package directory."
     exit 1
 fi
 
-packageServiceType=$(kreadconfig5 --file="$metadataFile" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+cp -r "./package" "$BACKUP_DIR/"
+log "Backup created at: $BACKUP_DIR"
+
+# Read package information
+packageServiceType=$(kreadconfig5 --file="$METADATA_FILE" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
+packageName=$(kreadconfig5 --file="$METADATA_FILE" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name")
+
 if [ -z "$packageServiceType" ]; then
-    echo "Error: Unable to read the package service type from metadata.desktop."
+    log "ERROR: Unable to read the package service type from metadata.desktop."
     exit 1
 fi
 
-echo "Removing package of type: $packageServiceType"
+log "Removing package: $packageName (Type: $packageServiceType)"
 if kpackagetool5 -t "$packageServiceType" -r package; then
-    echo "Package removal successful."
+    log "Package removal successful."
+    
+    # Restart Plasma shell
+    if pgrep -x "plasmashell" > /dev/null; then
+        log "Restarting Plasma shell..."
+        killall plasmashell
+        kstart5 plasmashell > /dev/null 2>&1 &
+    fi
 else
-    echo "Error: Package removal failed."
+    log "ERROR: Package removal failed."
     exit 1
 fi
