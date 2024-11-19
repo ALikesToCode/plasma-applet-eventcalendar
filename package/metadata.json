@@ -8,7 +8,7 @@
         "Author": "Chris Holland",
         "Email": "zrenfire@gmail.com",
         "License": "GPL",
-        "Version": "76",
+        "Version": "77",
         "Website": "https://github.com/Zren/plasma-applet-eventcalendar"
     },
     "X-Plasma-API-Minimum-Version": "6.0",
@@ -17,72 +17,5 @@
         "org.kde.plasma.time",
         "org.kde.plasma.date"
     ],
-    "X-Plasma-MainScript": "ui/main.qml",
-    "Translations": {
-        "da": {
-            "Name": "Begivenhedskalender"
-        },
-        "de": {
-            "Name": "Ereigniskalender",
-            "Comment": "Miniprogramm für einen Kalender mit Ereignisansicht und Wetter, der Ereignisse mit Google Kalender synchronisiert."
-        },
-        "el": {
-            "Name": "Ημερολόγιο Συμβάντων"
-        },
-        "es": {
-            "Name": "Calendario de Eventos",
-            "Comment": "Plasmoid para calendario + agenda con información del clima. Sincroniza con Google Calendar."
-        },
-        "fi": {
-            "Name": "Tapahtumakalenteri",
-            "Comment": "Plasmoidi kalenteri + agenda säätietoineen synkronoitu Google Calendarin kanssa."
-        },
-        "fr": {
-            "Name": "Calendrier des événements"
-        },
-        "he": {
-            "Name": "לוח שנה עם אירועים",
-            "Comment": "יישומון לוח שנה וסדר יום שמסתנכרן עם Google Calendar ועם גישה ישירה לתחזית מזג האוויר."
-        },
-        "it": {
-            "Name": "Calendario Eventi",
-            "Comment": "Plasmoide per un calendario+agenda con meteo che si sincronizza con Google Calendar."
-        },
-        "ja": {
-            "Name": "イベントカレンダー"
-        },
-        "ko": {
-            "Name": "이벤트 달력",
-            "Comment": "Google 캘린더랑 동기화할 수 있는 달력, 일정 및 날씨 Plasmoid 위젯입니다."
-        },
-        "nl": {
-            "Name": "Afsprakenboek",
-            "Comment": "Een plasmoid met kalender, agenda en weer die synchroniseert met Google Agenda."
-        },
-        "pt_BR": {
-            "Name": "Calendário de eventos",
-            "Comment": "Plasmoide para um calendário e agenda com informações do clima que sincroniza com o Google Agenda."
-        },
-        "pt_PT": {
-            "Name": "Calendário de eventos",
-            "Comment": "Plasmoid para um calendário+agenda com Meteorologia que sincroniza com o Calendário Google."
-        },
-        "ru": {
-            "Name": "Календарь событий",
-            "Comment": "Календарь событий с погодой и синхронизацией с Google Calendar."
-        },
-        "sl": {
-            "Name": "Koledar z dnevnim redom",
-            "Comment": "Vtičnik za koledar z dnevnim redom in vremensko napovedjo, ki se usklajuje z Googlovim koledarjem."
-        },
-        "sv": {
-            "Comment": "Plasmoid för kalender och agenda med väder som synkroniseras med Google Kalender."
-        },
-        "tr": {
-            "Name": "Etkinlik Takvimi"
-        },
-        "uk": {
-            "Name": "Календар подій"
-        }
-    }
+    "X-Plasma-MainScript": "ui/main.qml"
 }
