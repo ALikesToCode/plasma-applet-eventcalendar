@@ -17,211 +17,112 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 import QtQuick 2.15
-import org.kde.plasma.core as PlasmaCore
-import org.kde.plasma.calendar
-import "LocaleFuncs.js" as LocaleFuncs
+import QtQuick.Layouts 1.15
+import org.kde.kirigami 2.20 as Kirigami
+import org.kde.plasma.components 3.0 as PlasmaComponents3
 
-MouseArea {
+Item {
     id: dayStyle
 
-    hoverEnabled: true
-    property string eventBadgeType: "bottomBar"
-    property string todayStyle: "theme"
-    property real radius: Math.min(width, height) * plasmoid.configuration.monthCellRadius
+    property int borderWidth: plasmoid.configuration.monthShowBorder ? 1 : 0
+    property real borderOpacity: 0.4
+    property color borderColor: Kirigami.Theme.textColor
 
-    signal activated()
+    property bool showEventBadge: true
+    property bool useHighlightColor: false
+    property var eventColors: []
 
-    readonly property date thisDate: new Date(yearNumber, typeof monthNumber !== "undefined" ? monthNumber - 1 : 0, typeof dayNumber !== "undefined" ? dayNumber : 1)
-    readonly property bool today: {
-        var today = root.today
-        var result = true
-        if (dateMatchingPrecision >= Calendar.MatchYear) {
-            result = result && today.getFullYear() === thisDate.getFullYear()
-        }
-        if (dateMatchingPrecision >= Calendar.MatchYearAndMonth) {
-            result = result && today.getMonth() === thisDate.getMonth()
-        }
-        if (dateMatchingPrecision >= Calendar.MatchYearMonthAndDay) {
-            result = result && today.getDate() === thisDate.getDate()
-        }
-        return result
-    }
-    readonly property bool selected: {
-        var current = root.currentDate
-        var result = true
-        if (dateMatchingPrecision >= Calendar.MatchYear) {
-            result = result && current.getFullYear() === thisDate.getFullYear()
-        }
-        if (dateMatchingPrecision >= Calendar.MatchYearAndMonth) {
-            result = result && current.getMonth() === thisDate.getMonth()
-        }
-        if (dateMatchingPrecision >= Calendar.MatchYearMonthAndDay) {
-            result = result && current.getDate() === thisDate.getDate()
-        }
-        return result
-    }
+    property string eventBadgeType: plasmoid.configuration.monthEventBadgeType
+    property string todayStyle: plasmoid.configuration.monthTodayStyle
+
+    property bool selected: false
+    property bool today: false
+    property bool thisMonth: true
+    property bool firstDayOfMonth: false
+
+    property alias dayLabel: dayLabel
+    property alias mouseArea: mouseArea
 
     Rectangle {
-        id: todayRect
+        id: background
         anchors.fill: parent
-        visible: todayStyle == "theme"
-        opacity: {
-            if (selected && today) {
-                return 0.6
-            } else if (today) {
-                return 0.4
+        color: {
+            if (selected) {
+                return Kirigami.Theme.highlightColor
+            } else if (today && todayStyle == 'theme') {
+                return Kirigami.Theme.highlightColor
             } else {
-                return 0
+                return "transparent"
             }
         }
-        Behavior on opacity { NumberAnimation { duration: Kirigami.Units.shortDuration * 2 } }
-        color: theme.textColor
-        radius: dayStyle.radius
-    }
-
-    Rectangle {
-        id: highlightDate
-        anchors.fill: parent
         opacity: {
             if (selected) {
                 return 0.6
-            } else if (dayStyle.containsMouse) {
-                return 0.4
+            } else if (today && todayStyle == 'theme') {
+                return 0.6
             } else {
-                return 0
+                return 1
             }
         }
-        Behavior on opacity { NumberAnimation { duration: Kirigami.Units.shortDuration * 2 } }
-        color: theme.highlightColor
-        radius: dayStyle.radius
-        z: todayRect.z - 1
+        radius: plasmoid.configuration.monthCellRadius * Math.min(width, height)
     }
 
-    property int eventCount: model.events ? model.events.count : 0
-    property var eventColors: []
-    property bool useHightlightColor: eventColors.length === 0
-
-    onEventCountChanged: updateEventColors()
-    function updateEventColors() {
-        var set = {}
-        for (var i = 0; i < eventCount; i++) {
-            var eventItem = model.events.get(i)
-            if (eventItem.backgroundColor) {
-                set[eventItem.backgroundColor] = true
-            }
-        }
-        eventColors = Object.keys(set)
-    }
-
-    Item {
-        id: eventBadge
-        visible: model.showEventBadge || false
+    Rectangle {
         anchors.fill: parent
-
-        Loader {
-            id: eventBadgeLoader
-            anchors.fill: parent
-
-            active: parent.visible
-            property Component badgeComponent: {
-                if (dayStyle.eventBadgeType == 'bottomBar') {
-                    return eventColorsBarBadgeComponent
-                } else if (dayStyle.eventBadgeType == 'bottomBarHighlight') {
-                    return highlightBarBadgeComponent
-                } else if (dayStyle.eventBadgeType == 'count') {
-                    return eventCountBadgeComponent
-                } else if (dayStyle.eventBadgeType == 'dots') {
-                    return dotsBadgeComponent
-                } else if (dayStyle.eventBadgeType == 'theme') {
-                    return themeBadgeComponent
-                } else {
-                    return null
-                }
-            }
-            sourceComponent: badgeComponent
-
-            readonly property var modelEvents: model.events
-            readonly property int modelEventsCount: modelEvents ? modelEvents.count : 0
-            property alias dayStyle: dayStyle // aka DayDelegate
-        }
+        color: "transparent"
+        border.width: borderWidth
+        border.color: borderColor
+        opacity: borderOpacity
+        radius: background.radius
     }
 
-    Text {
-        id: label
-        anchors {
-            fill: parent
-            margins: Kirigami.Units.smallSpacing
-        }
+    PlasmaComponents3.Label {
+        id: dayLabel
+        anchors.centerIn: parent
+        width: Math.min(parent.width, parent.height)
+        height: width
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        text: model.label || dayNumber
-        opacity: isCurrent ? 1.0 : 0.5
-        wrapMode: Text.NoWrap
-        elide: Text.ElideRight
-        fontSizeMode: Text.HorizontalFit
+        opacity: thisMonth ? 1 : 0.5
+        font.weight: {
+            if (today && todayStyle == 'bigNumber') {
+                return Font.Bold
+            } else {
+                return Font.Normal
+            }
+        }
         font.pixelSize: {
-            if (today && todayStyle == "bigNumber") {
-                return Math.max(theme.smallestFont.pixelSize, Math.min(Math.floor(dayStyle.height / 2), Math.floor(dayStyle.width * 7 / 8)))
+            if (today && todayStyle == 'bigNumber') {
+                return Math.max(6 * Kirigami.Units.devicePixelRatio, width * 2/3)
             } else {
-                return Math.max(theme.smallestFont.pixelSize, Math.min(Math.floor(dayStyle.height / 3), Math.floor(dayStyle.width * 5 / 8)))
+                return Math.max(6 * Kirigami.Units.devicePixelRatio, width/3)
             }
         }
-        // This is to avoid the "Both point size and
-        // pixel size set. Using pixel size" warnings
-        font.pointSize: -1
         color: {
-            if (today) {
-                if (todayStyle == "bigNumber") {
-                    if (dayStyle.containsMouse || dayStyle.selected) {
-                        return theme.textColor
-                    } else {
-                        return theme.highlightColor
-                    }
-                } else { // todayStyle == "theme"
-                    return theme.backgroundColor
-                }
+            if (selected) {
+                return Kirigami.Theme.highlightedTextColor
+            } else if (today && todayStyle == 'theme') {
+                return Kirigami.Theme.highlightedTextColor
             } else {
-                return theme.textColor
+                return Kirigami.Theme.textColor
             }
-        }
-        Behavior on color {
-            ColorAnimation { duration: Kirigami.Units.shortDuration * 2 }
         }
     }
 
-    PlasmaCore.ToolTipArea {
+    MouseArea {
+        id: mouseArea
         anchors.fill: parent
-        active: root.showTooltips
-        visible: root.showTooltips // Needed with active=false to make sure the ToolTipArea doesn't close a parent ToolTipArea. Eg: DateSelector.
-        mainText: containsMouse ? Qt.formatDate(thisDate, Qt.locale().dateFormat(Locale.LongFormat)) : ""
-        subText: containsMouse ? tooltipBody() : ""
-        function tooltipBody() {
-            if (!model.events) {
-                return ''
-            }
-            var lines = []
-            for (var i = 0; i < model.events.count; i++) {
-                var eventItem = model.events.get(i)
-                var line = ''
-                var eventBullet = '■'
-                if (new Date(eventItem.end.dateTime) < new Date()) {
-                    eventBullet = '✓'
-                }
-                line += '<font color="' + eventItem.backgroundColor + '">' + eventBullet + '</font> '
-                line += '<b>' + eventItem.summary + ':</b> '
-                line += LocaleFuncs.formatEventDuration(eventItem, {
-                    relativeDate: thisDate,
-                    clock24h: appletConfig.clock24h,
-                })
-                lines.push(line)
-            }
-            return lines.join('<br>')
-        }
+        hoverEnabled: true
     }
 
-    Component.onCompleted: {
-        if (stack.depth === 1 && today) {
-            root.date = model
+    states: [
+        State {
+            name: "hover"
+            when: mouseArea.containsMouse
+            PropertyChanges {
+                target: background
+                opacity: selected ? 0.4 : 0.2
+            }
         }
-    }
+    ]
 }

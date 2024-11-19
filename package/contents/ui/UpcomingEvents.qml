@@ -1,5 +1,6 @@
-import QtQuick 2.0
+import QtQuick 2.15
 import org.kde.plasma.core as PlasmaCore
+import org.kde.kirigami 2.20 as Kirigami
 
 import "LocaleFuncs.js" as LocaleFuncs
 import "./calendars"
@@ -11,6 +12,7 @@ CalendarManager {
     property int minutesBeforeReminding: plasmoid.configuration.eventReminderMinutesBefore // minutes
 
     onFetchingData: {
+        Kirigami.Theme.inherit: true
         logger.debug('upcomingEvents.onFetchingData')
     }
 
@@ -20,7 +22,6 @@ CalendarManager {
             timeModel.currentTime.toISOString(),
             upcomingEvents.dateMax.toISOString()
         )
-        // sendEventListNotification()
     }
 
     function isUpcomingEvent(eventItem) {
@@ -57,13 +58,17 @@ CalendarManager {
 
     function filterEvents(predicate) {
         var events = []
-        for (var calendarId in eventsByCalendar) {
-            var calendar = eventsByCalendar[calendarId]
-            calendar.items.forEach(function(eventItem) {
-                if (predicate(eventItem)) {
-                    events.push(eventItem)
-                }
-            })
+        try {
+            for (var calendarId in eventsByCalendar) {
+                var calendar = eventsByCalendar[calendarId]
+                calendar.items.forEach(function(eventItem) {
+                    if (predicate(eventItem)) {
+                        events.push(eventItem)
+                    }
+                })
+            }
+        } catch (error) {
+            console.error("Error filtering events:", error)
         }
         return events
     }
@@ -78,12 +83,17 @@ CalendarManager {
 
     function formatEvent(eventItem) {
         var line = ''
-        line += '<font color="' + eventItem.backgroundColor + '">■</font> '
-        line += '<b>' + eventItem.summary + ':</b> '
-        line += LocaleFuncs.formatEventDuration(eventItem, {
-            relativeDate: timeModel.currentTime,
-            clock24h: appletConfig.clock24h,
-        })
+        try {
+            line += '<font color="' + (Kirigami.Theme.textColor !== "#000000" ? eventItem.backgroundColor : eventItem.textColor) + '">■</font> '
+            line += '<b>' + eventItem.summary + ':</b> '
+            line += LocaleFuncs.formatEventDuration(eventItem, {
+                relativeDate: timeModel.currentTime,
+                clock24h: appletConfig.clock24h,
+            })
+        } catch (error) {
+            console.error("Error formatting event:", error)
+            line = i18n("Error displaying event")
+        }
         return line
     }
 
@@ -105,41 +115,49 @@ CalendarManager {
 
     function sendEventListNotification(args) {
         args = args || {}
-        var eventsStarting = filterEvents(isEventStarting)
-        var eventsInProgress = filterEvents(isEventInProgress)
-        var upcomingEvents = filterEvents(isUpcomingEvent)
+        try {
+            var eventsStarting = filterEvents(isEventStarting)
+            var eventsInProgress = filterEvents(isEventInProgress)
+            var upcomingEvents = filterEvents(isUpcomingEvent)
 
-        var lines = []
-        if (args.showEventsStarting !== false) {
-            addEventList(lines, i18n("Events Starting"), eventsStarting)
-        }
-        if (args.showEventInProgress !== false) {
-            addEventList(lines, i18n("Events In Progress"), eventsInProgress)
-        }
-        if (args.showUpcomingEvent !== false) {
-            addEventList(lines, i18n("Upcoming Events"), upcomingEvents)
-        }
+            var lines = []
+            if (args.showEventsStarting !== false) {
+                addEventList(lines, i18n("Events Starting"), eventsStarting)
+            }
+            if (args.showEventInProgress !== false) {
+                addEventList(lines, i18n("Events In Progress"), eventsInProgress)
+            }
+            if (args.showUpcomingEvent !== false) {
+                addEventList(lines, i18n("Upcoming Events"), upcomingEvents)
+            }
 
-        if (lines.length > 0) {
-            var summary = i18n("Calendar")
-            var bodyText = lines.join('<br />')
+            if (lines.length > 0) {
+                var summary = i18n("Calendar")
+                var bodyText = lines.join('<br />')
 
-            notificationManager.notify({
-                appName: i18n("Event Calendar"),
-                appIcon: "view-calendar-upcoming-events",
-                summary: summary,
-                body: bodyText,
-                soundFile: plasmoid.configuration.eventReminderSfxEnabled ? plasmoid.configuration.eventReminderSfxPath : '',
-            })
+                notificationManager.notify({
+                    appName: i18n("Event Calendar"),
+                    appIcon: "view-calendar-upcoming-events",
+                    summary: summary,
+                    body: bodyText,
+                    soundFile: plasmoid.configuration.eventReminderSfxEnabled ? plasmoid.configuration.eventReminderSfxPath : '',
+                })
+            }
+        } catch (error) {
+            console.error("Error sending notification:", error)
         }
     }
 
     function checkForEventsStarting() {
-        var eventsStarting = filterEvents(isEventStarting)
-        var remindersNeeded = filterEvents(shouldSendReminder)
+        try {
+            var eventsStarting = filterEvents(isEventStarting)
+            var remindersNeeded = filterEvents(shouldSendReminder)
 
-        eventsStarting.forEach(sendEventStartingNotification)
-        remindersNeeded.forEach(eventItem => sendEventReminderNotification(eventItem, minutesBeforeReminding))
+            eventsStarting.forEach(sendEventStartingNotification)
+            remindersNeeded.forEach(eventItem => sendEventReminderNotification(eventItem, minutesBeforeReminding))
+        } catch (error) {
+            console.error("Error checking for events:", error)
+        }
     }
 
     function tick() {

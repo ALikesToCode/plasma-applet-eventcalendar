@@ -1,9 +1,24 @@
-import QtQuick 2.0
-import QtQuick.Layouts 1.0
+import QtQuick
+import QtQuick.Layouts
 import org.kde.plasma.components 3.0 as PlasmaComponents3
+import org.kde.kirigami as Kirigami
 
-// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/plasmacomponents3/Button.qml#L35
 PlasmaComponents3.Button {
-	// PlasmaComponents3.Button already sets Layout.minimumWidth since KF5 v5.68
-	Layout.preferredWidth: appletConfig.timerButtonWidth
+    // Follow Plasma 6 layout guidelines
+    Layout.preferredWidth: appletConfig.timerButtonWidth
+    Layout.minimumHeight: Kirigami.Units.gridUnit * 2
+    
+    // Ensure proper theme integration
+    Kirigami.Theme.colorSet: Kirigami.Theme.Button
+    
+    // Add hover feedback
+    hoverEnabled: true
+    
+    // Ensure proper focus handling
+    focusPolicy: Qt.StrongFocus
+    
+    // Add accessibility properties
+    Accessible.role: Accessible.Button
+    Accessible.name: text || ""
+    Accessible.description: tooltip || ""
 }

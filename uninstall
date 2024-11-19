@@ -21,12 +21,12 @@ cleanup() {
 trap cleanup EXIT
 
 # Configuration
-METADATA_FILE="$PWD/package/metadata.desktop"
+METADATA_FILE="$PWD/package/metadata.json"
 BACKUP_DIR="$HOME/.local/share/plasma-widget-backups/$(date +%Y%m%d_%H%M%S)"
 
 # Verify metadata file exists
 if [ ! -f "$METADATA_FILE" ]; then
-    log "ERROR: metadata.desktop file not found in the package directory."
+    log "ERROR: metadata.json file not found in the package directory."
     exit 1
 fi
 
@@ -35,26 +35,50 @@ mkdir -p "$BACKUP_DIR"
 cp -r "./package" "$BACKUP_DIR/"
 log "Backup created at: $BACKUP_DIR"
 
-# Read package information
-packageServiceType=$(kreadconfig5 --file="$METADATA_FILE" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
-packageName=$(kreadconfig5 --file="$METADATA_FILE" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name")
+# Install jq if needed
+if ! command -v jq &> /dev/null; then
+    log "Installing jq..."
+    if [ -f /etc/debian_version ]; then
+        sudo apt-get install -y jq
+    elif [ -f /etc/arch-release ]; then
+        sudo pacman -S jq
+    elif [ -f /etc/fedora-release ]; then
+        sudo dnf install -y jq
+    fi
+fi
 
-if [ -z "$packageServiceType" ]; then
-    log "ERROR: Unable to read the package service type from metadata.desktop."
+# Read package information
+packageName=$(jq -r '.KPlugin.Id' "$METADATA_FILE")
+
+if [ -z "$packageName" ]; then
+    log "ERROR: Unable to read the package name from metadata.json."
     exit 1
 fi
 
-log "Removing package: $packageName (Type: $packageServiceType)"
-if kpackagetool5 -t "$packageServiceType" -r package; then
-    log "Package removal successful."
+# Remove package
+INSTALL_DIR="$HOME/.local/share/plasma/plasmoids/$packageName"
+if [ -d "$INSTALL_DIR" ]; then
+    log "Removing package: $packageName"
+    rm -rf "$INSTALL_DIR"
     
-    # Restart Plasma shell
-    if pgrep -x "plasmashell" > /dev/null; then
-        log "Restarting Plasma shell..."
-        killall plasmashell
-        kstart5 plasmashell > /dev/null 2>&1 &
-    fi
+    # Remove plasmoid instances
+    log "Removing plasmoid instances..."
+    qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        var allDesktops = desktops();
+        for (var i = 0; i < allDesktops.length; i++) {
+            var d = allDesktops[i];
+            var widgets = d.widgets();
+            for (var j = 0; j < widgets.length; j++) {
+                var w = widgets[j];
+                if (w.type == 'org.kde.plasma.eventcalendar') {
+                    w.remove();
+                }
+            }
+        }
+    "
+    
+    log "Package removal successful."
 else
-    log "ERROR: Package removal failed."
+    log "Package not found: $packageName"
     exit 1
 fi

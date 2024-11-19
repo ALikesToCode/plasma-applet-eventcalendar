@@ -1,114 +1,141 @@
-import QtQuick 2.15
-import QtQuick.Window 2.15
-
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls as QQC
+import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
 
-import QtQuick.Controls
-import QtGraphicalEffects 1.0 // DropShadow
-
-// Based on:
-// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/plasmacomponents3/ComboBox.qml
-// https://doc.qt.io/qt-5/qml-qtquick-controls2-combobox.html
-// https://github.com/qt/qtquickcontrols2/blob/dev/src/quicktemplates2/qquickcombobox.cpp
-
-Kirigami.TextField {
-    id: dateSelector
-    readonly property Item control: dateSelector
-
-    property int defaultMinimumWidth: 80 * Kirigami.Units.devicePixelRatio
-    readonly property int implicitContentWidth: contentWidth + leftPadding + rightPadding
-    implicitWidth: Math.max(defaultMinimumWidth, implicitContentWidth)
-
-    property var dateTime: new Date()
-    property var dateFormat: Qt.locale().dateFormat(Locale.ShortFormat)
-
+PlasmoidItem {
+    id: root
+    
+    // Plasmoid properties
+    Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground
+    Plasmoid.configurationRequired: false
+    
+    // Properties for date handling
+    property var currentDate: new Date()
+    property string dateFormat: Qt.locale().dateFormat(Locale.ShortFormat)
+    
+    // Signals for date changes
     signal dateTimeShifted(date oldDateTime, int deltaDateTime, date newDateTime)
     signal dateSelected(date newDateTime)
-
+    
+    // Main layout
+    contentItem: ColumnLayout {
+        spacing: Kirigami.Units.smallSpacing
+        
+        PlasmaComponents.Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: i18n("Select Date")
+            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
+        }
+        
+        PlasmaComponents.TextField {
+            id: dateField
+            Layout.fillWidth: true
+            text: currentDate.toLocaleDateString(Qt.locale(), dateFormat)
+            
+            onTextEdited: {
+                let newDate = Date.fromLocaleDateString(Qt.locale(), text, dateFormat)
+                if (!isNaN(newDate)) {
+                    setDateTime(newDate)
+                }
+            }
+            
+            onPressed: datePopup.open()
+        }
+        
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+            
+            PlasmaComponents.Button {
+                Layout.fillWidth: true
+                text: i18n("Previous")
+                icon.name: "go-previous"
+                onClicked: {
+                    let oldDate = new Date(currentDate)
+                    let newDate = new Date(currentDate)
+                    newDate.setDate(newDate.getDate() - 1)
+                    setDateTime(newDate)
+                }
+            }
+            
+            PlasmaComponents.Button {
+                Layout.fillWidth: true
+                text: i18n("Today")
+                icon.name: "go-jump-today"
+                onClicked: setDateTime(new Date())
+            }
+            
+            PlasmaComponents.Button {
+                Layout.fillWidth: true
+                text: i18n("Next")
+                icon.name: "go-next"
+                onClicked: {
+                    let oldDate = new Date(currentDate)
+                    let newDate = new Date(currentDate)
+                    newDate.setDate(newDate.getDate() + 1)
+                    setDateTime(newDate)
+                }
+            }
+        }
+    }
+    
+    // Date selection popup
+    QQC.Popup {
+        id: datePopup
+        x: (parent.width - width) / 2
+        y: parent.height
+        
+        contentItem: Calendar {
+            id: calendar
+            selectedDate: root.currentDate
+            
+            onSelectedDateChanged: {
+                setDateTime(selectedDate)
+                datePopup.close()
+            }
+        }
+        
+        background: Rectangle {
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.textColor
+            border.width: 1
+            radius: 2
+            
+            layer.enabled: true
+            layer.effect: PlasmaCore.DropShadow {
+                radius: 8
+                samples: 16
+                color: Qt.rgba(0, 0, 0, 0.3)
+                horizontalOffset: 0
+                verticalOffset: 2
+            }
+        }
+    }
+    
+    // Date handling functions
     function setDateTime(dt) {
-        var oldDateTime = new Date(dateTime)
-
-        var newDateTime = new Date(dt)
+        let oldDateTime = new Date(currentDate)
+        let newDateTime = new Date(dt)
+        
+        // Preserve time when changing date
         newDateTime.setHours(oldDateTime.getHours())
         newDateTime.setMinutes(oldDateTime.getMinutes())
-
-        var deltaDateTime = newDateTime.valueOf() - oldDateTime.valueOf()
+        
+        let deltaDateTime = newDateTime.valueOf() - oldDateTime.valueOf()
+        currentDate = newDateTime
         dateTimeShifted(oldDateTime, deltaDateTime, newDateTime)
+        dateSelected(newDateTime)
     }
-    function updateText() {
-        text = Qt.binding(function() {
-            return dateSelector.dateTime.toLocaleDateString(Qt.locale(), dateSelector.dateFormat)
-        })
+    
+    // Configuration handling
+    Plasmoid.configurationRequired: false
+    
+    Component.onCompleted: {
+        // Initialize with current date
+        setDateTime(new Date())
     }
-
-    onPressed: popup.open()
-
-    onDateSelected: {
-        setDateTime(newDateTime)
-    }
-
-    onTextEdited: {
-        var dt = Date.fromLocaleDateString(Qt.locale(), text, dateSelector.dateFormat)
-        // console.log('onTextEdited', text, dt)
-        if (!isNaN(dt)) {
-            setDateTime(dt)
-        }
-    }
-
-    onEditingFinished: updateText()
-    Component.onCompleted: updateText()
-
-    property Controls.Popup popup: Controls.Popup {
-        x: control.mirrored ? control.width - width : 0
-        y: control.height
-
-        implicitWidth: contentItem.implicitWidth
-        implicitHeight: contentItem.implicitHeight
-
-        topMargin: 6 * Kirigami.Units.devicePixelRatio
-        bottomMargin: 6 * Kirigami.Units.devicePixelRatio
-
-        // https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/calendar/qml/MonthView.qml
-        contentItem: MonthView {
-            id: dateSelectorMonthView
-
-            implicitWidth: 280 * Kirigami.Units.devicePixelRatio
-            implicitHeight: 280 * Kirigami.Units.devicePixelRatio
-
-            today: new Date()
-            currentDate: dateSelector.dateTime
-            displayedDate: dateSelector.dateTime
-
-            showTooltips: false
-            showTodaysDate: false
-            headingFontLevel: 3
-
-            onDateClicked: {
-                // console.log('onDateSelected', currentDate, '(popup.visible: ', popup.visible, ')')
-                dateSelector.dateSelected(clickedDate)
-                popup.close()
-            }
-        }
-
-        background: Rectangle {
-            anchors {
-                fill: parent
-                margins: -1
-            }
-            radius: 2
-            color: theme.viewBackgroundColor
-            border.color: Qt.rgba(theme.textColor.r, theme.textColor.g, theme.textColor.b, 0.3)
-            layer.enabled: true
-
-            layer.effect: DropShadow {
-                transparentBorder: true
-                radius: 4
-                samples: 8
-                horizontalOffset: 2
-                verticalOffset: 2
-                color: Qt.rgba(0, 0, 0, 0.3)
-            }
-        }
-    } // Popup
 }

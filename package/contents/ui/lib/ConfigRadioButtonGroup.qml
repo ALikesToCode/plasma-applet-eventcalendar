@@ -1,59 +1,83 @@
-// Version 4
+// Version 5
 
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
+import org.kde.plasma.components 3.0 as PlasmaComponents
+import org.kde.kirigami 2.20 as Kirigami
 
 /*
 ** Example:
 **
 ConfigRadioButtonGroup {
-	configKey: "appDescription"
-	model: [
-		{ value: "a", text: i18n("A") },
-		{ value: "b", text: i18n("B") },
-		{ value: "c", text: i18n("C") },
-	]
+    configKey: "appDescription"
+    label: i18n("Select an option:")
+    model: [
+        { value: "a", text: i18n("Option A"), icon: "document-edit" },
+        { value: "b", text: i18n("Option B"), icon: "document-save" },
+        { value: "c", text: i18n("Option C"), icon: "document-share" },
+    ]
 }
 */
 
 RowLayout {
-	id: configRadioButtonGroup
-	Layout.fillWidth: true
-	default property alias _contentChildren: content.data
-	property alias label: label.text
+    id: configRadioButtonGroup
+    Layout.fillWidth: true
+    default property alias _contentChildren: content.data
+    property alias label: groupLabel.text
+    
+    property string configKey: ''
+    readonly property var configValue: configKey ? plasmoid.configuration[configKey] : ""
+    property alias model: buttonRepeater.model
 
-	property var exclusiveGroup: ExclusiveGroup { id: radioButtonGroup }
+    spacing: Kirigami.Units.smallSpacing
 
-	property string configKey: ''
-	readonly property var configValue: configKey ? plasmoid.configuration[configKey] : ""
+    PlasmaComponents.Label {
+        id: groupLabel
+        visible: text.length > 0
+        Layout.alignment: Qt.AlignTop | Qt.AlignLeft
+        color: Kirigami.Theme.textColor
+    }
 
-	property alias model: buttonRepeater.model
+    ColumnLayout {
+        id: content
+        spacing: Kirigami.Units.smallSpacing
 
-	//---
-	Label {
-		id: label
-		visible: !!text
-		Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-	}
-	ColumnLayout {
-		id: content
+        ButtonGroup {
+            id: radioButtonGroup
+            exclusive: true
+        }
 
-		Repeater {
-			id: buttonRepeater
-			RadioButton {
-				visible: typeof modelData.visible !== "undefined" ? modelData.visible : true
-				enabled: typeof modelData.enabled !== "undefined" ? modelData.enabled : true
-				text: modelData.text
-				checked: modelData.value === configValue
-				exclusiveGroup: radioButtonGroup
-				onClicked: {
-					focus = true
-					if (configKey) {
-						plasmoid.configuration[configKey] = modelData.value
-					}
-				}
-			}
-		}
-	}
+        Repeater {
+            id: buttonRepeater
+            
+            PlasmaComponents.RadioButton {
+                id: radioButton
+                visible: typeof modelData.visible !== "undefined" ? modelData.visible : true
+                enabled: typeof modelData.enabled !== "undefined" ? modelData.enabled : true
+                text: modelData.text
+                checked: modelData.value === configValue
+                ButtonGroup.group: radioButtonGroup
+                
+                icon.name: modelData.icon || ""
+                display: modelData.icon ? PlasmaComponents.RadioButton.TextBesideIcon : PlasmaComponents.RadioButton.TextOnly
+                
+                Kirigami.MnemonicData.enabled: true
+                Kirigami.MnemonicData.controlType: Kirigami.MnemonicData.SecondaryControl
+                
+                Layout.fillWidth: true
+                
+                onClicked: {
+                    focus = true
+                    if (configKey) {
+                        plasmoid.configuration[configKey] = modelData.value
+                    }
+                }
+
+                ToolTip.visible: hovered && modelData.tooltip
+                ToolTip.text: modelData.tooltip || ""
+                ToolTip.delay: Kirigami.Units.toolTipDelay
+            }
+        }
+    }
 }

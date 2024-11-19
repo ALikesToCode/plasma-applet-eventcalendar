@@ -1,46 +1,69 @@
 import QtQuick 2.15
+import QtQuick.Layouts 1.15
+import org.kde.plasma.plasmoid 2.0
+import org.kde.plasma.core 2.1 as PlasmaCore
+import org.kde.kirigami 2.20 as Kirigami
+import org.kde.plasma.components 3.0 as PlasmaComponents3
 
 import "../Shared.js" as Shared
 import "../lib/Requests.js" as Requests
 import "../code/DebugFixtures.js" as DebugFixtures
-import org.kde.plasma.plasmoid
 
 PlasmoidItem {
     id: debugCalendarManager
 
     property string calendarManagerId: "debug"
     property var debugCalendar: null
+    property bool isLoading: false
+
+    Plasmoid.backgroundHints: PlasmaCore.Types.StandardBackground
+    Plasmoid.configurationRequired: !debugCalendar
+
+    // UI Layout
+    contentItem: ColumnLayout {
+        spacing: Kirigami.Units.smallSpacing
+
+        PlasmaComponents3.Label {
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+            text: i18n("Debug Calendar")
+            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
+            color: Kirigami.Theme.textColor
+        }
+
+        PlasmaComponents3.BusyIndicator {
+            Layout.alignment: Qt.AlignCenter
+            running: isLoading
+            visible: isLoading
+        }
+
+        PlasmaComponents3.Button {
+            Layout.alignment: Qt.AlignCenter
+            text: i18n("Load Debug Events")
+            icon.name: "view-refresh"
+            enabled: !isLoading
+            onClicked: fetchDebugEvents()
+        }
+
+        PlasmaComponents3.Label {
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+            text: debugCalendar ? i18n("Calendar Loaded") : i18n("No Calendar Data")
+            color: Kirigami.Theme.textColor
+        }
+    }
 
     function fetchDebugEvents() {
+        isLoading = true
         plasmoid.configuration.debugging = true
         debugCalendar = DebugFixtures.getCalendar()
         var debugEventData = DebugFixtures.getEventData()
         setCalendarData(debugCalendar.id, debugEventData)
-    }
-
-    // Note: Not in use
-    // Used to load dumped json events found in debug logs from file.
-    // fetchJsonEventsFile(plasmoid.file('', 'testevents.json'), 'testevents@gmail.com') // .../contents/testevents.json
-    function fetchJsonEventsFile(filename, calendarId) {
-        console.debug('fetchJsonEventsFile', calendarId)
-        debugCalendarManager.asyncRequests += 1
-        Requests.getFile(filename, function(err, data) {
-            if (err) {
-                return callback(err)
-            }
-
-            var obj = JSON.parse(data)
-            setCalendarData(calendarId, obj)
-            debugCalendarManager.asyncRequestsDone += 1
-        })
+        isLoading = false
     }
 
     function getCalendarList() {
-        if (debugCalendar) {
-            return [ debugCalendar ]
-        } else {
-            return []
-        }
+        return debugCalendar ? [debugCalendar] : []
     }
 
     function createEvent(calendarId, date, text) {
@@ -67,14 +90,6 @@ PlasmoidItem {
         eventDeleted(calendarId, eventId, data)
     }
 
-    onFetchAllCalendars: {
-        fetchDebugEvents()
-    }
-
-    onCalendarParsing: {
-        parseEventList(debugCalendar, data.items)
-    }
-
     function parseEvent(calendar, event) {
         event.description = event.description || ""
         event.backgroundColor = calendar.backgroundColor
@@ -87,11 +102,14 @@ PlasmoidItem {
         })
     }
 
+    onCalendarParsing: {
+        parseEventList(debugCalendar, data.items)
+    }
+
     function setEventProperty(calendarId, eventId, key, value) {
-        console.log('debugCalendarManager.setEventProperty', calendarId, eventId, key, value)
         var event = getEvent(calendarId, eventId)
         if (!event) {
-            console.log('error, trying to update event that doesn\'t exist')
+            console.warn('Error: Trying to update non-existent event')
             return
         }
         event[key] = value
@@ -99,12 +117,8 @@ PlasmoidItem {
     }
 
     function setEventProperties(calendarId, eventId, args) {
-        console.debug('debugCalendarManager.setEventProperties', calendarId, eventId, args)
-        var keys = Object.keys(args)
-        for (var i = 0; i < keys.length; i++) {
-            var key = keys[i]
-            var value = args[key]
-            setEventProperty(calendarId, eventId, key, value)
-        }
+        Object.keys(args).forEach(key => {
+            setEventProperty(calendarId, eventId, key, args[key])
+        })
     }
 }

@@ -1,94 +1,144 @@
-import QtQuick 2.0
+import QtQuick 2.15
+import QtQuick.Layouts 1.15
+import QtQuick.Controls 2.15
+import org.kde.plasma.plasmoid 2.0
 import org.kde.plasma.core 2.0 as PlasmaCore
+import org.kde.plasma.components 3.0 as PlasmaComponents3
+import org.kde.kirigami 2.20 as Kirigami
 
 import "../lib"
 
-CalendarManager {
-	id: icalManager
+Plasmoid.compactRepresentation: Item {
+    id: root
+    
+    // Configuration properties bound to config values
+    property string displayText: Plasmoid.configuration.displayText
+    property color textColor: Plasmoid.configuration.useCustomColor ? 
+                            Plasmoid.configuration.customColor : 
+                            PlasmaCore.Theme.textColor
+    property int fontSize: Plasmoid.configuration.fontSize
 
-	calendarManagerId: "ical"
-	ExecUtil { id: executable }
+    Layout.minimumWidth: Kirigami.Units.gridUnit * 10
+    Layout.minimumHeight: Kirigami.Units.gridUnit * 4
+    
+    // Main content layout
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: Kirigami.Units.smallSpacing
 
-	// property var eventsData: { "items": [] }
+        PlasmaComponents3.Label {
+            Layout.alignment: Qt.AlignCenter
+            text: displayText
+            color: textColor
+            font.pointSize: fontSize
+            
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    // Example of dynamic update
+                    displayText = "Clicked at: " + new Date().toLocaleTimeString()
+                }
+            }
+        }
 
-	property var calendarList: [
-		{
-			url: "/home/chris/Code/icsjson/basic.ics",
-			backgroundColor: '#ff0',
-			isTasklist: false,
-		}
-	]
+        PlasmaComponents3.Button {
+            Layout.alignment: Qt.AlignCenter
+            text: i18n("Refresh")
+            icon.name: "view-refresh"
+            
+            onClicked: {
+                // Example action
+                fetchAllCalendars()
+            }
+        }
 
-	function getCalendar(calendarId) {
-		for (var i = 0; i < calendarList.length; i++) {
-			var calendarData = calendarList[i]
-			if (calendarData.url == calendarId) {
-				return calendarData
-			}
-		}
-		return null
-	}
+        PlasmaComponents3.ProgressBar {
+            Layout.fillWidth: true
+            Layout.margins: Kirigami.Units.smallSpacing
+            from: 0
+            to: 100
+            value: asyncRequestsDone / Math.max(1, asyncRequests) * 100
+            visible: asyncRequests > 0
+        }
+    }
 
-	function fetchEvents(calendarData, startTime, endTime, callback) {
-		logger.debug('ical.fetchEvents', calendarData.url)
-		var cmd = 'python3 ' + plasmoid.file("", "scripts/icsjson.py")
-		cmd += ' --url "' + calendarData.url + '"' // TODO proper argument wrapping
-		cmd += ' query'
-		cmd += ' ' + startTime.getFullYear() + '-' + (startTime.getMonth()+1) + '-' + startTime.getDate()
-		cmd += ' ' + endTime.getFullYear() + '-' + (endTime.getMonth()+1) + '-' + endTime.getDate()
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
-			if (exitCode) {
-				logger.log('ical.stderr', stderr)
-				return callback(stderr)
-			}
-			var data = JSON.parse(stdout)
-			// console.log(cmd)
-			// console.log(str)
-			callback(null, data)
-		})
-	}
+    // Calendar manager functionality
+    CalendarManager {
+        id: icalManager
 
-	function fetchCalendar(calendarData) {
-		icalManager.asyncRequests += 0
-		fetchEvents(calendarData, dateMin, dateMax, function(err, data) {
-			parseEventList(calendarData, data.items)
-			setCalendarData(calendarData.url, data)
-			icalManager.asyncRequestsDone += 1
-		})
-	}
+        calendarManagerId: "ical"
+        ExecUtil { id: executable }
 
-	onFetchAllCalendars: {
-		for (var i = 0; i < calendarList.length; i++) {
-			var calendarData = calendarList[i]
-			fetchCalendar(calendarData)
-		}
-	}
+        property var calendarList: [
+            {
+                url: Plasmoid.configuration.defaultCalendarUrl || "/home/user/calendar.ics",
+                backgroundColor: Plasmoid.configuration.calendarColor || Kirigami.Theme.highlightColor,
+                isTasklist: false,
+            }
+        ]
 
-	onCalendarParsing: {
-		var calendar = getCalendar(calendarId)
-		parseEventList(calendar, data.items)
-	}
+        function getCalendar(calendarId) {
+            return calendarList.find(calendar => calendar.url === calendarId) || null
+        }
 
-	function parseEvent(calendar, event) {
-		event.backgroundColor = calendar.backgroundColor
-		event.canEdit = false
-	}
+        function fetchEvents(calendarData, startTime, endTime, callback) {
+            logger.debug('ical.fetchEvents', calendarData.url)
+            var cmd = 'python3 ' + plasmoid.file("", "scripts/icsjson.py")
+            cmd += ' --url "' + calendarData.url + '"'
+            cmd += ' query'
+            cmd += ' ' + startTime.getFullYear() + '-' + (startTime.getMonth()+1) + '-' + startTime.getDate()
+            cmd += ' ' + endTime.getFullYear() + '-' + (endTime.getMonth()+1) + '-' + endTime.getDate()
+            
+            executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+                if (exitCode) {
+                    logger.log('ical.stderr', stderr)
+                    return callback(stderr)
+                }
+                callback(null, JSON.parse(stdout))
+            })
+        }
 
-	function parseEventList(calendar, eventList) {
-		eventList.forEach(function(event) {
-			parseEvent(calendar, event)
-		})
-	}
+        function fetchCalendar(calendarData) {
+            icalManager.asyncRequests += 1
+            fetchEvents(calendarData, dateMin, dateMax, function(err, data) {
+                if (!err) {
+                    parseEventList(calendarData, data.items)
+                    setCalendarData(calendarData.url, data)
+                }
+                icalManager.asyncRequestsDone += 1
+            })
+        }
 
-	// onCalendarFetched: {
-	// 	console.log(calendarId, data)
-	// }
+        onFetchAllCalendars: {
+            asyncRequests = 0
+            asyncRequestsDone = 0
+            calendarList.forEach(fetchCalendar)
+        }
 
-	// Component.onCompleted: {
-	// 	var startTime = new Date(2017, 07-1, 01)
-	// 	var endTime = new Date(2017, 07-1, 31)
-	// 	dateMin = startTime
-	// 	dateMax = endTime
-	// 	fetchAllCalendars()
-	// }
+        onCalendarParsing: {
+            var calendar = getCalendar(calendarId)
+            if (calendar) {
+                parseEventList(calendar, data.items)
+            }
+        }
+
+        function parseEvent(calendar, event) {
+            event.backgroundColor = calendar.backgroundColor
+            event.canEdit = false
+        }
+
+        function parseEventList(calendar, eventList) {
+            if (Array.isArray(eventList)) {
+                eventList.forEach(event => parseEvent(calendar, event))
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        // Initial calendar fetch
+        const now = new Date()
+        dateMin = new Date(now.getFullYear(), now.getMonth(), 1)
+        dateMax = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        icalManager.fetchAllCalendars()
+    }
 }

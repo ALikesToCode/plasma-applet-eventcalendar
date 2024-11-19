@@ -54,7 +54,7 @@ QtObject {
     property int timerButtonWidth: 48 * Kirigami.Units.devicePixelRatio
 
     property int meteogramIconSize: 24 * Kirigami.Units.devicePixelRatio
-    property int meteogramColumnWidth: 32 * Kirigami.Units.devicePixelRatio // weatherIconSize = 32px (height = 24px but most icons are landscape)
+    property int meteogramColumnWidth: 32 * Kirigami.Units.devicePixelRatio
 
     property QtObject icalCalendarList: Base64Json {
         configKey: 'icalCalendarList'
@@ -65,7 +65,6 @@ QtObject {
     }
 
     readonly property string clockFontFamily: plasmoid.configuration.clockFontFamily || Kirigami.Theme.defaultFont.family
-
     readonly property int lineWeight1: plasmoid.configuration.clockLineBold1 ? Font.Bold : Font.Normal
     readonly property int lineWeight2: plasmoid.configuration.clockLineBold2 ? Font.Bold : Font.Normal
 

@@ -1,117 +1,123 @@
-// Version 5
+// Version 6
 
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
+import QtQuick 2.15
+import QtQuick.Controls 2.15 as QQC2
+import QtQuick.Layouts 1.15
+import org.kde.kirigami 2.20 as Kirigami
 
 /*
 ** Example:
 **
 ConfigComboBox {
-	configKey: "appDescription"
-	model: [
-		{ value: "a", text: i18n("A") },
-		{ value: "b", text: i18n("B") },
-		{ value: "c", text: i18n("C") },
-	]
+    configKey: "appDescription" 
+    model: [
+        { value: "a", text: i18nc("@item:inlistbox", "A") },
+        { value: "b", text: i18nc("@item:inlistbox", "B") },
+        { value: "c", text: i18nc("@item:inlistbox", "C") },
+    ]
 }
 ConfigComboBox {
-	configKey: "appDescription"
-	populated: false
-	onPopulate: {
-		model = [
-			{ value: "a", text: i18n("A") },
-			{ value: "b", text: i18n("B") },
-			{ value: "c", text: i18n("C") },
-		]
-	}
+    configKey: "appDescription"
+    populated: false
+    onPopulate: {
+        model = [
+            { value: "a", text: i18nc("@item:inlistbox", "A") },
+            { value: "b", text: i18nc("@item:inlistbox", "B") },
+            { value: "c", text: i18nc("@item:inlistbox", "C") },
+        ]
+    }
 }
 */
 RowLayout {
-	id: configComboBox
+    id: configComboBox
 
-	property string configKey: ''
-	readonly property var currentItem: comboBox.model[comboBox.currentIndex]
-	readonly property string value: currentItem ? currentItem[valueRole] : ""
-	readonly property string configValue: configKey ? plasmoid.configuration[configKey] : ""
-	onConfigValueChanged: {
-		if (!comboBox.focus && value != configValue) {
-			selectValue(configValue)
-		}
-	}
+    property string configKey: ''
+    readonly property var currentItem: comboBox.model[comboBox.currentIndex]
+    readonly property string value: currentItem ? currentItem[valueRole] : ""
+    readonly property string configValue: configKey ? plasmoid.configuration[configKey] : ""
+    onConfigValueChanged: {
+        if (!comboBox.focus && value != configValue) {
+            selectValue(configValue)
+        }
+    }
 
-	property alias textRole: comboBox.textRole
-	property alias valueRole: comboBox.valueRole
-	property alias model: comboBox.model
+    property alias textRole: comboBox.textRole
+    property alias valueRole: comboBox.valueRole
+    property alias model: comboBox.model
 
-	property alias before: labelBefore.text
-	property alias after: labelAfter.text
+    property alias before: labelBefore.text
+    property alias after: labelAfter.text
 
-	signal populate()
-	property bool populated: true
+    signal populate()
+    property bool populated: true
 
-	Component.onCompleted: {
-		populate()
-		selectValue(configValue)
-	}
+    Component.onCompleted: {
+        populate()
+        selectValue(configValue)
+    }
 
-	Label {
-		id: labelBefore
-		text: ""
-		visible: text
-	}
+    Kirigami.Heading {
+        id: labelBefore
+        text: ""
+        visible: text
+        level: 4
+    }
 
-	ComboBox {
-		id: comboBox
-		textRole: "text" // Doesn't autodeduce from model if we manually populate it
-		property string valueRole: "value"
+    QQC2.ComboBox {
+        id: comboBox
+        textRole: "text"
+        property string valueRole: "value"
+        
+        Kirigami.Theme.colorSet: Kirigami.Theme.View
+        Kirigami.Theme.inherit: false
 
-		model: []
+        model: []
 
-		onCurrentIndexChanged: {
-			if (typeof model !== 'number' && 0 <= currentIndex && currentIndex < count) {
-				var item = model[currentIndex]
-				if (typeof item !== "undefined") {
-					var val = item[valueRole]
-					if (configKey && (typeof val !== "undefined") && populated) {
-						plasmoid.configuration[configKey] = val
-					}
-				}
-			}
-		}
-	}
+        onCurrentIndexChanged: {
+            if (typeof model !== 'number' && 0 <= currentIndex && currentIndex < count) {
+                var item = model[currentIndex]
+                if (typeof item !== "undefined") {
+                    var val = item[valueRole]
+                    if (configKey && (typeof val !== "undefined") && populated) {
+                        plasmoid.configuration[configKey] = val
+                    }
+                }
+            }
+        }
+    }
 
-	Label {
-		id: labelAfter
-		text: ""
-		visible: text
-	}
+    Kirigami.Heading {
+        id: labelAfter
+        text: ""
+        visible: text
+        level: 4
+    }
 
-	function size() {
-		if (typeof model === "number") {
-			return model
-		} else if (typeof model.count === "number") {
-			return model.count
-		} else if (typeof model.length === "number") {
-			return model.length
-		} else {
-			return 0
-		}
-	}
+    function size() {
+        if (typeof model === "number") {
+            return model
+        } else if (typeof model.count === "number") {
+            return model.count
+        } else if (typeof model.length === "number") {
+            return model.length
+        } else {
+            return 0
+        }
+    }
 
-	function findValue(val) {
-		for (var i = 0; i < size(); i++) {
-			if (model[i][valueRole] == val) {
-				return i
-			}
-		}
-		return -1
-	}
+    function findValue(val) {
+        for (var i = 0; i < size(); i++) {
+            if (model[i][valueRole] == val) {
+                return i
+            }
+        }
+        return -1
+    }
 
-	function selectValue(val) {
-		var index = findValue(val)
-		if (index >= 0) {
-			comboBox.currentIndex = index
-		}
-	}
+    function selectValue(val) {
+        var index = findValue(val)
+        if (index >= 0) {
+            comboBox.currentIndex = index
+        }
+    }
 }

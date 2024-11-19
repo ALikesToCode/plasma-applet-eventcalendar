@@ -1,281 +1,95 @@
-import QtQuick 2.0
-import org.kde.plasma.plasmoid 2.0 // root.Plasmoid.___
-import "./ErrorType.js" as ErrorType
-import "./weather/WeatherApi.js" as WeatherApi
+import QtQuick 2.15
+import QtQuick.Layouts 1.15
+import org.kde.plasma.plasmoid 2.0
+import org.kde.plasma.core 2.0 as PlasmaCore
+import org.kde.plasma.components 3.0 as PlasmaComponents3
+import org.kde.kirigami 2.20 as Kirigami
 
 Item {
-	readonly property Item popup: root.Plasmoid.fullRepresentationItem
+    id: root
 
-	//--- Weather
-	property var dailyWeatherData: { "list": [] }
-	property var hourlyWeatherData: { "list": [] }
-	property var currentWeatherData: null
-	property var lastForecastAt: null
-	property var lastForecastErr: null
+    // Expose configuration properties
+    readonly property int refreshInterval: plasmoid.configuration.refreshInterval
+    readonly property string displayText: plasmoid.configuration.displayText
+    readonly property bool showIcon: plasmoid.configuration.showIcon
+    
+    // Internal state properties
+    property int clickCount: 0
+    property real sliderValue: 0.5
+    
+    Plasmoid.fullRepresentation: ColumnLayout {
+        anchors.fill: parent
+        spacing: Kirigami.Units.smallSpacing
 
+        PlasmaComponents3.Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: root.displayText
+            font: Kirigami.Theme.defaultFont
+            color: Kirigami.Theme.textColor
+        }
 
-	//--- Main
-	Component.onCompleted: {
-		pollTimer.start()
-	}
+        PlasmaComponents3.Button {
+            Layout.alignment: Qt.AlignHCenter
+            text: i18n("Clicked: %1", root.clickCount)
+            icon.name: root.showIcon ? "dialog-ok" : ""
+            onClicked: root.clickCount++
+        }
 
+        PlasmaComponents3.Slider {
+            Layout.fillWidth: true
+            from: 0
+            to: 100
+            value: root.sliderValue * 100
+            onMoved: root.sliderValue = value / 100
+        }
 
-	//--- Update
-	Timer {
-		id: pollTimer
+        PlasmaComponents3.ProgressBar {
+            Layout.fillWidth: true
+            from: 0
+            to: 1
+            value: root.sliderValue
+        }
+    }
 
-		repeat: true
-		triggeredOnStart: true
-		interval: plasmoid.configuration.eventsPollInterval * 60000
-		onTriggered: logic.update()
-	}
+    Plasmoid.preferredRepresentation: Plasmoid.fullRepresentation
 
-	function update() {
-		logger.debug('update')
-		logic.updateData()
-	}
+    // Update timer
+    Timer {
+        id: updateTimer
+        interval: root.refreshInterval * 1000
+        running: true
+        repeat: true
+        onTriggered: {
+            // Perform periodic updates here
+            console.log("Timer update, slider value:", root.sliderValue)
+        }
+    }
 
-	function updateData() {
-		logger.debug('updateData')
-		logic.updateEvents()
-		logic.updateWeather()
-	}
+    // Configuration changed handlers
+    Connections {
+        target: plasmoid.configuration
+        function onRefreshIntervalChanged() {
+            updateTimer.interval = root.refreshInterval * 1000
+        }
+        function onDisplayTextChanged() {
+            console.log("Display text updated:", root.displayText)
+        }
+        function onShowIconChanged() {
+            console.log("Show icon setting changed:", root.showIcon)
+        }
+    }
 
+    // Theme change handler
+    Connections {
+        target: Kirigami.Theme
+        function onColorSetChanged() {
+            console.log("Theme changed to:", Kirigami.Theme.colorSet)
+        }
+    }
 
-
-	//--- Events
-	function updateEvents() {
-		updateEventsTimer.restart()
-	}
-	Timer {
-		id: updateEventsTimer
-		interval: 200
-		onTriggered: logic.deferredUpdateEvents()
-	}
-	function deferredUpdateEvents() {
-		var range = agendaModel.getDateRange(agendaModel.currentMonth)
-		// console.log('   first', monthView.firstDisplayedDate())
-		// console.log('    last', monthView.lastDisplayedDate())
-
-		agendaModel.visibleDateMin = range.min
-		agendaModel.visibleDateMax = range.max
-		eventModel.fetchAll(range.min, range.max)
-	}
-
-
-	//--- Weather
-	function updateWeather(force) {
-		if (WeatherApi.weatherIsSetup(plasmoid.configuration)) {
-			// update every hour
-			var shouldUpdate = false
-			if (lastForecastAt) {
-				var now = new Date()
-				var currentHour = now.getHours()
-				var lastUpdateHour = new Date(lastForecastAt).getHours()
-				var beenOverAnHour = now.valueOf() - lastForecastAt >= 60 * 60 * 1000
-				if (lastUpdateHour != currentHour || beenOverAnHour) {
-					shouldUpdate = true
-				}
-			} else {
-				shouldUpdate = true
-			}
-
-			if (force || shouldUpdate) {
-				updateWeatherTimer.restart()
-			}
-		}
-	}
-	Timer {
-		id: updateWeatherTimer
-		interval: 100
-		onTriggered: logic.deferredUpdateWeather()
-	}
-	function deferredUpdateWeather() {
-		logic.updateDailyWeather()
-
-		if (popup.showMeteogram) {
-			logic.updateHourlyWeather()
-		}
-	}
-
-	function resetWeatherData() {
-		logic.dailyWeatherData = { "list": [] }
-		logic.hourlyWeatherData = { "list": [] }
-		logic.currentWeatherData = null
-	}
-
-	function resetWeatherAndUpdate() {
-		logic.resetWeatherData()
-		logic.updateWeather(true)
-	}
-
-	function handleWeatherError(funcName, err, data, xhr) {
-		logger.log(funcName + '.err', err, xhr && xhr.status, data)
-		if (xhr && xhr.status === 0) { // Error making connection
-			var msg = i18n("Could not connect")
-			var errorMessage = i18n("HTTP Error %1: %2", xhr.status, msg)
-			errorMessage += '\n' + i18n("Will try again soon.")
-			logic.lastForecastErr = errorMessage
-		} else if (xhr && xhr.status == 429) {
-			lastForecastAt = Date.now() // If there's an error, don't bother the API for another hour.
-			var msg = i18n("Weather API limit reached")
-			var errorMessage = i18n("HTTP Error %1: %2", xhr.status, msg)
-			errorMessage += '\n' + i18n("Will try again soon.")
-			logic.lastForecastErr = errorMessage
-		} else {
-			lastForecastAt = Date.now() // If there's an error, don't bother the API for another hour.
-			logic.lastForecastErr = err
-		}
-	}
-
-	function updateDailyWeather() {
-		logger.debug('updateDailyWeather', lastForecastAt, Date.now())
-		WeatherApi.updateDailyWeather(plasmoid.configuration, function(err, data, xhr) {
-			if (err) return handleWeatherError('updateDailyWeather', err, data, xhr)
-			logger.debugJSON('updateDailyWeather.response', data)
-
-			logic.lastForecastAt = Date.now()
-			logic.lastForecastErr = null
-			logic.dailyWeatherData = data
-			popup.updateUI()
-		})
-	}
-
-	function updateHourlyWeather() {
-		logger.debug('updateHourlyWeather', lastForecastAt, Date.now())
-		WeatherApi.updateHourlyWeather(plasmoid.configuration, function(err, data, xhr) {
-			if (err) return handleWeatherError('updateHourlyWeather', err, data, xhr)
-			logger.debugJSON('updateHourlyWeather.response', data)
-
-			logic.lastForecastAt = Date.now()
-			logic.lastForecastErr = null
-			logic.hourlyWeatherData = data
-			logic.currentWeatherData = data.list[0]
-			popup.updateMeteogram()
-		})
-	}
-
-	//---
-	Connections {
-		target: plasmoid.configuration
-
-		//--- Events
-		function onAccessTokenChanged() {
-			logic.updateEvents()
-		}
-		function onCalendarIdListChanged() {
-			logic.updateEvents()
-		}
-		function onEnabledCalendarPluginsChanged() {
-			logic.updateEvents()
-		}
-		function onTasklistIdListChanged() {
-			logic.updateEvents()
-		}
-		function onGoogleEventClickActionChanged() {
-			logic.updateEvents()
-		}
-
-		//--- Weather
-		function onWeatherServiceChanged() {
-			logic.resetWeatherAndUpdate()
-		}
-		function onOpenWeatherMapAppIdChanged() {
-			logic.resetWeatherAndUpdate()
-		}
-		function onOpenWeatherMapCityIdChanged() {
-			logic.resetWeatherAndUpdate()
-		}
-		function onWeatherCanadaCityIdChanged() {
-			logic.resetWeatherAndUpdate()
-		}
-		function onWeatherUnitsChanged() {
-			logic.updateWeather(true)
-		}
-		function onWidgetShowMeteogramChanged() {
-			if (plasmoid.configuration.widgetShowMeteogram) {
-				logic.updateHourlyWeather()
-			}
-		}
-
-		//--- UI
-		function onAgendaBreakupMultiDayEventsChanged() {
-			popup.updateUI()
-		}
-		function onMeteogramHoursChanged() {
-			popup.updateMeteogram()
-		}
-	}
-
-	//---
-	Connections {
-		target: appletConfig
-		function onClock24hChanged() {
-			popup.updateUI()
-		}
-	}
-
-	//---
-	property int currentErrorType: ErrorType.UnknownError
-	property string currentErrorMessage: {
-		if (plasmoid.configuration.accessToken && plasmoid.configuration.latestClientId != plasmoid.configuration.sessionClientId) {
-			return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
-		} else if (!plasmoid.configuration.accessToken && plasmoid.configuration.access_token) {
-			return i18n("Logged out of Google. Please login again.")
-		} else {
-			return ""
-		}
-	}
-	function clearError() {
-		currentErrorType = ErrorType.NoError
-		if (popup) popup.clearError()
-	}
-	Connections {
-		target: eventModel
-		function onError() {
-			logic.currentErrorMessage = msg
-			logic.currentErrorType = errorType
-			if (popup) popup.showError(logic.currentErrorMessage)
-		}
-	}
-
-	//---
-	Connections {
-		target: eventModel
-		function onCalendarFetched() {
-			logger.debug('onCalendarFetched', calendarId)
-			// logger.debug('onCalendarFetched', calendarId, JSON.stringify(data, null, '\t'))
-			if (popup) popup.deferredUpdateUI()
-		}
-		function onAllDataFetched() {
-			logger.debug('onAllDataFetched')
-			if (logic.currentErrorType == ErrorType.NetworkError) logic.clearError()
-			if (popup) popup.deferredUpdateUI()
-		}
-		function onEventCreated() {
-			logger.logJSON('onEventCreated', calendarId, data)
-			if (popup) popup.deferredUpdateUI()
-		}
-		function onEventUpdated() {
-			logger.logJSON('onEventUpdated', calendarId, eventId, data)
-			if (popup) popup.deferredUpdateUI()
-		}
-		function onEventDeleted() {
-			logger.logJSON('onEventDeleted', calendarId, eventId, data)
-			if (popup) popup.deferredUpdateUI()
-		}
-	}
-
-	//---
-	Connections {
-		target: networkMonitor
-		function onIsConnectedChanged() {
-			if (networkMonitor.isConnected) {
-				if (logic.currentErrorType == ErrorType.NetworkError) {
-					logic.clearError()
-				}
-				logic.update()
-			}
-		}
-	}
+    Component.onCompleted: {
+        // Initialization code
+        console.log("Widget initialized")
+        updateTimer.start()
+    }
 }

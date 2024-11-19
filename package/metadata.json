@@ -1,21 +1,23 @@
 {
     "KPlugin": {
-        "Id": "org.kde.plasma.eventcalendar",
-        "Name": "Event Calendar",
-        "Description": "Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.",
-        "Icon": "view-calendar",
+        "Authors": [
+            {
+                "Email": "developer@example.com",
+                "Name": "Example Developer"
+            }
+        ],
         "Category": "Date and Time",
-        "Author": "Chris Holland",
-        "Email": "zrenfire@gmail.com",
-        "License": "GPL",
-        "Version": "77",
+        "Description": "Calendar widget that syncs with Google Calendar and shows weather",
+        "Icon": "view-calendar",
+        "Id": "org.kde.plasma.eventcalendar",
+        "License": "GPL-2.0+",
+        "Name": "Event Calendar",
+        "ServiceTypes": ["Plasma/Applet"],
+        "Version": "1.0",
         "Website": "https://github.com/Zren/plasma-applet-eventcalendar"
     },
+    "X-Plasma-API": "declarativeappletscript",
     "X-Plasma-API-Minimum-Version": "6.0",
-    "KPackageStructure": "Plasma/Applet",
-    "X-Plasma-Provides": [
-        "org.kde.plasma.time",
-        "org.kde.plasma.date"
-    ],
-    "X-Plasma-MainScript": "ui/main.qml"
+    "X-Plasma-MainScript": "ui/main.qml",
+    "KPackageStructure": "Plasma/Applet"
 }

@@ -1,5 +1,7 @@
 import QtQuick 2.15
-import org.kde.plasma.plasmoid
+import org.kde.plasma.plasmoid 2.0
+import org.kde.kirigami 2.20 as Kirigami
+import org.kde.plasma.core 2.1 as PlasmaCore
 
 PlasmoidItem {
     id: calendarManager
@@ -13,6 +15,8 @@ PlasmoidItem {
     property bool clearingData: false
     property int asyncRequests: 0
     property int asyncRequestsDone: 0
+
+    // Signals for async operations and data management
     signal refresh()
     signal dataCleared()
     signal fetchingData()
@@ -25,160 +29,151 @@ PlasmoidItem {
     signal eventUpdated(string calendarId, string eventId, var data)
     signal error(string msg, int errorType)
 
-    onAsyncRequestsDoneChanged: checkIfDone()
-
-    function checkIfDone() {
-        if (clearingData) {
-            return
-        }
-        if (asyncRequestsDone >= asyncRequests) {
+    // Monitor async request completion
+    onAsyncRequestsDoneChanged: {
+        if (!clearingData && asyncRequestsDone >= asyncRequests) {
             allDataFetched()
         }
     }
 
-    //--- Calendar
+    //--- Calendar Management ---
     function getCalendarList() {
-        return [] // Function is overloaded
+        return [] // Base implementation - should be overridden
     }
 
     function getCalendar(calendarId) {
-        var calendarList = getCalendarList()
-        for (var i = 0; i < calendarList.length; i++) {
-            var calendar = calendarList[i]
-            if (calendarId === calendar.id) {
-                return calendar
-            }
-        }
-        return null
+        return getCalendarList().find(calendar => calendar.id === calendarId) || null
     }
 
-    //--- Calendar data
+    //--- Calendar Data Management ---
     function setCalendarData(calendarId, data) {
+        if (!calendarId || !data) {
+            console.warn("Invalid calendar data:", calendarId, data)
+            return
+        }
+        
         calendarParsing(calendarId, data)
         eventsByCalendar[calendarId] = data
         calendarFetched(calendarId, data)
     }
 
     function clear() {
-        console.debug(calendarManager, 'clear()')
-        calendarManager.clearingData = true
-        calendarManager.asyncRequests = 0
-        calendarManager.asyncRequestsDone = 0
-        calendarManager.eventsByCalendar = {}
-        calendarManager.clearingData = false
+        console.debug(`${calendarManager}: Clearing calendar data`)
+        clearingData = true
+        asyncRequests = 0
+        asyncRequestsDone = 0
+        eventsByCalendar = {}
+        clearingData = false
         dataCleared()
     }
 
-    //--- Event
+    //--- Event Management ---
     function getEvent(calendarId, eventId) {
-        var events = calendarManager.eventsByCalendar[calendarId].items
-        for (var i = 0; i < events.length; i++) {
-            if (events[i].id == eventId) {
-                return events[i]
-            }
-        }
+        const calendar = eventsByCalendar[calendarId]
+        if (!calendar || !calendar.items) return null
+        return calendar.items.find(event => event.id === eventId)
     }
 
-    // Add to model only
     function addEvent(calendarId, data) {
-        calendarManager.eventsByCalendar[calendarId].items.push(data)
+        if (!eventsByCalendar[calendarId]) {
+            console.warn("Calendar not found:", calendarId)
+            return
+        }
+        eventsByCalendar[calendarId].items.push(data)
         eventAdded(calendarId, data)
     }
 
-    // Remove from model only
     function removeEvent(calendarId, eventId) {
-        console.debug(calendarManager, 'removeEvent', calendarId, eventId)
-        var events = calendarManager.eventsByCalendar[calendarId].items
-        for (var i = 0; i < events.length; i++) {
-            if (events[i].id == eventId) {
-                var data = events[i]
-                events.splice(i, 1) // Remove item at index
-                eventRemoved(calendarId, eventId, data)
-                return
-            }
+        console.debug(`${calendarManager}: Removing event`, calendarId, eventId)
+        const calendar = eventsByCalendar[calendarId]
+        if (!calendar || !calendar.items) {
+            console.warn("Calendar or events not found:", calendarId)
+            return
         }
-        console.log(calendarManager, 'removeEvent', 'event didn\'t exist')
+
+        const index = calendar.items.findIndex(event => event.id === eventId)
+        if (index === -1) {
+            console.warn("Event not found:", eventId)
+            return
+        }
+
+        const removedEvent = calendar.items.splice(index, 1)[0]
+        eventRemoved(calendarId, eventId, removedEvent)
     }
 
-    //---
+    //--- Data Fetching ---
     function fetchAll(dateMin, dateMax) {
-        console.debug(calendarManager, 'fetchAllEvents', dateMin, dateMax)
+        console.debug(`${calendarManager}: Fetching all events`, dateMin, dateMax)
         fetchingData()
         clear()
-        if (typeof dateMin !== "undefined") {
+        
+        if (dateMin instanceof Date && dateMax instanceof Date) {
             calendarManager.dateMin = dateMin
             calendarManager.dateMax = dateMax
         }
+        
         fetchAllCalendars()
-        checkIfDone()
     }
 
-    // Implementation
+    // Implementation signals
     signal fetchAllCalendars()
     signal calendarParsing(string calendarId, var data)
     signal eventParsing(string calendarId, var event)
 
-    // Parsing order:
-    // CalendarManager.onCalendarParsing
-    // CalendarManager.onEventParsing
-    // SubClass.onEventParsing
-    // CalendarManager.defaultEventParsing
-    // SubClass.onCalendarParsing
     onCalendarParsing: {
-        // console.debug('CalendarManager.calendarParsing(', calendarManager, ')', calendarId)
-        data.items.forEach(function(event) {
+        if (!data || !data.items) {
+            console.warn("Invalid calendar data structure")
+            return
+        }
+        data.items.forEach(event => {
             eventParsing(calendarId, event)
             defaultEventParsing(calendarId, event)
         })
     }
-    onEventParsing: {
-        // console.debug('CalendarManager.eventParsing(', calendarManager, ')', calendarId)
-    }
 
-    // To simplify repeated code amongst implementations,
-    // we'll put the reused code here.
     function defaultEventParsing(calendarId, event) {
-        // console.debug('CalendarManager.defaultEventParsing')
+        if (!event) return
+
         event.calendarManagerId = calendarManagerId
         event.calendarId = calendarId
 
         event._summary = event.summary
         event.summary = event.summary || i18nc("event with no summary", "(No title)")
 
-        if (event.start.date) {
-            event.startDateTime = new Date(event.start.date + 'T00:00:00')
-        } else {
-            event.startDateTime = new Date(event.start.dateTime)
-        }
+        // Parse dates consistently
+        try {
+            event.startDateTime = event.start.date ? 
+                new Date(event.start.date + 'T00:00:00') :
+                new Date(event.start.dateTime)
 
-        if (event.end.date) {
-            event.endDateTime = new Date(event.end.date + 'T00:00:00')
-        } else {
-            event.endDateTime = new Date(event.end.dateTime)
+            event.endDateTime = event.end.date ?
+                new Date(event.end.date + 'T00:00:00') :
+                new Date(event.end.dateTime)
+        } catch (e) {
+            console.error("Date parsing error:", e)
+            error("Failed to parse event dates", 1)
         }
     }
 
     function parseSingleEvent(calendarId, event) {
-        calendarParsing(calendarId, {
-            items: [event],
-        })
+        if (!event) return
+        calendarParsing(calendarId, { items: [event] })
     }
 
-    //---
+    //--- Event Modification Stubs ---
     function createEvent(calendarId, date, text) {
-        console.log(calendarManager, 'createEvent(', date, text, ') is not implemented')
+        console.warn(`${calendarManager}: createEvent not implemented`)
     }
 
     function deleteEvent(calendarId, eventId) {
-        console.log(calendarManager, 'deleteEvent(', calendarId, eventId, ') is not implemented')
+        console.warn(`${calendarManager}: deleteEvent not implemented`)
     }
 
     function setEventProperty(calendarId, eventId, key, value) {
-        console.log(calendarManager, 'setEventProperty(', calendarId, eventId, key, value, ') is not implemented')
+        console.warn(`${calendarManager}: setEventProperty not implemented`)
     }
 
     function setEventProperties(calendarId, eventId, args) {
-        console.log(calendarManager, 'setEventProperties(', calendarId, eventId, args, ') is not implemented')
+        console.warn(`${calendarManager}: setEventProperties not implemented`)
     }
-
 }

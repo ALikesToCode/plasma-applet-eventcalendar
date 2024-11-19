@@ -79,7 +79,7 @@ install_requirements
 
 # Parse arguments
 restartPlasmashell=false
-METADATA_FILE="$PWD/package/metadata.desktop"
+METADATA_FILE="$PWD/package/metadata.json"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -90,48 +90,69 @@ done
 
 # Verify metadata file exists
 if [ ! -f "$METADATA_FILE" ]; then
-    log "ERROR: metadata.desktop file not found"
+    log "ERROR: metadata.json file not found"
     exit 1
 fi
 
-# Read package information
-packageNamespace=$(kreadconfig5 --file="$METADATA_FILE" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name")
-packageServiceType=$(kreadconfig5 --file="$METADATA_FILE" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
+# Install jq if needed
+if ! command -v jq &> /dev/null; then
+    log "Installing jq..."
+    case "$DISTRO" in
+        "debian"|"ubuntu"|"kali"|"raspbian")
+            sudo apt-get install -y jq
+            ;;
+        "arch")
+            sudo pacman -S jq
+            ;;
+        "fedora")
+            sudo dnf install -y jq
+            ;;
+    esac
+fi
 
-if [ -z "$packageNamespace" ] || [ -z "$packageServiceType" ]; then
-    log "ERROR: Failed to read package information from metadata.desktop"
+# Read package information
+packageNamespace=$(jq -r '.KPlugin.Id' "$METADATA_FILE")
+
+if [ -z "$packageNamespace" ]; then
+    log "ERROR: Failed to read package information from metadata.json"
     exit 1
 fi
 
 # Check if package is already installed
-kpackagetool5 --type="${packageServiceType}" --show="$packageNamespace" &> /dev/null
-isAlreadyInstalled=$?
-
-# Convert metadata.desktop to metadata.json
-if command -v desktoptojson &> /dev/null; then
-    log "Converting metadata.desktop to metadata.json..."
-    desktoptojson --serviceType="plasma-applet.desktop" -i "$METADATA_FILE" -o "$PWD/package/metadata.json"
-    check_command_success "$?" "desktoptojson conversion failed"
-    sed -i 's/ \{4\}/\t/g' "$PWD/package/metadata.json"
+kpackagetool6 --list-types | grep -q "Plasma/Applet" || true
+if [ $? -ne 0 ]; then
+    log "ERROR: Plasma/Applet package type not available"
+    exit 1
 fi
 
 # Install or update the package
-if [ "$isAlreadyInstalled" == "0" ]; then
+INSTALL_DIR="$HOME/.local/share/plasma/plasmoids"
+mkdir -p "$INSTALL_DIR"
+
+if [ -d "$INSTALL_DIR/$packageNamespace" ]; then
     log "Updating existing package..."
-    kpackagetool5 -t "${packageServiceType}" -u package
-    restartPlasmashell=true
-else
-    log "Installing new package..."
-    kpackagetool5 -t "${packageServiceType}" -i package
+    rm -rf "$INSTALL_DIR/$packageNamespace"
 fi
 
-# Restart Plasma shell if required
+log "Installing package..."
+cp -r package "$INSTALL_DIR/$packageNamespace"
+
+# Reload plasmoid configuration
 if $restartPlasmashell; then
-    log "Restarting Plasma shell..."
-    if pgrep -x "plasmashell" > /dev/null; then
-        killall plasmashell
-        kstart5 plasmashell > /dev/null 2>&1 &
-    fi
+    log "Reloading plasmoid..."
+    qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        var allDesktops = desktops();
+        for (var i = 0; i < allDesktops.length; i++) {
+            var d = allDesktops[i];
+            var widgets = d.widgets();
+            for (var j = 0; j < widgets.length; j++) {
+                var w = widgets[j];
+                if (w.type == 'org.kde.plasma.eventcalendar') {
+                    w.reloadConfig();
+                }
+            }
+        }
+    "
 fi
 
 log "Installation completed successfully."
