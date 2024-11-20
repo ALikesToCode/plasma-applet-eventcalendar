@@ -1,43 +1,48 @@
-import QtQuick 2.15
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.components 3.0 as PlasmaComponents3
-import org.kde.kirigami 2.20 as Kirigami
+import QtQuick
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
-PlasmoidItem {
-    id: eventBadgeCount
+Item {
+	id: eventBadgeCount
 
-    Rectangle {
-        anchors.right: eventBadgeCount.right
-        anchors.bottom: eventBadgeCount.bottom
+	Rectangle {
+		// This spams "TypeError: Cannot read property of null" when month is changed...
+		// anchors.right: parent.right
+		// anchors.bottom: parent.bottom
 
-        height: eventBadgeCount.height / 3
-        width: eventBadgeCountText.width
-        color: {
-            if (plasmoid.configuration.showOutlines) {
-                var c = Qt.darker(Kirigami.Theme.backgroundColor, 1.0)
-                c.a = 0.6
-                return c
-            } else {
-                return "transparent"
-            }
-        }
+		// This doesn't ... why?!
+		anchors.right: eventBadgeCount.right
+		anchors.bottom: eventBadgeCount.bottom
 
-        PlasmaComponents3.Label {
-            id: eventBadgeCountText
-            height: parent.height
-            width: Math.max(paintedWidth, height)
-            anchors.centerIn: parent
+		height: parent.height / 3
+		width: eventBadgeCountText.width
+		color: {
+			if (plasmoid.configuration.showOutlines) {
+				var c = Qt.darker(Kirigami.Theme.backgroundColor, 1) // Cast to color
+				c.a = 0.6 // 60%
+				return c
+			} else {
+				return "transparent"
+			}
+		}
 
-            color: Kirigami.Theme.highlightColor
-            text: modelEventsCount
-            font.weight: Font.Bold
-            font.pointSize: 1024
-            fontSizeMode: Text.VerticalFit
-            wrapMode: Text.NoWrap
+		PlasmaComponents3.Label {
+			id: eventBadgeCountText
+			height: parent.height
+			width: Math.max(paintedWidth, height)
+			anchors.centerIn: parent
 
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            smooth: true
-        }
-    }
+			color: Kirigami.Theme.highlightColor
+			text: modelEventsCount
+			font.weight: Font.Bold
+			font.pointSize: 1024
+			fontSizeMode: Text.VerticalFit
+			wrapMode: Text.NoWrap
+
+			horizontalAlignment: Text.AlignHCenter
+			verticalAlignment: Text.AlignVCenter
+			smooth: true
+		}
+	}
 }
+

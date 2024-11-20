@@ -1,119 +1,234 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.core as PlasmaCore
-import org.kde.kirigami 2.20 as Kirigami
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+
+import "Shared.js" as Shared
+import "LocaleFuncs.js" as LocaleFuncs
 
 Item {
-    id: root
-    
-    // Plasmoid properties
-    Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground
-    Plasmoid.switchWidth: units.gridUnit * 10
-    Plasmoid.switchHeight: units.gridUnit * 10
+	id: agendaView
 
-    // Config properties bound to plasmoid configuration
-    property int refreshInterval: plasmoid.configuration.refreshInterval
-    property string displayMode: plasmoid.configuration.displayMode
-    property bool showDetails: plasmoid.configuration.showDetails
+	readonly property int scrollbarWidth: width - agendaScrollView.contentWidth
 
-    // Theme integration
-    property color textColor: PlasmaCore.Theme.textColor
-    property color backgroundColor: PlasmaCore.Theme.backgroundColor
-    property color highlightColor: PlasmaCore.Theme.highlightColor
+	property color inProgressColor: appletConfig.agendaInProgressColor
+	property int inProgressFontWeight: Font.Bold
 
-    // Example data model
-    ListModel {
-        id: dataModel
-        ListElement { name: "Item 1"; value: 50 }
-        ListElement { name: "Item 2"; value: 75 }
-        ListElement { name: "Item 3"; value: 25 }
-    }
+	property color isOverdueColor: Kirigami.Theme.negativeTextColor
+	property int isOverdueFontWeight: Font.Bold
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: Kirigami.Units.smallSpacing
+	signal newEventFormOpened(var agendaItem, var calendarSelector)
+	signal submitNewEventForm(string calendarId, var date, string text)
 
-        Kirigami.Heading {
-            Layout.fillWidth: true
-            text: i18n("Example Widget")
-            level: 2
-            color: root.textColor
-        }
+	Connections {
+		target: eventModel
+		onEventCreated: {
+			notificationManager.notify({
+				appName: i18n("Event Calendar"),
+				appIcon: "resource-calendar-insert",
+				// expireTimeout: 10000,
+				summary: data.summary,
+				body: LocaleFuncs.formatEventDuration(data, {
+					relativeDate: timeModel.currentTime,
+					clock24h: appletConfig.clock24h,
+				})
+			})
+		}
+		onEventDeleted: {
+			logger.logJSON('AgendaView.onEventDeleted', data)
+			notificationManager.notify({
+				appName: i18n("Event Calendar"),
+				appIcon: "user-trash-symbolic",
+				// expireTimeout: 10000,
+				summary: data.summary,
+				body: LocaleFuncs.formatEventDuration(data, {
+					relativeDate: timeModel.currentTime,
+					clock24h: appletConfig.clock24h,
+				})
+			})
+		}
+	}
 
-        ListView {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            model: dataModel
-            clip: true
-            
-            delegate: Kirigami.BasicListItem {
-                width: parent.width
-                label: model.name
-                
-                contentItem: RowLayout {
-                    spacing: Kirigami.Units.smallSpacing
-                    
-                    Label {
-                        text: model.name
-                        color: root.textColor
-                    }
-                    
-                    Slider {
-                        Layout.fillWidth: true
-                        value: model.value
-                        from: 0
-                        to: 100
-                        onValueChanged: dataModel.setProperty(index, "value", value)
-                    }
-                    
-                    Label {
-                        text: Math.round(model.value) + "%"
-                        color: root.textColor
-                    }
-                }
-            }
-        }
+	QQC2.ScrollView {
+		id: agendaScrollView
+		anchors.fill: parent
+		// clip: true
+		readonly property int viewportWidth: viewport ? viewport.width : width
+		readonly property int viewportHeight: viewport ? viewport.height : height
+		readonly property int scrollY: flickableItem ? flickableItem.contentY : 0
 
-        Button {
-            Layout.alignment: Qt.AlignHCenter
-            text: i18n("Refresh")
-            icon.name: "view-refresh"
-            
-            onClicked: {
-                // Example refresh action
-                console.log("Refreshing widget data...")
-            }
-        }
-    }
+		// onScrollYChanged: console.log('scrollY', scrollY)
 
-    // Timer for periodic updates
-    Timer {
-        interval: root.refreshInterval * 1000
-        running: true
-        repeat: true
-        onTriggered: {
-            // Periodic update logic
-            console.log("Performing periodic update...")
-        }
-    }
+		ColumnLayout {
+			id: agendaColumn
+			width: agendaScrollView.viewportWidth
+			spacing: appletConfig.agendaDaySpacing
 
-    // Example of handling configuration changes
-    Connections {
-        target: plasmoid.configuration
-        
-        function onRefreshIntervalChanged() {
-            console.log("Refresh interval changed to:", refreshInterval)
-        }
-        
-        function onDisplayModeChanged() {
-            console.log("Display mode changed to:", displayMode)
-        }
-    }
+			Repeater {
+				id: agendaRepeater
 
-    Component.onCompleted: {
-        // Initialization logic
-        console.log("Widget initialized")
-    }
+				property bool populated: false
+				// onPopulatedChanged: console.log(Date.now(), 'agendaRepeater.populated', populated)
+				model: root.agendaModel
+				delegate: AgendaListItem {
+					// visible: agendaRepeater.populated
+					width: parent.width
+					// onHeightChanged: {
+					// 	if (scrollToIndexTimer.running) {
+					// 		scrollToIndexTimer.updatePosition()
+					// 	}
+					// }
+					
+					// Component.onCompleted: console.log(Date.now(), 'AgendaListItem.onCompleted', index)
+					// Component.onDestruction: console.log(Date.now(), 'AgendaListItem.onDestruction', index)
+				}
+
+				onItemAdded: {
+					// console.log(Date.now(), 'agendaRepeater.itemAdded', index)
+					if (index === root.agendaModel.count-1) {
+						populated = true
+					}
+				}
+				onItemRemoved: {
+					// console.log(Date.now(), 'agendaRepeater.onItemRemoved', index)
+					populated = false
+				}
+			}
+		}
+
+		function getCurrentAgendaItem() {
+			if (agendaRepeater.count === 0 || scrollY < 0) {
+				return null
+			} else {
+				var offsetY = 0
+				for (var i = 0; i < agendaRepeater.count; i++) {
+					var agendaListItem = agendaRepeater.itemAt(i)
+					offsetY += agendaListItem ? agendaListItem.height : 0
+					// console.log('\t', i, agendaListItem, agendaListItem.height)
+					if (i != agendaRepeater.count-1) {
+						offsetY += agendaColumn.spacing
+					}
+
+					if (offsetY >= scrollY) {
+						return agendaListItem
+					}
+				}
+				return null
+			}
+		}
+
+		function getItemOffsetY(index) {
+			// console.log('getItemOffsetY', index)
+			if (index <= 0) {
+				return 0
+			} else if (index < agendaRepeater.count) {
+				// console.log('\t', index < agendaRepeater.count)
+				var offsetY = 0
+				for (var i = 0; i < Math.min(index, agendaRepeater.count); i++) {
+					var agendaListItem = agendaRepeater.itemAt(i)
+					offsetY += agendaListItem ? agendaListItem.height : 0
+					// console.log('\t', i, agendaListItem, agendaListItem.height)
+					if (i != agendaRepeater.count-1) {
+						offsetY += agendaColumn.spacing
+					}
+				}
+				return offsetY
+			} else { // index >= agendaRepeater.count
+				return agendaScrollView.contentHeight
+			}
+		}
+
+		function scrollToY(offsetY) {
+			flickableItem.contentY = Math.min(offsetY, contentHeight-viewportHeight)
+		}
+
+		function positionViewAtBeginning() {
+			scrollToY(0)
+		}
+
+		function positionViewAtIndex(i) {
+			var offsetY = getItemOffsetY(i)
+			scrollToY(offsetY)
+		}
+
+		function positionViewAtEvent(agendaItemIndex, eventIndex) {
+			var offsetY = getItemOffsetY(agendaItemIndex)
+			var agendaListItem = agendaRepeater.itemAt(agendaItemIndex)
+			offsetY += agendaListItem.getEventOffset(eventIndex)
+			scrollToY(offsetY)
+		}
+
+		function positionViewAtTask(agendaItemIndex, taskIndex) {
+			var offsetY = getItemOffsetY(agendaItemIndex)
+			var agendaListItem = agendaRepeater.itemAt(agendaItemIndex)
+			var eventIndex = agendaListItem.agendaItemEvents.count + taskIndex
+			offsetY += agendaListItem.getEventOffset(eventIndex)
+			scrollToY(offsetY)
+		}
+
+		function positionViewAtEnd() {
+			scrollToY(contentHeight)
+		}
+	}
+
+	// TODO: properly detect when all events have completed loading
+	Timer {
+		id: scrollToIndexTimer
+		property int itemIndex: -1
+		interval: 400 // Give events time to populate
+		onTriggered: updatePosition()
+		function scrollTo(i) {
+			itemIndex = i
+			restart()
+		}
+		function updatePosition() {
+			// console.log('updatePosition', itemIndex, Date.now())
+			agendaScrollView.positionViewAtIndex(itemIndex)
+		}
+	}
+
+	function scrollToTop() {
+		agendaScrollView.positionViewAtBeginning()
+	}
+
+	function scrollToDate(date) {
+		for (var i = 0; i < root.agendaModel.count; i++) {
+			var agendaItem = root.agendaModel.get(i)
+			if (Shared.isSameDate(date, agendaItem.date)) {
+				agendaScrollView.positionViewAtIndex(i)
+				scrollToIndexTimer.scrollTo(i)
+				return
+			} else if (Shared.isDateEarlier(date, agendaItem.date)) {
+				// If the date is smaller than the current agendaItem.date, scroll to the previous agendaItem.
+				if (i > 0) {
+					agendaScrollView.positionViewAtIndex(i-1)
+					scrollToIndexTimer.scrollTo(i-1)
+				} else {
+					agendaScrollView.positionViewAtBeginning()
+				}
+				return
+			}
+		}
+		// If the date is greater than any item in the agenda, scroll to the bottom.
+		agendaScrollView.positionViewAtEnd()
+	}
+
+	// [Note] This function is untested!
+	function scrollToEvent(date, eventId) {
+		for (var i = 0; i < agendaRepeater.model.count; i++) {
+			var agendaItem = agendaRepeater.model.get(i)
+			if (Shared.isSameDate(date, agendaItem.date)) {
+				var agendaListItem = agendaRepeater.itemAt(i)
+				var eventIndex = agendaListItem.indexOfEvent(eventId)
+				if (eventIndex >= 0) {
+					scrollToIndexTimer.scrollTo(i)
+				}
+				return
+			} else if (Shared.isDateEarlier(date, agendaItem.date)) {
+				// If the date is smaller than the current agendaItem.date, then we've iterated past the target date.
+				return
+			}
+		}
+		// The date was greater than any item in the agenda.
+	}
 }

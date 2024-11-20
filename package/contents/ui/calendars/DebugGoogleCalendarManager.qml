@@ -1,107 +1,46 @@
-import QtQuick 2.15
-import QtQuick.Layouts 1.15
-import QtQuick.Controls 2.15
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.components 3.0 as PlasmaComponents3
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.kirigami 2.20 as Kirigami
+import QtQuick
 
-PlasmoidItem {
-    id: root
+import "../lib/Requests.js" as Requests
 
-    // Configuration properties that will be saved
-    property int refreshInterval: plasmoid.configuration.refreshInterval
-    property string displayMode: plasmoid.configuration.displayMode
-    property bool showNotifications: plasmoid.configuration.showNotifications
+CalendarManager {
+	id: debugCalendarManager
 
-    // UI properties
-    property int counter: 0
-    
-    Plasmoid.compactRepresentation: PlasmaComponents3.Button {
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 10
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 4
-        
-        text: i18n("Count: %1", counter)
-        
-        onClicked: {
-            counter++
-            if (showNotifications) {
-                showCounterNotification()
-            }
-        }
-    }
+	calendarManagerId: "DebugGoogleCalendar"
 
-    Plasmoid.fullRepresentation: ColumnLayout {
-        spacing: Kirigami.Units.smallSpacing
-        
-        PlasmaComponents3.Label {
-            Layout.alignment: Qt.AlignHCenter
-            text: i18n("Demo Plasma Widget")
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.5
-        }
-        
-        RowLayout {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: Kirigami.Units.largeSpacing
-            
-            PlasmaComponents3.Button {
-                text: i18n("Increment")
-                icon.name: "list-add"
-                onClicked: counter++
-            }
-            
-            PlasmaComponents3.Button {
-                text: i18n("Reset")
-                icon.name: "edit-clear"
-                onClicked: counter = 0
-            }
-        }
-        
-        PlasmaComponents3.Slider {
-            Layout.fillWidth: true
-            from: 0
-            to: 100
-            value: counter
-            onMoved: counter = value
-        }
-    }
+	function fetchDebugGoogleSession() {
+		if (plasmoid.configuration.accessToken) {
+			return
+		}
+		// Steal accessToken from our current user's config.
+		fetchCurrentUserConfig(function(err, metadata) {
+			plasmoid.configuration.sessionClientId = metadata['sessionClientId']
+			plasmoid.configuration.sessionClientSecret = metadata['sessionClientSecret']
+			plasmoid.configuration.accessToken = metadata['accessToken']
+			plasmoid.configuration.refreshToken = metadata['refreshToken']
+			plasmoid.configuration.accessToken = metadata['accessToken']
+			plasmoid.configuration.accessTokenType = metadata['accessTokenType']
+			plasmoid.configuration.accessTokenExpiresAt = metadata['accessTokenExpiresAt']
+			plasmoid.configuration.calendarIdList = metadata['calendarIdList']
+			plasmoid.configuration.calendarList = metadata['calendarList']
+			plasmoid.configuration.tasklistIdList = metadata['tasklistIdList']
+			plasmoid.configuration.tasklistList = metadata['tasklistList']
+			plasmoid.configuration.agendaNewEventLastCalendarId = metadata['agendaNewEventLastCalendarId']
+		})
+	}
 
-    // Timer for periodic updates
-    Timer {
-        interval: refreshInterval * 1000
-        running: refreshInterval > 0
-        repeat: true
-        onTriggered: {
-            counter++
-        }
-    }
+	function fetchCurrentUserConfig(callback) {
+		var url = 'file:///home/chris/.config/plasma-org.kde.plasma.desktop-appletsrc'
+		Requests.getFile(url, function(err, data) {
+			if (err) {
+				return callback(err)
+			}
 
-    function showCounterNotification() {
-        PlasmaCore.Notification {
-            title: i18n("Counter Updated")
-            text: i18n("The counter value is now: %1", counter)
-            iconName: "dialog-information"
-        }
-    }
+			var metadata = Requests.parseMetadata(data)
+			callback(null, metadata)
+		})
+	}
 
-    // Configuration changed handler
-    Connections {
-        target: plasmoid.configuration
-        function onRefreshIntervalChanged() {
-            refreshInterval = plasmoid.configuration.refreshInterval
-        }
-        function onDisplayModeChanged() {
-            displayMode = plasmoid.configuration.displayMode
-        }
-        function onShowNotificationsChanged() {
-            showNotifications = plasmoid.configuration.showNotifications
-        }
-    }
-
-    Component.onCompleted: {
-        // Initialize configuration values
-        refreshInterval = plasmoid.configuration.refreshInterval
-        displayMode = plasmoid.configuration.displayMode
-        showNotifications = plasmoid.configuration.showNotifications
-    }
+	onFetchAllCalendars: {
+		fetchDebugGoogleSession()
+	}
 }

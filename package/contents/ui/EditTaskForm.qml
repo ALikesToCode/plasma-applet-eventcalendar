@@ -1,114 +1,200 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15 as QQC2
-import QtQuick.Layouts 1.15
-import org.kde.kirigami 2.15 as Kirigami
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.core as PlasmaCore
-import org.kde.plasma.components 3.0 as PC3
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.components as PlasmaComponents3
 
-Plasmoid.compactRepresentation: Item {
-    id: root
-    
-    // Plasmoid properties
-    Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground
-    Plasmoid.configurationRequired: false
+import "Shared.js" as Shared
 
-    // Data model for tasks
-    ListModel {
-        id: taskModel
-        ListElement { title: "Example Task 1"; completed: false }
-        ListElement { title: "Example Task 2"; completed: true }
-    }
+Loader {
+	id: editTaskForm
+	active: false
+	visible: active
+	Layout.fillWidth: true
+	sourceComponent: Component {
+		MouseArea {
+			id: editTaskItem
 
-    // Main layout
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: Kirigami.Units.smallSpacing
+			onClicked: focus = true
 
-        // Header
-        PC3.Label {
-            Layout.fillWidth: true
-            text: i18n("Task Manager")
-            font.bold: true
-            horizontalAlignment: Text.AlignHCenter
-        }
+			implicitWidth: editTaskGrid.implicitWidth
+			implicitHeight: editTaskGrid.implicitHeight
 
-        // Task list
-        ListView {
-            id: taskList
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            model: taskModel
-            clip: true
+			readonly property var task: tasks.get(index)
 
-            delegate: RowLayout {
-                width: parent.width
-                spacing: Kirigami.Units.smallSpacing
+			Component.onCompleted: {
+				agendaScrollView.positionViewAtTask(agendaItemIndex, taskItemIndex)
+				editSummaryTextField.forceActiveFocus()
 
-                PC3.CheckBox {
-                    checked: model.completed
-                    onCheckedChanged: model.completed = checked
-                }
+				logger.debugJSON('EditTaskForm.task', task)
+			}
 
-                PC3.Label {
-                    text: model.title
-                    Layout.fillWidth: true
-                    opacity: model.completed ? 0.6 : 1.0
-                    font.strikeout: model.completed
-                }
-            }
-        }
+			function isEmpty(s) {
+				return typeof s === "undefined" || s === null || s === ""
+			}
+			function hasChanged(a, b) {
+				// logger.log('hasChanged', a != b)
+				// logger.log('\t', JSON.stringify(a), typeof a, isEmpty(a))
+				// logger.log('\t', JSON.stringify(b), typeof b, isEmpty(b))
+				return a != b && !(isEmpty(a) && isEmpty(b))
+			}
+			function populateIfChanged(args, propKey, newValue) {
+				var changed = hasChanged(task[propKey], newValue)
+				// logger.log(propKey, changed, task[propKey], newValue)
+				if (changed) {
+					args[propKey] = newValue
+				}
+			}
+			function getChanges() {
+				var args = {}
+				populateIfChanged(args, 'title', editSummaryTextField.text)
+				populateIfChanged(args, 'notes', editDescriptionTextField.text)
+				populateIfChanged(args, 'due', dueTimeSelector.getDueDate())
+				return args
+			}
+			function submit() {
+				logger.log('editTaskItem.submit()')
+				logger.debugJSON('task', task)
 
-        // Add task button
-        PC3.Button {
-            Layout.fillWidth: true
-            text: i18n("Add Task")
-            icon.name: "list-add"
-            onClicked: {
-                taskModel.append({
-                    title: i18n("New Task"),
-                    completed: false
-                })
-            }
-        }
-    }
+				if (task.calendarId != calendarSelector.selectedCalendarId) {
+					// TODO: Move task
+					// TODO: Call setProperties after moving or vice versa.
+					// https://developers.google.com/tasks/v1/reference/tasks/move
+				}
 
-    // Configuration
-    Plasmoid.configurationInterface: Item {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
+				var args = getChanges()
+				eventModel.setEventProperties(task.calendarId, task.id, args)
+			}
 
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: Kirigami.Units.largeSpacing
+			function cancel() {
+				editTaskForm.active = false
+			}
 
-            PC3.CheckBox {
-                text: i18n("Show completed tasks")
-                checked: Plasmoid.configuration.showCompleted
-                onCheckedChanged: Plasmoid.configuration.showCompleted = checked
-            }
+			//----
+			GridLayout {
+				id: editTaskGrid
+				anchors.left: parent.left
+				anchors.right: parent.right
+				columns: 2
 
-            PC3.Slider {
-                Layout.fillWidth: true
-                from: 10
-                to: 50
-                value: Plasmoid.configuration.maxTasks
-                onValueChanged: Plasmoid.configuration.maxTasks = value
-            }
-        }
-    }
+				//---
+				PlasmaComponents3.CheckBox {
+					id: taskCheckBox
+					// Not aligned with other CheckBoxes, but is aligned with EditForm icons.
+					Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+					checked: task && task.isCompleted
+					enabled: false
+				}
+				PlasmaComponents3.TextField {
+					id: editSummaryTextField
+					Layout.fillWidth: true
+					placeholderText: i18n("Event Title")
+					text: task && task.title || ""
+					onAccepted: {
+						logger.debug('editSummaryTextField.onAccepted', text)
+						editTaskItem.submit()
+					}
 
-    // Theme support
-    PlasmaCore.ColorScope {
-        id: colorScope
-        colorGroup: PlasmaCore.Theme.NormalColorGroup
-    }
+					Keys.onEscapePressed: editTaskItem.cancel()
+				}
 
-    // Component initialization
-    Component.onCompleted: {
-        // Load saved configuration
-        if (Plasmoid.configuration.maxTasks) {
-            taskList.model.maxTasks = Plasmoid.configuration.maxTasks
-        }
-    }
+				//---
+				EventPropertyIcon {
+					source: "x-shape-text"
+					Layout.fillHeight: false
+					Layout.alignment: Qt.AlignTop
+				}
+				PlasmaComponents3.TextArea {
+					id: editDescriptionTextField
+					placeholderText: i18n("Add description")
+					text: (task && task.notes) || ""
+
+					Layout.fillWidth: true
+					Layout.preferredHeight: contentHeight + (20 * Screen.devicePixelRatio)
+
+					Keys.onEscapePressed: editTaskItem.cancel()
+
+					Keys.onEnterPressed: _onEnterPressed(event) // ?
+					Keys.onReturnPressed: _onEnterPressed(event) // What's triggered on a US Keyboard
+					function _onEnterPressed(event) {
+						// console.log('onEnterPressed', event.key, event.modifiers)
+						if ((event.modifiers & Qt.ShiftModifier) || (event.modifiers & Qt.ControlModifier)) {
+							editTaskItem.submit()
+						} else {
+							event.accepted = false
+						}
+					}
+				}
+
+				//---
+				EventPropertyIcon {
+					source: "view-list-symbolic"
+				}
+				CalendarSelector {
+					id: calendarSelector
+					Layout.fillWidth: true
+					enabled: false
+					Component.onCompleted: {
+						var calendarList = eventModel.getCalendarList()
+						calendarSelector.populate(calendarList, task.calendarId)
+					}
+				}
+
+				//---
+				EventPropertyIcon {
+					source: "view-calendar-upcoming-events"
+				}
+				RowLayout {
+					DateTimeSelector {
+						id: dueTimeSelector
+						property bool hasDueDate: task && task.dueDateTime
+						visible: hasDueDate
+						showTime: false // Google Tasks API doesn't provide the Time
+						dateTime: {
+							if (task && task.dueDateTime) {
+								return task.dueDateTime
+							} else {
+								return new Date()
+							}
+						}
+						function getDueDate() {
+							if (dueTimeSelector.hasDueDate) {
+								return Shared.dateString(dateTime)  + 'T00:00:00.000Z'
+							} else {
+								return null
+							}
+						}
+					}
+					PlasmaComponents3.Button {
+						visible: dueTimeSelector.hasDueDate
+						icon.name: 'edit-delete'
+						onClicked: dueTimeSelector.hasDueDate = false
+					}
+					PlasmaComponents3.Button {
+						visible: !dueTimeSelector.hasDueDate
+						text: i18n("Add due date")
+						onClicked: dueTimeSelector.hasDueDate = true
+					}
+				}
+
+				//---
+				RowLayout {
+					Layout.columnSpan: 2
+					spacing: 4 * Screen.devicePixelRatio
+					Item {
+						Layout.fillWidth: true
+					}
+					PlasmaComponents3.Button {
+						icon.name: "document-save"
+						text: i18n("&Save")
+						onClicked: editTaskItem.submit()
+					}
+					PlasmaComponents3.Button {
+						icon.name: "dialog-cancel"
+						text: i18n("&Cancel")
+						onClicked: editTaskItem.cancel()
+					}
+				}
+			}
+
+		}
+	}
 }

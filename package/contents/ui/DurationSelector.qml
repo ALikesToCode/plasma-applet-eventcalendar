@@ -1,75 +1,50 @@
-import QtQuick 2.15
-import QtQuick.Layouts 1.15
-import org.kde.kirigami 2.20 as Kirigami
-import org.kde.plasma.plasma5support 2.0 as P5Support
-import org.kde.plasma.components 3.0 as PC3
-import org.kde.plasma.plasmoid 2.0
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.components as PlasmaComponents3
 
-ColumnLayout {
-    id: root
-    spacing: Kirigami.Units.smallSpacing
+Flow {
+	id: durationSelector
 
-    property alias startDateTime: startTimeSelector.dateTime
-    property alias endDateTime: endTimeSelector.dateTime
-    property bool enabled: true
-    property bool showTime: Plasmoid.configuration.showTime
+	property alias startTimeSelector: startTimeSelector
+	property alias endTimeSelector: endTimeSelector
 
-    Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground
+	property alias startDateTime: startTimeSelector.dateTime
+	property alias endDateTime: endTimeSelector.dateTime
 
-    PC3.Label {
-        Layout.alignment: Qt.AlignHCenter
-        text: i18n("Duration Selector")
-        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
-        color: Kirigami.Theme.textColor
-    }
+	property bool enabled: true
+	property bool showTime: false
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: Kirigami.Units.largeSpacing
+	spacing: 0
+	// Layout.minimumWidth: startTimeSelector.minimumWidth + seperatorLabel.implicitWidth + endTimeSelector.minimumWidth
 
-        DateTimeSelector {
-            id: startTimeSelector
-            Layout.fillWidth: true
-            enabled: root.enabled
-            showTime: root.showTime
-            dateFirst: true
+	DateTimeSelector {
+		id: startTimeSelector
+		enabled: durationSelector.enabled
+		showTime: durationSelector.showTime
+		dateFirst: true
 
-            onDateTimeShifted: {
-                // Update end date while maintaining duration
-                var shiftedEndDate = new Date(endTimeSelector.dateTime.valueOf() + deltaDateTime)
-                endTimeSelector.dateTime = shiftedEndDate
-            }
-        }
+		onDateTimeShifted: {
+			logger.debug('onDateTimeShifted')
+			logger.debug('    dt1', oldDateTime)
+			logger.debug('    dt2', dateTime)
+			logger.debug('  delta', deltaDateTime)
 
-        PC3.Label {
-            text: i18n("to")
-            font.weight: Font.Bold
-            color: Kirigami.Theme.textColor
-        }
-
-        DateTimeSelector {
-            id: endTimeSelector
-            Layout.fillWidth: true
-            enabled: root.enabled
-            showTime: root.showTime
-            dateFirst: false
-        }
-    }
-
-    PC3.Button {
-        Layout.alignment: Qt.AlignHCenter
-        text: i18n("Reset")
-        icon.name: "edit-reset"
-        enabled: root.enabled
-        onClicked: {
-            startTimeSelector.dateTime = new Date()
-            endTimeSelector.dateTime = new Date()
-        }
-    }
-
-    Component.onCompleted: {
-        // Initialize with current date/time
-        startTimeSelector.dateTime = new Date()
-        endTimeSelector.dateTime = new Date()
-    }
+			var shiftedEndDate = new Date(endTimeSelector.dateTime.valueOf() + deltaDateTime)
+			logger.debug('    t3', shiftedEndDate)
+			endTimeSelector.dateTime = shiftedEndDate
+		}
+	}
+	PlasmaComponents3.Label {
+		id: seperatorLabel
+		text: ' ' + i18n("to") + ' '
+		font.weight: Font.Bold
+		verticalAlignment: Text.AlignVCenter
+		height: startTimeSelector.implicitHeight
+	}
+	DateTimeSelector {
+		id: endTimeSelector
+		enabled: durationSelector.enabled
+		showTime: durationSelector.showTime
+		dateFirst: false
+	}
 }

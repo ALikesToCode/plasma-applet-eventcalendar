@@ -1,7 +1,5 @@
-import QtQuick 2.15
-import org.kde.kirigami 2.20 as Kirigami
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.core 2.1 as PlasmaCore
+import QtQuick
+import org.kde.kirigami as Kirigami
 
 Item {
 	id: dotsBadge
@@ -9,13 +7,12 @@ Item {
 	property color dotColor: Kirigami.Theme.highlightColor
 	property int dotBorderWidth: plasmoid.configuration.showOutlines ? 1 : 0
 	property color dotBorderColor: Kirigami.Theme.backgroundColor
-	property int modelEventsCount: 0
 
 	Row {
 		anchors.horizontalCenter: dotsBadge.horizontalCenter
 		anchors.bottom: dotsBadge.bottom
 		anchors.margins: dotsBadge.height / 8
-		spacing: PlasmaCore.Units.smallSpacing
+		spacing: Kirigami.Units.smallSpacing
 
 		Rectangle {
 			visible: modelEventsCount >= 1
@@ -46,3 +43,4 @@ Item {
 		}
 	}
 }
+

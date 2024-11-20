@@ -1,99 +1,84 @@
-import QtQuick 2.15
-import QtQuick.Layouts 1.15
-import QtQuick.Controls 2.15
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents3
-import org.kde.kirigami 2.20 as Kirigami
+import QtQuick
 
-Item {
-    id: root
-    
-    // Expose configuration properties
-    property alias showTitle: plasmoid.configuration.showTitle
-    property alias titleText: plasmoid.configuration.titleText
-    property alias sliderValue: plasmoid.configuration.sliderValue
-    
-    // Main layout
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: Kirigami.Units.smallSpacing
+import "./calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 
-        // Title section
-        PlasmaComponents3.Label {
-            Layout.fillWidth: true
-            text: showTitle ? titleText : ""
-            visible: showTitle
-            horizontalAlignment: Text.AlignHCenter
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
-            color: Kirigami.Theme.textColor
-        }
+QtObject {
+	signal migrate()
 
-        // Interactive slider
-        PlasmaComponents3.Slider {
-            Layout.fillWidth: true
-            from: 0
-            to: 100
-            value: sliderValue
-            onValueChanged: {
-                plasmoid.configuration.sliderValue = value
-            }
-        }
+	function copy(oldKey, newKey) {
+		if (typeof plasmoid.configuration[oldKey] === 'undefined') return
+		if (typeof plasmoid.configuration[newKey] === 'undefined') return
+		if (plasmoid.configuration[oldKey] === plasmoid.configuration[newKey]) return
+		plasmoid.configuration[newKey] = plasmoid.configuration[oldKey]
+		console.log('[eventcalendar:migrate] copy ' + oldKey + ' => ' + newKey + ' (value: ' + plasmoid.configuration[oldKey] + ')')
+	}
 
-        // Action button
-        PlasmaComponents3.Button {
-            Layout.alignment: Qt.AlignHCenter
-            text: i18n("Click Me")
-            icon.name: "dialog-ok"
-            onClicked: {
-                // Example action
-                console.log("Button clicked, slider value:", sliderValue)
-            }
-        }
-    }
+	Component.onCompleted: migrate()
+	onMigrate: {
+		// Modified in: v72
+		if (!plasmoid.configuration.v72Migration) {
+			var oldValue = plasmoid.configuration.enabledCalendarPlugins
+			var newValue = PlasmaCalendarUtils.pluginPathToFilenameList(plasmoid.configuration.enabledCalendarPlugins)
+			plasmoid.configuration.enabledCalendarPlugins = newValue
+			console.log('[eventcalendar:migrate] convert enabledCalendarPlugins (' + oldValue + ' => ' + newValue + ')')
 
-    // Configuration page definition
-    Plasmoid.configurationRequired: false
-    Plasmoid.configurationItem: Item {
-        property alias cfg_showTitle: showTitleCheckbox.checked
-        property alias cfg_titleText: titleTextField.text
-        property alias cfg_sliderValue: sliderSpinBox.value
+			plasmoid.configuration.v72Migration = true
+		}
 
-        ColumnLayout {
-            spacing: Kirigami.Units.smallSpacing
+		// Renamed in: v71
+		if (!plasmoid.configuration.v71Migration) {
+			copy('widget_show_meteogram', 'widgetShowMeteogram')
+			copy('widget_show_timer', 'widgetShowTimer')
+			copy('widget_show_agenda', 'widgetShowAgenda')
+			copy('widget_show_calendar', 'widgetShowCalendar')
+			copy('timer_sfx_enabled', 'timerSfxEnabled')
+			copy('timer_sfx_filepath', 'timerSfxFilepath')
+			copy('timer_repeats', 'timerRepeats')
+			copy('clock_fontfamily', 'clockFontFamily')
+			copy('clock_timeformat', 'clockTimeFormat1')
+			copy('clock_timeformat_2', 'clockTimeFormat2')
+			copy('clock_line_2', 'clockShowLine2')
+			copy('clock_line_2_height_ratio', 'clockLine2HeightRatio')
+			copy('clock_line_1_bold', 'clockLineBold1')
+			copy('clock_line_2_bold', 'clockLineBold2')
+			copy('clock_maxheight', 'clockMaxHeight')
+			copy('clock_mousewheel_up', 'clockMouseWheelUp')
+			copy('clock_mousewheel_down', 'clockMouseWheelDown')
+			copy('show_outlines', 'showOutlines')
 
-            PlasmaComponents3.CheckBox {
-                id: showTitleCheckbox
-                text: i18n("Show Title")
-            }
+			copy('month_show_border', 'monthShowBorder')
+			copy('month_show_weeknumbers', 'monthShowWeekNumbers')
+			copy('month_eventbadge_type', 'monthEventBadgeType')
+			copy('month_today_style', 'monthTodayStyle')
+			copy('month_cell_radius', 'monthCellRadius')
 
-            PlasmaComponents3.TextField {
-                id: titleTextField
-                Layout.fillWidth: true
-                placeholderText: i18n("Enter title text...")
-                enabled: showTitleCheckbox.checked
-            }
+			copy('agenda_newevent_remember_calendar', 'agendaNewEventRememberCalendar')
+			copy('agenda_newevent_last_calendar_id', 'agendaNewEventLastCalendarId')
+			copy('agenda_weather_show_icon', 'agendaWeatherShowIcon')
+			copy('agenda_weather_icon_height', 'agendaWeatherIconHeight')
+			copy('agenda_weather_show_text', 'agendaWeatherShowText')
+			copy('agenda_breakup_multiday_events', 'agendaBreakupMultiDayEvents')
+			copy('agenda_inProgressColor', 'agendaInProgressColor')
+			copy('agenda_fontSize', 'agendaFontSize')
 
-            PlasmaComponents3.SpinBox {
-                id: sliderSpinBox
-                from: 0
-                to: 100
-                Layout.fillWidth: true
-            }
-        }
-    }
+			copy('events_pollinterval', 'eventsPollInterval')
 
-    // Component initialization
-    Component.onCompleted: {
-        // Initial setup if needed
-        if (!plasmoid.configuration.hasOwnProperty("showTitle")) {
-            plasmoid.configuration.showTitle = true
-        }
-        if (!plasmoid.configuration.hasOwnProperty("titleText")) {
-            plasmoid.configuration.titleText = i18n("My Widget")
-        }
-        if (!plasmoid.configuration.hasOwnProperty("sliderValue")) {
-            plasmoid.configuration.sliderValue = 50
-        }
-    }
+			copy('weather_app_id', 'openWeatherMapAppId')
+			copy('weather_city_id', 'openWeatherMapCityId')
+			copy('weather_canada_city_id', 'weatherCanadaCityId')
+			copy('weather_service', 'weatherService')
+			copy('weather_units', 'weatherUnits')
+			copy('meteogram_hours', 'meteogramHours')
+			copy('meteogram_textColor', 'meteogramTextColor')
+			copy('meteogram_gridColor', 'meteogramGridColor')
+			copy('meteogram_rainColor', 'meteogramRainColor')
+			copy('meteogram_positiveTempColor', 'meteogramPositiveTempColor')
+			copy('meteogram_negativeTempColor', 'meteogramNegativeTempColor')
+			copy('meteogram_iconColor', 'meteogramIconColor')
+
+			plasmoid.configuration.v71Migration = true
+		}
+	}
+
 }
+

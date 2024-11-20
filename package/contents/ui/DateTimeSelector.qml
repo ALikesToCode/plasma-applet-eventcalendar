@@ -1,92 +1,52 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import org.kde.plasma.core as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents
-import org.kde.kirigami 2.20 as Kirigami
-import org.kde.plasma.plasmoid 2.0
+import QtQuick
+import QtQuick.Layouts
 
-PlasmaCore.Dialog {
-    id: root
-    flags: Qt.WindowStaysOnTopHint
-    location: PlasmaCore.Types.TopEdge
+import org.kde.kirigami as Kirigami
 
-    property var dateTime: new Date()
-    property bool showTime: Plasmoid.configuration.showTime
-    property string dateFormat: Plasmoid.configuration.dateFormat
-    property string timeFormat: Plasmoid.configuration.timeFormat
+GridLayout {
+	id: dateTimeSelector
+	property var dateTime: new Date()
+	property bool enabled: true
+	property bool showTime: true
+	property alias dateFormat: dateSelector.dateFormat
+	property alias timeFormat: timeSelector.timeFormat
+	property bool dateFirst: true
+	columns: 2
+	columnSpacing: Kirigami.Units.smallSpacing
+	readonly property int minimumWidth: dateSelector.implicitWidth + columnSpacing + timeSelector.implicitWidth
 
-    mainItem: ColumnLayout {
-        spacing: Kirigami.Units.smallSpacing
+	signal dateTimeShifted(date oldDateTime, int deltaDateTime, date newDateTime)
+	onDateTimeShifted: {
+		dateTimeSelector.dateTime = newDateTime
+	}
 
-        PlasmaComponents.Label {
-            text: i18n("Current Date & Time")
-            font.bold: true
-            Layout.alignment: Qt.AlignHCenter
-        }
+	DateSelector {
+		id: dateSelector
+		enabled: dateTimeSelector.enabled
+		// opacity: 1 // Override disabled opacity effect.
+		Layout.column: dateTimeSelector.dateFirst ? 0 : 1
 
-        GridLayout {
-            columns: 2
-            columnSpacing: Kirigami.Units.smallSpacing
-            rowSpacing: Kirigami.Units.smallSpacing
+		dateTime: dateTimeSelector.dateTime
+		dateFormat: i18nc("event editor date format", "d MMM, yyyy")
 
-            PlasmaComponents.Label {
-                text: i18n("Date:")
-                Layout.alignment: Qt.AlignRight
-            }
+		onDateTimeShifted: {
+			dateTimeSelector.dateTimeShifted(oldDateTime, deltaDateTime, newDateTime)
+		}
+	}
 
-            PlasmaComponents.TextField {
-                id: dateField
-                text: Qt.formatDateTime(root.dateTime, root.dateFormat)
-                enabled: false
-                Layout.fillWidth: true
-            }
+	TimeSelector {
+		id: timeSelector
+		enabled: dateTimeSelector.enabled && dateTimeSelector.showTime
+		// opacity: 1 // Override disabled opacity effect.
+		visible: dateTimeSelector.showTime
+		Layout.column: dateTimeSelector.dateFirst ? 1 : 0
 
-            PlasmaComponents.Label {
-                text: i18n("Time:")
-                visible: root.showTime
-                Layout.alignment: Qt.AlignRight
-            }
+		dateTime: dateTimeSelector.dateTime
 
-            PlasmaComponents.TextField {
-                id: timeField
-                text: Qt.formatDateTime(root.dateTime, root.timeFormat)
-                enabled: false
-                visible: root.showTime
-                Layout.fillWidth: true
-            }
-        }
+		onDateTimeShifted: {
+			dateTimeSelector.dateTimeShifted(oldDateTime, deltaDateTime, newDateTime)
+		}
+	}
 
-        RowLayout {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: Kirigami.Units.smallSpacing
 
-            PlasmaComponents.Button {
-                text: i18n("Previous Day")
-                icon.name: "go-previous"
-                onClicked: {
-                    let oldDate = root.dateTime
-                    root.dateTime = new Date(root.dateTime.setDate(root.dateTime.getDate() - 1))
-                    root.dateTimeChanged(oldDate, -86400000, root.dateTime)
-                }
-            }
-
-            PlasmaComponents.Button {
-                text: i18n("Next Day")
-                icon.name: "go-next"
-                onClicked: {
-                    let oldDate = root.dateTime
-                    root.dateTime = new Date(root.dateTime.setDate(root.dateTime.getDate() + 1))
-                    root.dateTimeChanged(oldDate, 86400000, root.dateTime)
-                }
-            }
-        }
-    }
-
-    signal dateTimeChanged(date oldDateTime, int deltaDateTime, date newDateTime)
-
-    Component.onCompleted: {
-        Plasmoid.backgroundHints = PlasmaCore.Types.StandardBackground
-        Plasmoid.configurationRequired = false
-    }
 }

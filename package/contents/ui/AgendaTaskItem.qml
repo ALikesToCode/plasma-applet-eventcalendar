@@ -1,101 +1,215 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.core as PlasmaCore
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import org.kde.plasma.components 3.0 as PlasmaComponents3
+import org.kde.plasma.components as PlasmaComponents3
 
-Plasmoid.fullRepresentation: Item {
-    id: root
-    
-    // Minimum size constraints
-    Layout.minimumWidth: Kirigami.Units.gridUnit * 10
-    Layout.minimumHeight: Kirigami.Units.gridUnit * 10
-    Layout.preferredWidth: Kirigami.Units.gridUnit * 15 
-    Layout.preferredHeight: Kirigami.Units.gridUnit * 15
+import "LocaleFuncs.js" as LocaleFuncs
+import "Shared.js" as Shared
 
-    // Properties bound to configuration
-    property int refreshInterval: plasmoid.configuration.refreshInterval
-    property string displayText: plasmoid.configuration.displayText
-    property bool showAnimation: plasmoid.configuration.showAnimation
+LinkRect {
+	id: agendaTaskItem
+	readonly property int taskItemIndex: index
+	Layout.fillWidth: true
+	implicitHeight: contents.implicitHeight
 
-    // Dynamic color based on theme
-    property color textColor: PlasmaCore.Theme.textColor
-    
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: Kirigami.Units.smallSpacing
+	property bool taskIsOverdue: false
+	function checkIfIsOverdue() {
+		if (model.due) {
+			taskIsOverdue = !model.isCompleted && model.dueEndTime < timeModel.currentTime
+		} else {
+			taskIsOverdue = false
+		}
+	}
+	Connections {
+		target: timeModel
+		onLoaded: agendaTaskItem.checkIfIsOverdue()
+		onMinuteChanged: agendaTaskItem.checkIfIsOverdue()
+	}
+	Component.onCompleted: {
+		agendaTaskItem.checkIfIsOverdue()
+	}
 
-        PlasmaComponents3.Label {
-            Layout.alignment: Qt.AlignCenter
-            text: displayText
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.5
-            color: textColor
-        }
+	property alias isEditing: editTaskForm.active
+	enabled: !isEditing
 
-        PlasmaComponents3.Slider {
-            id: slider
-            Layout.fillWidth: true
-            from: 0
-            to: 100
-            value: 50
-            
-            onValueChanged: {
-                // Example of dynamic binding
-                progressBar.value = value / 100
-            }
-        }
+	readonly property string eventTimestamp: {
+		if (model.due) {
+			if (model.due.indexOf('T00:00:00.000Z') !== -1) {
+				// Due at end of day
+				var shortDateFormat = i18nc("short month+date format", "MMM d")
+				return Qt.formatDateTime(model.dueDateTime, shortDateFormat)
+			} else {
+				// Due at specific time
+				return LocaleFuncs.formatEventDateTime(model.dueDateTime, {
+					clock24h: appletConfig.clock24h,
+				})
+			}
+		} else {
+			return ''
+		}
+	}
 
-        PlasmaComponents3.ProgressBar {
-            id: progressBar
-            Layout.fillWidth: true
-            value: slider.value / 100
-        }
 
-        RowLayout {
-            Layout.alignment: Qt.AlignCenter
-            spacing: Kirigami.Units.smallSpacing
+	//---
+	RowLayout {
+		id: contents
+		anchors.left: parent.left
+		anchors.right: parent.right
+		spacing: 4 * Screen.devicePixelRatio
 
-            PlasmaComponents3.Button {
-                text: i18n("Reset")
-                icon.name: "edit-reset"
-                onClicked: {
-                    slider.value = 50
-                }
-            }
+		PlasmaComponents3.CheckBox {
+			id: taskCheckBox
+			Layout.alignment: Qt.AlignTop
+			visible: !editTaskForm.visible
+			checked: model.isCompleted
 
-            PlasmaComponents3.Button {
-                text: i18n("Settings")
-                icon.name: "configure"
-                onClicked: {
-                    plasmoid.action("configure").trigger()
-                }
-            }
-        }
-    }
+			onToggled: {
+				var task = tasks.get(taskItemIndex)
+				var args = {
+					status: checked ? 'completed' : 'needsAction'
+				}
+				eventModel.setEventProperties(task.calendarId, task.id, args)
+			}
+		}
 
-    // Example animation
-    Rectangle {
-        id: animatedElement
-        width: Kirigami.Units.gridUnit
-        height: width
-        radius: width/2
-        color: PlasmaCore.Theme.highlightColor
-        visible: showAnimation
-        
-        NumberAnimation on rotation {
-            from: 0
-            to: 360
-            duration: 2000
-            loops: Animation.Infinite
-            running: showAnimation
-        }
-        
-        anchors {
-            right: parent.right
-            bottom: parent.bottom
-            margins: Kirigami.Units.smallSpacing
-        }
-    }
+		ColumnLayout {
+			id: taskColumn
+			Layout.alignment: Qt.AlignTop
+			Layout.fillWidth: true
+			spacing: 0
+
+			PlasmaComponents3.Label {
+				id: taskTitle
+				text: model.title
+				color: Kirigami.Theme.textColor
+				font.pointSize: -1
+				font.pixelSize: appletConfig.agendaFontSize
+				visible: !editTaskForm.visible
+				Layout.fillWidth: true
+
+				// The Following doesn't seem to be applicable anymore (left comment just in case).
+				// Wrapping causes reflow, which causes scroll to selection to miss the selected date
+				// since it reflows after updateUI/scrollToDate is done.
+				wrapMode: Text.Wrap
+			}
+
+			RowLayout {
+				id: taskDue
+				readonly property bool showProperty: !!model.due
+				visible: showProperty && !editTaskForm.visible
+				spacing: Kirigami.Units.smallSpacing
+
+				Kirigami.Icon {
+					source: "view-task"
+					Layout.preferredHeight: taskDueLabel.implicitHeight
+					Layout.preferredWidth: taskDueLabel.implicitHeight
+				}
+				PlasmaComponents3.Label {
+					id: taskDueLabel
+					text: eventTimestamp
+					color: taskIsOverdue ? isOverdueColor : Kirigami.Theme.textColor
+					opacity: taskIsOverdue ? 1 : 0.75
+					font.pointSize: -1
+					font.pixelSize: appletConfig.agendaFontSize
+					font.weight: taskIsOverdue ? isOverdueFontWeight : Font.Normal
+				}
+			}
+
+			Item {
+				id: taskNoteSpacing
+				visible: taskNotes.visible
+				implicitHeight: 4 * Screen.devicePixelRatio
+			}
+
+			PlasmaComponents3.Label {
+				id: taskNotes
+				readonly property bool showProperty: plasmoid.configuration.agendaShowEventDescription && text
+				visible: showProperty && !editTaskForm.visible
+				text: Shared.renderText(model.notes)
+				color: Kirigami.Theme.textColor
+				opacity: 0.75
+				font.pointSize: -1
+				font.pixelSize: appletConfig.agendaFontSize
+				Layout.fillWidth: true
+				wrapMode: Text.Wrap // See warning at taskTitle.wrapMode
+
+				linkColor: Kirigami.Theme.highlightColor
+				onLinkActivated: Qt.openUrlExternally(link)
+				MouseArea {
+					anchors.fill: parent
+					acceptedButtons: Qt.NoButton // we don't want to eat clicks on the Text
+					cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+				}
+			}
+
+			Item {
+				id: taskEditorSpacing
+				visible: editTaskForm.visible
+				implicitHeight: 4 * Screen.devicePixelRatio
+			}
+
+			EditTaskForm {
+				id: editTaskForm
+				Layout.fillWidth: true
+				// active: true
+			}
+
+		} // taskColumn
+
+		// PlasmaComponents3.ToolButton {
+		// 	id: openInBrowserButton
+		// 	Layout.alignment: Qt.AlignTop
+		// 	icon.name: "zoom-in" // Breeze icon looks like "open link iocn"
+		// 	onClicked: Qt.openUrlExternally(model.htmlLink)
+		// }
+	}
+	
+	onLeftClicked: {
+		var task = tasks.get(taskItemIndex)
+		logger.logJSON("task", task)
+		// var tasklist = eventModel.getTasklist(task.tasklistId)
+		// logger.logJSON("tasklist", tasklist)
+
+		// eventModel.toggleCompleted(event.tasklistId, task.id)
+	}
+
+	onLoadContextMenu: {
+		var menuItem
+		var task = tasks.get(taskItemIndex)
+
+		menuItem = contextMenu.newMenuItem()
+		menuItem.text = i18n("Edit")
+		menuItem.icon = "edit-rename"
+		menuItem.enabled = task.canEdit
+		menuItem.clicked.connect(function() {
+			editTaskForm.active = !editTaskForm.active
+			agendaScrollView.positionViewAtTask(agendaItemIndex, taskItemIndex)
+		})
+		contextMenu.addMenuItem(menuItem)
+
+		var deleteMenuItem = contextMenu.newSubMenu()
+		deleteMenuItem.text = i18n("Delete Event")
+		deleteMenuItem.icon = "delete"
+		menuItem = contextMenu.newMenuItem(deleteMenuItem)
+		menuItem.text = i18n("Confirm Deletion")
+		menuItem.icon = "delete"
+		menuItem.enabled = task.canEdit
+		menuItem.clicked.connect(function() {
+			logger.debug('eventModel.deleteTask', task.calendarId, task.id)
+			eventModel.deleteEvent(task.calendarId, task.id)
+		})
+		// deleteMenuItem.enabled = task.canEdit
+		deleteMenuItem.subMenu.addMenuItem(menuItem)
+		contextMenu.addMenuItem(deleteMenuItem)
+
+		menuItem = contextMenu.newMenuItem()
+		menuItem.text = i18n("Edit in browser")
+		menuItem.icon = "internet-web-browser"
+		menuItem.enabled = !!task.htmlLink
+		menuItem.clicked.connect(function() {
+			Qt.openUrlExternally(task.htmlLink)
+		})
+		contextMenu.addMenuItem(menuItem)
+	}
 }

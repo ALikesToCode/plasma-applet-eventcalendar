@@ -1,150 +1,102 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15 as QQC2
-import QtQuick.Layouts 1.15
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents
-import org.kde.kirigami 2.20 as Kirigami
+import QtQuick
 
-PlasmaCore.Dialog {
-    id: root
-    
-    // Plasmoid configuration properties
-    property string accessToken: plasmoid.configuration.accessToken
-    property string refreshToken: plasmoid.configuration.refreshToken
-    property string clientId: plasmoid.configuration.sessionClientId 
-    property string clientSecret: plasmoid.configuration.sessionClientSecret
-    
-    // UI properties
-    property bool isLoading: false
-    property string statusMessage: ""
+import "../lib/Requests.js" as Requests
 
-    // Main layout
-    mainItem: ColumnLayout {
-        spacing: Kirigami.Units.smallSpacing
+QtObject {
+	id: googleApiSession
 
-        PlasmaComponents.Label {
-            Layout.fillWidth: true
-            text: i18n("Google Calendar Integration")
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
-            color: Kirigami.Theme.textColor
-        }
+	readonly property string accessToken: plasmoid.configuration.accessToken
 
-        PlasmaComponents.Label {
-            Layout.fillWidth: true
-            text: statusMessage
-            color: Kirigami.Theme.neutralTextColor
-            visible: statusMessage !== ""
-        }
+	//--- Refresh Credentials
+	function checkAccessToken(callback) {
+		logger.debug('checkAccessToken')
+		if (plasmoid.configuration.accessTokenExpiresAt < Date.now() + 5000) {
+			updateAccessToken(callback)
+		} else {
+			callback(null)
+		}
+	}
 
-        PlasmaComponents.Button {
-            Layout.fillWidth: true
-            text: i18n("Refresh Token")
-            icon.name: "view-refresh"
-            enabled: !isLoading
-            onClicked: updateAccessToken(function(err) {
-                if (err) {
-                    statusMessage = i18n("Error: %1", err)
-                } else {
-                    statusMessage = i18n("Token refreshed successfully")
-                }
-            })
-        }
+	function updateAccessToken(callback) {
+		// logger.debug('accessTokenExpiresAt', plasmoid.configuration.accessTokenExpiresAt)
+		// logger.debug('                 now', Date.now())
+		// logger.debug('refreshToken', plasmoid.configuration.refreshToken)
+		if (plasmoid.configuration.refreshToken) {
+			logger.debug('updateAccessToken')
+			fetchNewAccessToken(function(err, data, xhr) {
+				if (err || (!err && data && data.error)) {
+					logger.log('Error when using refreshToken:', err, data)
+					return callback(err)
+				}
+				logger.debug('onAccessToken', data)
+				data = JSON.parse(data)
 
-        BusyIndicator {
-            Layout.alignment: Qt.AlignHCenter
-            running: isLoading
-            visible: isLoading
-        }
-    }
+				googleApiSession.applyAccessToken(data)
 
-    // Token management functions
-    function checkAccessToken(callback) {
-        console.debug('Checking Access Token')
-        if (plasmoid.configuration.accessTokenExpiresAt < Date.now() + 5000) {
-            updateAccessToken(callback)
-        } else {
-            callback(null)
-        }
-    }
+				callback(null)
+			})
+		} else {
+			callback('No refresh token. Cannot update access token.')
+		}
+	}
 
-    function updateAccessToken(callback) {
-        if (refreshToken) {
-            console.debug('Updating Access Token')
-            isLoading = true
-            fetchNewAccessToken(function(err, data) {
-                isLoading = false
-                if (err || (!err && data && data.error)) {
-                    console.error('Error when using refreshToken:', err, data)
-                    return callback(err)
-                }
-                console.debug('New Access Token Received', data)
-                data = JSON.parse(data)
-                applyAccessToken(data)
-                callback(null)
-            })
-        } else {
-            callback('No refresh token. Cannot update access token.')
-        }
-    }
+	signal accessTokenError(string msg)
+	signal newAccessToken()
+	signal transactionError(string msg)
 
-    signal accessTokenError(string msg)
-    signal newAccessToken()
-    signal transactionError(string msg)
+	onTransactionError: logger.log(msg)
 
-    function applyAccessToken(data) {
-        plasmoid.configuration.accessToken = data.access_token
-        plasmoid.configuration.accessTokenType = data.token_type
-        plasmoid.configuration.accessTokenExpiresAt = Date.now() + data.expires_in * 1000
-        newAccessToken()
-    }
+	function applyAccessToken(data) {
+		plasmoid.configuration.accessToken = data.access_token
+		plasmoid.configuration.accessTokenType = data.token_type
+		plasmoid.configuration.accessTokenExpiresAt = Date.now() + data.expires_in * 1000
+		newAccessToken()
+	}
 
-    function fetchNewAccessToken(callback) {
-        console.debug('Fetching New Access Token')
-        var url = 'https://www.googleapis.com/oauth2/v4/token'
-        Requests.post({
-            url: url,
-            data: {
-                client_id: clientId,
-                client_secret: clientSecret,
-                refresh_token: refreshToken,
-                grant_type: 'refresh_token',
-            },
-        }, callback)
-    }
+	function fetchNewAccessToken(callback) {
+		logger.debug('fetchNewAccessToken')
+		var url = 'https://www.googleapis.com/oauth2/v4/token'
+		Requests.post({
+			url: url,
+			data: {
+				client_id: plasmoid.configuration.sessionClientId,
+				client_secret: plasmoid.configuration.sessionClientSecret,
+				refresh_token: plasmoid.configuration.refreshToken,
+				grant_type: 'refresh_token',
+			},
+		}, callback)
+	}
 
-    property int errorCount: 0
-    function getErrorTimeout(n) {
-        return 1000 * Math.min(43200, Math.pow(2, n))
-    }
 
-    function delay(delayTime, callback) {
-        var timer = Qt.createQmlObject("import QtQuick 2.15; Timer {}", root)
-        timer.interval = delayTime
-        timer.repeat = false
-        timer.triggered.connect(callback)
-        timer.triggered.connect(function release() {
-            timer.triggered.disconnect(callback)
-            timer.triggered.disconnect(release)
-            timer.destroy()
-        })
-        timer.start()
-    }
-
-    function waitForErrorTimeout(callback) {
-        errorCount += 1
-        var timeout = getErrorTimeout(errorCount)
-        delay(timeout, function() {
-            callback()
-        })
-    }
-
-    Component.onCompleted: {
-        // Initial token check
-        checkAccessToken(function(err) {
-            if (err) {
-                statusMessage = i18n("Initial token check failed: %1", err)
-            }
-        })
-    }
+	//---
+	property int errorCount: 0
+	function getErrorTimeout(n) {
+		// Exponential Backoff
+		// 43200 seconds is 12 hours, which is a reasonable polling limit when the API is down.
+		// After 6 errors, we wait an entire minute.
+		// After 11 errors, we wait an entire hour.
+		// After 15 errors, we will have waited 9 hours.
+		// 16 errors and above uses the upper limit of 12 hour intervals.
+		return 1000 * Math.min(43200, Math.pow(2, n))
+	}
+	// https://stackoverflow.com/questions/28507619/how-to-create-delay-function-in-qml
+	function delay(delayTime, callback) {
+		var timer = Qt.createQmlObject("import QtQuick 2.0; Timer {}", googleCalendarManager)
+		timer.interval = delayTime
+		timer.repeat = false
+		timer.triggered.connect(callback)
+		timer.triggered.connect(function release(){
+			timer.triggered.disconnect(callback)
+			timer.triggered.disconnect(release)
+			timer.destroy()
+		})
+		timer.start()
+	}
+	function waitForErrorTimeout(callback) {
+		errorCount += 1
+		var timeout = getErrorTimeout(errorCount)
+		delay(timeout, function(){
+			callback()
+		})
+	}
 }

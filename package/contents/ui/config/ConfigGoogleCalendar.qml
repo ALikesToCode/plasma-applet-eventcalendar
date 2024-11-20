@@ -114,15 +114,72 @@ ConfigPage {
 		visible: !googleLoginManager.isLoggedIn
 		Label {
 			Layout.fillWidth: true
-			text: i18n("To sync with Google Calendar click the button to first authorize your account.")
+			text: i18n("To sync with Google Calendar")
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 		}
-		RowLayout {
-			Button {
-				text: i18n("Authorize")
+		LinkText {
+			Layout.fillWidth: true
+			text: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and give permission to access your calendar, it will give you a code to paste below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+
+			// Tooltip
+			// QQC2.ToolTip.visible: !!hoveredLink
+			// QQC2.ToolTip.text: googleLoginManager.authorizationCodeUrl
+
+			// ContextMenu
+			MouseArea {
+				anchors.fill: parent
+				acceptedButtons: Qt.RightButton
 				onClicked: {
-					googleLoginManager.fetchAccessToken()
+					if (mouse.button === Qt.RightButton) {
+						contextMenu.popup()
+					}
+				}
+				onPressAndHold: {
+					if (mouse.source === Qt.MouseEventNotSynthesized) {
+						contextMenu.popup()
+					}
+				}
+
+				QQC2.Menu {
+					id: contextMenu
+					QQC2.MenuItem {
+						text: i18n("Copy Link")
+						onTriggered: clipboardHelper.copyText(googleLoginManager.authorizationCodeUrl)
+					}
+				}
+
+				TextEdit {
+					id: clipboardHelper
+					visible: false
+					function copyText(text) {
+						clipboardHelper.text = text
+						clipboardHelper.selectAll()
+						clipboardHelper.copy()
+					}
+				}
+			}
+		}
+		RowLayout {
+			TextField {
+				id: authorizationCodeInput
+				Layout.fillWidth: true
+
+				placeholderText: i18n("Enter code here (Eg: %1)", '1/2B3C4defghijklmnopqrst-uvwxyz123456789ab-cdeFGHIJKlmnio')
+				text: ""
+			}
+			Button {
+				text: i18n("Submit")
+				onClicked: {
+					if (authorizationCodeInput.text) {
+						googleLoginManager.fetchAccessToken({
+							authorizationCode: authorizationCodeInput.text,
+						})
+					} else {
+						messageWidget.err(i18n("Invalid Google Authorization Code"))
+					}
 				}
 			}
 		}
@@ -210,7 +267,7 @@ ConfigPage {
 			text: i18n("Tasks")
 
 			Image {
-				source: plasmoid.file("", "icons/Google_Tasks_2021.svg")
+				source: plasmoid.file("", "icons/google_tasks_96px.png")
 				smooth: true
 				anchors.leftMargin: parent.contentWidth + Kirigami.Units.smallSpacing
 				anchors.left: parent.left
