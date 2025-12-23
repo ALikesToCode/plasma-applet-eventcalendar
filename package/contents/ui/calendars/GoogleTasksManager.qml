@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
+import org.kde.plasma.core
 
 import "../Shared.js" as Shared
 import "../lib/Async.js" as Async

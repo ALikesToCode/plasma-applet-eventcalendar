@@ -1,7 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
-import org.kde.plasma.core 2.0 as PlasmaCore
+import org.kde.plasma.core
 
 import "Shared.js" as Shared
 import "LocaleFuncs.js" as LocaleFuncs

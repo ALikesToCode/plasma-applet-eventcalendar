@@ -1,8 +1,9 @@
+import org.kde.ksvg 1.0 as KSvg
 import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents3
+import org.kde.plasma.core
+import org.kde.kirigami 2.15 as Kirigami
 
 import "LocaleFuncs.js" as LocaleFuncs
 import "Shared.js" as Shared

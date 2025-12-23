@@ -1,21 +1,68 @@
 #!/bin/bash
 
-metadataFile="$PWD/package/metadata.desktop"
-if [ ! -f "$metadataFile" ]; then
-    echo "Error: metadata.desktop file not found in the package directory."
-    exit 1
-fi
+# Function to check if jq is installed and install it if it's not
+ensure_jq_installed() {
+    if ! command -v jq &> /dev/null; then
+        echo "jq could not be found, attempting to install..."
 
-packageServiceType=$(kreadconfig5 --file="$metadataFile" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
-if [ -z "$packageServiceType" ]; then
-    echo "Error: Unable to read the package service type from metadata.desktop."
-    exit 1
-fi
+        # Attempt to identify the package manager
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y jq
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y jq
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install -y jq
+        elif command -v pacman &> /dev/null; then
+            sudo pacman -Sy jq
+        elif command -v zypper &> /dev/null; then
+            sudo zypper install -y jq
+        else
+            echo "Unsupported package manager. Please install jq manually."
+            exit 1
+        fi
+    fi
+}
 
-echo "Removing package of type: $packageServiceType"
-if kpackagetool5 -t "$packageServiceType" -r package; then
-    echo "Package removal successful."
+# Ensure jq is installed
+ensure_jq_installed
+
+# Paths for both potential metadata files
+metadataDesktopFile="$PWD/package/metadata.desktop"
+metadataJsonFile="$PWD/package/metadata.json"
+
+# Function to remove package using kpackagetool5
+remove_package() {
+    local packageType="$1"
+    echo "Removing package of type: $packageType"
+    if kpackagetool5 -t "$packageType" -r package; then
+        echo "Package removal successful."
+    else
+        echo "Error: Package removal failed."
+        exit 1
+    fi
+}
+
+# Check for and use metadata.json if available (Plasma 6), otherwise fall back to metadata.desktop (Plasma 5)
+if [ -f "$metadataJsonFile" ]; then
+    echo "Plasma 6 metadata.json detected."
+    # Extract service type from JSON. jq is a command-line JSON processor
+    packageServiceType=$(jq -r '.KPlugin.ServiceTypes // empty' "$metadataJsonFile")
+    if [ -z "$packageServiceType" ]; then
+        echo "Error: Unable to read the package service type from metadata.json."
+        exit 1
+    fi
+    remove_package "$packageServiceType"
+elif [ -f "$metadataDesktopFile" ]; then
+    echo "Plasma 5 metadata.desktop detected."
+    # Extract service type from .desktop file
+    packageServiceType=$(kreadconfig5 --file="$metadataDesktopFile" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
+    if [ -z "$packageServiceType" ]; then
+        echo "Error: Unable to read the package service type from metadata.desktop."
+        exit 1
+    fi
+    remove_package "$packageServiceType"
 else
-    echo "Error: Package removal failed."
+    echo "Error: No compatible metadata file found in the package directory."
     exit 1
 fi
+

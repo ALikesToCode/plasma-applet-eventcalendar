@@ -2,7 +2,7 @@
 
 # Function to check if a command was successful
 check_command_success() {
-    if [ "$1" != "0" ]; then
+    if [ "$1" -ne 0 ]; then
         echo "Error executing command: $2"
         exit 1
     fi
@@ -25,31 +25,37 @@ install_requirements() {
 
     case "$DISTRO" in
         "debian"|"ubuntu"|"kali"|"raspbian")
-            required_commands=("kreadconfig5" "kpackagetool5")
-            packages_to_install=("libkf5coreaddons-bin-dev" "kpackagetool5")
-            install_cmd="sudo apt-get update && sudo apt-get install -y"
+            required_packages=("jq" "libkf5coreaddons-bin" "kpackagetool5")
             ;;
-        "arch")
-            required_commands=("kreadconfig5" "kpackagetool5")
-            packages_to_install=("kcoreaddons" "kpackagetool5")
-            install_cmd="sudo pacman -S"
+        "arch"|"manjaro")
+            required_packages=("jq" "kcoreaddons" "kpackagetool5")
             ;;
         "fedora")
-            required_commands=("kreadconfig5" "kpackagetool5")
-            packages_to_install=("kf5-kcoreaddons" "kf5-kpackage")
-            install_cmd="sudo dnf install"
+            required_packages=("jq" "kf5-kcoreaddons" "kf5-kpackage")
             ;;
         *)
             echo "Unsupported distribution: $DISTRO"
-            return 1
+            exit 1
             ;;
     esac
 
-    for i in "${!required_commands[@]}"; do
-        if ! command -v "${required_commands[$i]}" &> /dev/null; then
-            echo "${required_commands[$i]} is not installed. Attempting to install..."
-            $install_cmd "${packages_to_install[$i]}"
-            check_command_success "$?" "Failed to install ${packages_to_install[$i]}"
+    # Install required packages
+    echo "Checking and installing required packages..."
+    for pkg in "${required_packages[@]}"; do
+        if ! command -v $pkg &> /dev/null; then
+            echo "$pkg is not installed. Attempting to install..."
+            case "$DISTRO" in
+                "debian"|"ubuntu"|"kali"|"raspbian")
+                    sudo apt-get update && sudo apt-get install -y $pkg
+                    ;;
+                "arch"|"manjaro")
+                    sudo pacman -Sy $pkg
+                    ;;
+                "fedora")
+                    sudo dnf install -y $pkg
+                    ;;
+            esac
+            check_command_success "$?" "Installation of $pkg failed"
         fi
     done
 }
@@ -61,34 +67,53 @@ install_requirements
 restartPlasmashell=false
 for arg in "$@"; do
     case "$arg" in
-        -r|--restart) restartPlasmashell=true;;
-        *) ;;
+        -r|--restart)
+            restartPlasmashell=true
+            ;;
+        *)
+            ;;
     esac
 done
 
-# Determine if the package is already installed
-packageNamespace=$(kreadconfig5 --file="$PWD/package/metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name")
-packageServiceType=$(kreadconfig5 --file="$PWD/package/metadata.desktop" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
+# Determine if the package is already installed and prepare package installation
+metadataFile="$PWD/package/metadata.desktop"
+metadataJsonFile="$PWD/package/metadata.json"
+
+# Check for metadata and convert if necessary
+if [ -f "$metadataFile" ]; then
+    # Plasma 5 compatibility
+    packageNamespace=$(kreadconfig5 --file="$metadataFile" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name")
+    packageServiceType=$(kreadconfig5 --file="$metadataFile" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
+elif [ -f "$metadataJsonFile" ]; then
+    # Plasma 6 compatibility
+    packageNamespace=$(jq -r '.KPlugin.Id' "$metadataJsonFile")
+    packageServiceType="Plasma/Applet"
+    if [ -z "$packageNamespace" ]; then
+        echo "Error: Unable to read the package namespace from metadata.json."
+        exit 1
+    fi
+else
+    echo "Error: No compatible metadata file found in the package directory."
+    exit 1
+fi
+
 kpackagetool5 --type="${packageServiceType}" --show="$packageNamespace" &> /dev/null
 isAlreadyInstalled=$?
 
-# Convert metadata.desktop to metadata.json
-if command -v desktoptojson &> /dev/null ; then
-    desktoptojson --serviceType="plasma-applet.desktop" -i "$PWD/package/metadata.desktop" -o "$PWD/package/metadata.json"
-    check_command_success "$?" "desktoptojson conversion failed"
-    sed -i 's/ \{4\}/\t/g' "$PWD/package/metadata.json" # Tabify metadata.json
-fi
-
 # Install or update the package
-if [ "$isAlreadyInstalled" == "0" ]; then
+if [ "$isAlreadyInstalled" -eq 0 ]; then
+    echo "Updating package: $packageNamespace"
     kpackagetool5 -t "${packageServiceType}" -u package
-    restartPlasmashell=true
+    check_command_success "$?" "Package update failed"
 else
+    echo "Installing package: $packageNamespace"
     kpackagetool5 -t "${packageServiceType}" -i package
+    check_command_success "$?" "Package installation failed"
 fi
 
 # Restart Plasma shell if required
 if $restartPlasmashell; then
-    killall plasmashell
-    ( cd $HOME && kstart5 plasmashell )
+    kquitapp5 plasmashell && kstart5 plasmashell
+    check_command_success "$?" "Failed to restart Plasma shell"
 fi
+

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 import QtQuick 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
+import org.kde.plasma.core
 
 import org.kde.plasma.calendar 2.0
 

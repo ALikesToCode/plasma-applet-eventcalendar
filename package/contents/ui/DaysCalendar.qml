@@ -1,3 +1,4 @@
+import org.kde.ksvg 1.0 as KSvg
 /*
  * Copyright 2013  Heena Mahour <heena393@gmail.com>
  * Copyright 2013 Sebastian Kügler <sebas@kde.org>
@@ -23,8 +24,8 @@ import QtQuick.Controls 2.0 as QQC2
 
 import org.kde.kirigami 2.0 as Kirigami
 import org.kde.plasma.calendar 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents3
+import org.kde.plasma.core
+import org.kde.kirigami 2.15 as Kirigami
 import org.kde.plasma.extras 2.0 as PlasmaExtras
 
 import "./badges"
@@ -256,7 +257,7 @@ Item {
 		}
 	}
 
-	PlasmaCore.Svg {
+	KSvg.Svg {
 		id: calendarSvg
 		imagePath: "widgets/calendar"
 	}
@@ -265,7 +266,7 @@ Item {
 		id: themeBadgeComponent
 		Item {
 			id: themeBadge
-			PlasmaCore.SvgItem {
+			KSvg.SvgItem {
 				id: eventsMarker
 				anchors.bottom: themeBadge.bottom
 				anchors.right: themeBadge.right

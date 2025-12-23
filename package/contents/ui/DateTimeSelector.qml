@@ -3,7 +3,7 @@ import QtQuick.Controls 1.4
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.2
 
-import org.kde.plasma.core 2.0 as PlasmaCore
+import org.kde.plasma.core
 
 GridLayout {
 	id: dateTimeSelector

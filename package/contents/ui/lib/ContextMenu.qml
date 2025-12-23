@@ -1,5 +1,6 @@
+import org.kde.ksvg 1.0 as KSvg
 import QtQuick 2.0
-import org.kde.plasma.components 2.0 as PlasmaComponents
+import org.kde.kirigami 2.15 as Kirigami
 
 PlasmaComponents.ContextMenu {
 	id: contextMenu

@@ -2,7 +2,7 @@ import QtQuick 2.1
 import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.2
 import QtQuick.Controls 1.4
-import org.kde.plasma.core 2.0 as PlasmaCore
+import org.kde.plasma.core
 
 import ".."
 import "../lib"

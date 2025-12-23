@@ -1,7 +1,7 @@
 // Version 6
 
 import QtQuick 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
+import org.kde.plasma.core
 
 PlasmaCore.DataSource {
 	id: executable
