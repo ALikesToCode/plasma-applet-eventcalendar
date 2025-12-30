@@ -200,7 +200,9 @@ ConfigPage {
 			tasklistsModel.tasklistsShownChanged()
 		}
 
-		onError: messageWidget.err(err)
+		onError: function(err) {
+			messageWidget.err(err)
+		}
 	}
 
 

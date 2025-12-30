@@ -177,8 +177,10 @@ Dialog {
 				})
 			}
 
-			// link after populating so that each append() doesn't attempt to rebuild the UI.
-			filteredCityListModel.sourceModel = cityListModel
+			// Link after populating so each append() doesn't attempt to rebuild the UI.
+			if (filteredCityListModel) {
+				filteredCityListModel.sourceModel = cityListModel
+			}
 
 			chooseCityDialog.cityListLoaded = true
 			chooseCityDialog.loadingCityList = false
