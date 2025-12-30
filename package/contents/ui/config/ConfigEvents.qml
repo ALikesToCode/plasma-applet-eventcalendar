@@ -2,13 +2,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-import org.kde.plasma.calendar as PlasmaCalendar
-
 import "../lib"
 import "../calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 
 ConfigPage {
 	id: page
+	property var eventPluginsManager: null
 
 	HeaderText {
 		text: i18n("Event Calendar Plugins")
@@ -35,10 +34,16 @@ ConfigPage {
 
 	// From digitalclock's configCalendar.qml
 	signal configurationChanged()
+	MessageWidget {
+		visible: !eventPluginsManager
+		messageType: MessageWidget.MessageType.Warning
+		closeButtonVisible: false
+		text: i18n("Plasma calendar plugins are unavailable. Install the Plasma calendar module to manage these plugins.")
+	}
 	ConfigSection {
 		Repeater {
 			id: calendarPluginsRepeater
-			model: PlasmaCalendar.EventPluginsManager.model
+			model: eventPluginsManager ? eventPluginsManager.model : null
 			delegate: CheckBox {
 				text: model.display
 				checked: model.checked
@@ -51,10 +56,22 @@ ConfigPage {
 		}
 	}
 	function saveConfig() {
-		plasmoid.configuration.enabledCalendarPlugins = PlasmaCalendarUtils.pluginPathToFilenameList(PlasmaCalendar.EventPluginsManager.enabledPlugins)
+		if (!eventPluginsManager) {
+			return
+		}
+		plasmoid.configuration.enabledCalendarPlugins = PlasmaCalendarUtils.pluginPathToFilenameList(eventPluginsManager.enabledPlugins)
 	}
 	Component.onCompleted: {
-		PlasmaCalendarUtils.populateEnabledPluginsByFilename(PlasmaCalendar.EventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
+		try {
+			eventPluginsManager = Qt.createQmlObject(
+				"import org.kde.plasma.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
+				page
+			)
+		} catch (e) {
+			console.warn("[eventcalendar] PlasmaCalendar.EventPluginsManager unavailable:", e)
+			return
+		}
+		PlasmaCalendarUtils.populateEnabledPluginsByFilename(eventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
 	}
 
 	HeaderText {

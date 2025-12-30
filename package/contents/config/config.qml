@@ -1,11 +1,11 @@
 import QtQuick
 import org.kde.plasma.configuration
-import org.kde.plasma.calendar as PlasmaCalendar
 
 import "../ui/calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 
 ConfigModel {
 	id: configModel
+	property var eventPluginsManager: null
 
 	ConfigCategory {
 		name: i18n("General")
@@ -65,8 +65,19 @@ ConfigModel {
 		visible: plasmoid.configuration.debugging
 	}
 
+	Component.onCompleted: {
+		try {
+			eventPluginsManager = Qt.createQmlObject(
+				"import org.kde.plasma.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
+				configModel
+			)
+		} catch (e) {
+			console.warn("[eventcalendar] PlasmaCalendar.EventPluginsManager unavailable:", e)
+		}
+	}
+
 	property Instantiator __eventPlugins: Instantiator {
-		model: PlasmaCalendar.EventPluginsManager.model
+		model: eventPluginsManager ? eventPluginsManager.model : null
 		delegate: ConfigCategory {
 			name: model.display
 			icon: model.decoration
