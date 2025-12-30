@@ -96,6 +96,10 @@ ConfigPage {
 	ExecUtil { id: callbackListener }
 
 	property bool autoLoginInProgress: false
+	function isLocalRedirect(uri) {
+		return uri.indexOf("http://127.0.0.1") === 0 || uri.indexOf("http://localhost") === 0
+	}
+	readonly property bool localRedirect: isLocalRedirect(googleLoginManager.redirectUri)
 
 	function extractJson(text) {
 		var start = text.indexOf('{')
@@ -108,6 +112,10 @@ ConfigPage {
 
 	function startAutoLogin(accountId) {
 		if (autoLoginInProgress) {
+			return
+		}
+		if (!localRedirect) {
+			messageWidget.err(i18n("Auto login requires a localhost redirect. Paste the code from %1 instead.", googleLoginManager.redirectUri))
 			return
 		}
 		autoLoginInProgress = true
@@ -268,7 +276,7 @@ ConfigPage {
 		}
 		Label {
 			Layout.fillWidth: true
-			text: i18n("Leave these empty to use the default credentials. Custom credentials require a Google Cloud OAuth client (Desktop app) with the redirect URI set to %1.", googleLoginManager.redirectUri)
+			text: i18n("Leave these empty to use the default credentials. Custom credentials require a Google Cloud OAuth client with the redirect URI set to %1.", googleLoginManager.redirectUri)
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 		}
@@ -318,7 +326,9 @@ ConfigPage {
 		}
 		LinkText {
 			Layout.fillWidth: true
-			text: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to a localhost URL. Copy the full URL (or just the code) and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
+			text: localRedirect
+				? i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to a localhost URL. Copy the full URL (or just the code) and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
+				: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to the helper page. Copy the code (or full URL) and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 
@@ -360,17 +370,33 @@ ConfigPage {
 				}
 			}
 		}
+		LinkText {
+			Layout.fillWidth: true
+			visible: !localRedirect
+			text: i18n("Helper page: <a href=\"%1\">%1</a>", googleLoginManager.redirectUri)
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+		}
 		Label {
 			Layout.fillWidth: true
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 			text: i18n("If your browser shows a connection error, that's expected. Copy the URL from the address bar anyway and paste it below.")
+			visible: localRedirect
 		}
 		Label {
 			Layout.fillWidth: true
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 			text: i18n("Tip: Leave the field empty and click Add Account or Update Selected to auto-capture the callback.")
+			visible: localRedirect
+		}
+		Label {
+			Layout.fillWidth: true
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			text: i18n("Tip: After the redirect, copy the code from the helper page and paste it below.")
+			visible: !localRedirect
 		}
 		RowLayout {
 			TextField {

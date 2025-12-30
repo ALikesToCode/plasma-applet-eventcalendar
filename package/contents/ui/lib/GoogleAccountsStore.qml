@@ -10,19 +10,43 @@ QtObject {
 
 	property var configBridge: null
 
-	property var accountsConfigValue: readConfig(accountsKey, "")
-	property string activeAccountId: readConfig(activeAccountKey, "")
+	property var accountsConfigValue: ""
+	property string activeAccountId: ""
 
 	property var accounts: []
 
 	signal accountUpdated(string accountId)
 
+	Binding {
+		target: store
+		property: "accountsConfigValue"
+		value: readConfig(accountsKey, "")
+		when: !configBridge
+	}
+
+	Binding {
+		target: store
+		property: "activeAccountId"
+		value: readConfig(activeAccountKey, "")
+		when: !configBridge
+	}
+
 	Component.onCompleted: {
 		if (!configBridge) {
 			configBridge = ConfigUtils.findBridge(store)
 		}
+		if (configBridge) {
+			syncFromConfig()
+		}
 		loadAccounts()
 		migrateLegacyAccountIfNeeded()
+	}
+
+	onConfigBridgeChanged: {
+		if (configBridge) {
+			syncFromConfig()
+			loadAccounts()
+		}
 	}
 
 	onAccountsConfigValueChanged: loadAccounts()
@@ -30,6 +54,11 @@ QtObject {
 		if (activeAccountId && !getAccount(activeAccountId)) {
 			ensureActiveAccount()
 		}
+	}
+
+	function syncFromConfig() {
+		accountsConfigValue = readConfig(accountsKey, "")
+		activeAccountId = readConfig(activeAccountKey, "")
 	}
 
 	function loadAccounts() {
@@ -149,6 +178,9 @@ QtObject {
 
 	function serialize() {
 		var payload = Qt.btoa(JSON.stringify(accounts || []))
+		if (configBridge) {
+			accountsConfigValue = payload
+		}
 		writeConfig(accountsKey, payload)
 	}
 
@@ -223,6 +255,9 @@ QtObject {
 	}
 
 	function setActiveAccountId(accountId) {
+		if (configBridge) {
+			activeAccountId = accountId
+		}
 		writeConfig(activeAccountKey, accountId)
 	}
 

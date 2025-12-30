@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Event Calendar OAuth Helper</title>
-  <meta name="description" content="Extract the Google OAuth code from the localhost redirect URL for the KDE Event Calendar widget.">
+  <meta name="description" content="Extract the Google OAuth code from the redirect URL for the KDE Event Calendar widget.">
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap");
 
@@ -270,8 +270,8 @@
           <h2>What to do</h2>
           <ol>
             <li>Open the login link in the widget and sign in to Google.</li>
-            <li>When your browser lands on the localhost page, copy the full URL.</li>
-            <li>Paste the URL here to extract the code.</li>
+            <li>After consent, Google redirects you to this helper page.</li>
+            <li>If the code does not appear, paste the full URL here.</li>
             <li>Paste the code back into the widget and click Submit.</li>
             <li>Select calendars and click Apply.</li>
           </ol>
@@ -279,7 +279,7 @@
 
         <div class="card helper">
           <h2>Paste redirect URL</h2>
-          <label for="redirectUrl">Redirect URL (example: http://127.0.0.1:53682/?code=...)</label>
+          <label for="redirectUrl">Redirect URL (example: https://alikestocode.github.io/plasma-applet-eventcalendar/?code=...)</label>
           <textarea id="redirectUrl" placeholder="Paste the full URL from your browser address bar"></textarea>
           <div class="row">
             <button id="extractBtn">Extract code</button>
@@ -303,7 +303,8 @@
             <ul>
               <li>Make sure you pasted the exact URL from the browser address bar.</li>
               <li>If Google blocks the built-in client, use a custom OAuth client.</li>
-              <li>Custom client redirect URI must be <strong>http://127.0.0.1:53682/</strong>.</li>
+              <li>Custom client redirect URI must be <strong>https://alikestocode.github.io/plasma-applet-eventcalendar/</strong>.</li>
+              <li>If you still use a localhost redirect, paste that URL here too.</li>
               <li>After Submit, select calendars and click Apply.</li>
             </ul>
           </details>

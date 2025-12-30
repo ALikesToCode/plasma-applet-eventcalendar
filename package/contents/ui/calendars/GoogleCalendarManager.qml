@@ -303,7 +303,7 @@ function fetchGoogleCalendarEvent_run(calendarId, eventId, callback) {
 	}
 
 	//--- Parsing Events
-	onCalendarParsing: {
+	onCalendarParsing: function(calendarId, data) {
 		var calendar = getCalendar(calendarId)
 		data.items.forEach(function(event){
 			parseEvent(calendar, event)

@@ -32,12 +32,12 @@ Item {
 		return false
 	}
 
-	readonly property var calendarList: activeAccount ? (activeAccount.calendarList || []) : []
-	readonly property var calendarIdList: activeAccount ? (activeAccount.calendarIdList || []) : []
-	readonly property var tasklistList: activeAccount ? (activeAccount.tasklistList || []) : []
-	readonly property var tasklistIdList: activeAccount ? (activeAccount.tasklistIdList || []) : []
+	property var calendarList: []
+	property var calendarIdList: []
+	property var tasklistList: []
+	property var tasklistIdList: []
 
-	property string redirectUri: "http://127.0.0.1:53682/"
+	property string redirectUri: "https://alikestocode.github.io/plasma-applet-eventcalendar/"
 	property var configBridge: null
 	function normalizedClientValue(value) {
 		return value ? value.trim() : ""
@@ -58,7 +58,6 @@ Item {
 			}
 		}
 		function onActiveAccountIdChanged() {
-			session.activeAccountId = accountsStore.activeAccountId
 			session.refreshActiveAccount()
 		}
 	}
@@ -99,6 +98,17 @@ Item {
 
 	function refreshActiveAccount() {
 		activeAccount = accountsStore.getAccount(activeAccountId)
+		if (activeAccount) {
+			calendarList = activeAccount.calendarList || []
+			calendarIdList = activeAccount.calendarIdList || []
+			tasklistList = activeAccount.tasklistList || []
+			tasklistIdList = activeAccount.tasklistIdList || []
+		} else {
+			calendarList = []
+			calendarIdList = []
+			tasklistList = []
+			tasklistIdList = []
+		}
 	}
 
 	function refreshClientCredentials() {
