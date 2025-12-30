@@ -1,6 +1,7 @@
 import QtQuick
 
 import "../lib"
+import "../lib/ConfigUtils.js" as ConfigUtils
 import "../lib/Requests.js" as Requests
 
 Item {
@@ -8,7 +9,7 @@ Item {
 
 	Logger {
 		id: logger
-		showDebug: plasmoid.configuration.debugging
+		showDebug: readConfig("debugging", false)
 	}
 
 	GoogleAccountsStore {
@@ -36,11 +37,12 @@ Item {
 	readonly property var tasklistIdList: activeAccount ? (activeAccount.tasklistIdList || []) : []
 
 	property string redirectUri: "http://127.0.0.1:53682/"
+	property var configBridge: null
 	function normalizedClientValue(value) {
 		return value ? value.trim() : ""
 	}
-	readonly property string effectiveClientId: normalizedClientValue(plasmoid.configuration.customClientId) || plasmoid.configuration.latestClientId
-	readonly property string effectiveClientSecret: normalizedClientValue(plasmoid.configuration.customClientSecret) || plasmoid.configuration.latestClientSecret
+	readonly property string effectiveClientId: normalizedClientValue(readConfig("customClientId", "")) || readConfig("latestClientId", "")
+	readonly property string effectiveClientSecret: normalizedClientValue(readConfig("customClientSecret", "")) || readConfig("latestClientSecret", "")
 
 	Connections {
 		target: accountsStore
@@ -61,8 +63,34 @@ Item {
 	}
 
 	Component.onCompleted: {
+		configBridge = ConfigUtils.findBridge(session)
 		session.accounts = accountsStore.accounts.slice(0)
 		refreshActiveAccount()
+	}
+
+	function readConfig(key, fallback) {
+		if (configBridge) {
+			var bridged = configBridge.read(key, fallback)
+			return (bridged === undefined || bridged === null) ? fallback : bridged
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var directValue = plasmoid.configuration[key]
+			return (directValue === undefined || directValue === null) ? fallback : directValue
+		}
+		return fallback
+	}
+
+	function writeConfig(key, value) {
+		if (configBridge) {
+			configBridge.write(key, value)
+			return
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			plasmoid.configuration[key] = value
+			if (typeof kcm !== "undefined") {
+				kcm.needsSave = true
+			}
+		}
 	}
 
 	function refreshActiveAccount() {
@@ -266,8 +294,9 @@ Item {
 		}
 		accountsStore.removeAccount(targetId)
 
-		if (plasmoid.configuration.agendaNewEventLastCalendarId.indexOf(targetId + '::') === 0) {
-			plasmoid.configuration.agendaNewEventLastCalendarId = ''
+		var lastCalendarId = readConfig("agendaNewEventLastCalendarId", "")
+		if (lastCalendarId.indexOf(targetId + '::') === 0) {
+			writeConfig("agendaNewEventLastCalendarId", "")
 		}
 		sessionReset()
 	}

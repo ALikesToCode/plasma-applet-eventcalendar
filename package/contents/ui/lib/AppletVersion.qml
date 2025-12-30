@@ -10,7 +10,7 @@ Item {
 
 	property string version: "?"
 	property string metadataFilepath: {
-		var path = plasmoid.file("", "metadata.json")
+		var path = Qt.resolvedUrl("../../metadata.json").toString()
 		return path.indexOf("file://") === 0 ? path.slice(7) : path
 	}
 

@@ -5,10 +5,57 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 
-ColumnLayout {
+ConfigPage {
 	id: page
 
 	SystemPalette { id: systemPalette }
+	signal configurationChanged()
+
+	function readConfig(key, fallback) {
+		if (configBridge) {
+			var bridged = configBridge.read(key, fallback)
+			return (bridged === undefined || bridged === null) ? fallback : bridged
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var directValue = plasmoid.configuration[key]
+			return (directValue === undefined || directValue === null) ? fallback : directValue
+		}
+		return fallback
+	}
+
+	function readDefault(key, fallback) {
+		if (configBridge) {
+			var bridged = configBridge.readDefault(key, fallback)
+			return (bridged === undefined || bridged === null) ? fallback : bridged
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var directValue = plasmoid.configuration[key + 'Default']
+			return (directValue === undefined || directValue === null) ? fallback : directValue
+		}
+		return fallback
+	}
+
+	function writeConfig(key, value) {
+		if (configBridge) {
+			configBridge.write(key, value)
+		} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			plasmoid.configuration[key] = value
+			if (typeof kcm !== "undefined") {
+				kcm.needsSave = true
+			}
+		}
+	}
+
+	function updateConfigValue(key, value) {
+		writeConfig(key, value)
+		if (configTableModel.keys && configTableModel.keys.length) {
+			var keyIndex = configTableModel.keys.indexOf(key)
+			if (keyIndex >= 0) {
+				configTableModel.setProperty(keyIndex, 'value', value)
+			}
+		}
+		configurationChanged()
+	}
 
 	ScrollView {
 		Layout.fillWidth: true
@@ -30,7 +77,7 @@ ColumnLayout {
 				CheckBox {
 					checked: modelValue
 					text: modelValue
-					onClicked: plasmoid.configuration[modelKey] = checked
+					onClicked: page.updateConfigValue(modelKey, checked)
 				}
 			}
 
@@ -59,7 +106,7 @@ ColumnLayout {
 					}
 
 					onValueModified: {
-						plasmoid.configuration[modelKey] = value / scale
+						page.updateConfigValue(modelKey, value / scale)
 					}
 				}
 			}
@@ -83,7 +130,7 @@ ColumnLayout {
 					wrapMode: TextEdit.Wrap
 					Component.onCompleted: {
 						textChanged.connect(function() {
-							plasmoid.configuration[modelKey] = text
+							page.updateConfigValue(modelKey, text)
 						})
 					}
 				}
@@ -112,7 +159,7 @@ ColumnLayout {
 				function valueToString(val) {
 					return (typeof val === 'undefined' || val === null) ? '' : ''+val
 				}
-				readonly property var configDefaultValue: plasmoid.configuration[model.key + 'Default']
+				readonly property var configDefaultValue: page.readDefault(model.key, model.defaultValue)
 				readonly property bool isDefault: valueToString(model.value) == valueToString(model.defaultValue) || valueToString(model.value) == valueToString(configDefaultValue)
 
 				TextField {
@@ -180,7 +227,7 @@ ColumnLayout {
 
 		property bool loading: false
 		property bool error: false
-		property string source: plasmoid.file("", "config/main.xml")
+		property string source: Qt.resolvedUrl("../../config/main.xml")
 
 		signal updated()
 
@@ -272,14 +319,14 @@ ColumnLayout {
 		property var keys: []
 
 		Component.onCompleted: {
-			var keys = plasmoid.configuration.keys()
+			var keys = (typeof plasmoid !== "undefined" && plasmoid.configuration) ? plasmoid.configuration.keys() : []
 			var defaultKeys = []
 
 			// Filter KF5 5.78 default keys https://invent.kde.org/frameworks/kdeclarative/-/merge_requests/38
 			keys = keys.filter(function(key) {
 				if (key.endsWith('Default')) {
 					var key2 = key.substr(0, key.length - 'Default'.length)
-					if (typeof plasmoid.configuration[key2] !== 'undefined') {
+					if (typeof page.readConfig(key2, undefined) !== 'undefined') {
 						return false
 					}
 				}
@@ -294,7 +341,7 @@ ColumnLayout {
 					break // Where is this defined?! Exit loop when we reach this key.
 				}
 
-				var value = plasmoid.configuration[key]
+				var value = page.readConfig(key, undefined)
 				
 				configTableModel.append({
 					key: key,
@@ -316,7 +363,7 @@ ColumnLayout {
 			// Assume the default main.xml's order and plasmoid.configuration is the same (we probably shouldn't).
 			for (var i = 0; i < keys.length; i++) {
 				var key = keys[i]
-				var value = plasmoid.configuration[key]
+				var value = page.readConfig(key, undefined)
 				var valueStr = '' + value
 				var node = configDefaults.get(i)
 				if (key === 'minimumWidth') {
@@ -347,4 +394,5 @@ ColumnLayout {
 			}
 		}
 	}
+
 }

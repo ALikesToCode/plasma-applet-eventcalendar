@@ -89,9 +89,9 @@ ConfigPage {
 					}
 
 					// The firstDayOfWeek enum starts at -1 instead of 0
-					currentIndex = plasmoid.configuration.firstDayOfWeek + 1
+					currentIndex = page.configBridge.read("firstDayOfWeek", -1) + 1
 					currentIndexChanged.connect(function(){
-						plasmoid.configuration.firstDayOfWeek = currentIndex - 1
+						page.configBridge.write("firstDayOfWeek", currentIndex - 1)
 					})
 				}
 			}

@@ -18,7 +18,7 @@ ConfigPage {
 			text: i18n("ICalendar (.ics)")
 			checked: true
 			enabled: false
-			visible: plasmoid.configuration.debugging
+			visible: page.configBridge.read("debugging", false)
 		}
 		CheckBox {
 			text: i18n("Google Calendar")
@@ -59,7 +59,7 @@ ConfigPage {
 		if (!eventPluginsManager) {
 			return
 		}
-		plasmoid.configuration.enabledCalendarPlugins = PlasmaCalendarUtils.pluginPathToFilenameList(eventPluginsManager.enabledPlugins)
+		page.configBridge.write("enabledCalendarPlugins", PlasmaCalendarUtils.pluginPathToFilenameList(eventPluginsManager.enabledPlugins))
 	}
 	Component.onCompleted: {
 		try {
@@ -71,7 +71,7 @@ ConfigPage {
 			console.warn("[eventcalendar] PlasmaCalendar.EventPluginsManager unavailable:", e)
 			return
 		}
-		PlasmaCalendarUtils.populateEnabledPluginsByFilename(eventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
+		PlasmaCalendarUtils.populateEnabledPluginsByFilename(eventPluginsManager, page.configBridge.read("enabledCalendarPlugins", []))
 	}
 
 	HeaderText {

@@ -19,8 +19,8 @@ ConfigPage {
 	RadioButton {
 		text: i18n("Calendar to the left of the Agenda (Two Columns)")
 		ButtonGroup.group: layoutGroup
-		checked: plasmoid.configuration.twoColumns
-		onClicked: plasmoid.configuration.twoColumns = true
+		checked: page.configBridge.read("twoColumns", true)
+		onClicked: page.configBridge.write("twoColumns", true)
 		Layout.fillWidth: false
 		Layout.alignment: Qt.AlignHCenter
 	}
@@ -85,7 +85,7 @@ ConfigPage {
 			Image {
 				id: twoColumnsImage
 				anchors.fill: parent
-				source: plasmoid.file("", "images/twocolumns.svg")
+				source: Qt.resolvedUrl("../../images/twocolumns.svg")
 				smooth: true
 				visible: false
 			}
@@ -108,8 +108,8 @@ ConfigPage {
 	RadioButton {
 		text: i18n("Agenda below the Calendar (Single Column)")
 		ButtonGroup.group: layoutGroup
-		checked: !plasmoid.configuration.twoColumns
-		onClicked: plasmoid.configuration.twoColumns = false
+		checked: !page.configBridge.read("twoColumns", true)
+		onClicked: page.configBridge.write("twoColumns", false)
 		Layout.fillWidth: false
 		Layout.alignment: Qt.AlignHCenter
 	}
@@ -169,7 +169,7 @@ ConfigPage {
 			Image {
 				id: singleColumnImage
 				anchors.fill: parent
-				source: plasmoid.file("", "images/singlecolumn.svg")
+				source: Qt.resolvedUrl("../../images/singlecolumn.svg")
 				smooth: true
 				visible: false
 			}

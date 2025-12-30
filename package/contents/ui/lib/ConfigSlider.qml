@@ -4,10 +4,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import "ConfigUtils.js" as ConfigUtils
+
 RowLayout {
 	id: configSlider
 
 	property string configKey: ''
+	property var configBridge: null
 	property alias maximumValue: slider.to
 	property alias minimumValue: slider.from
 	property alias stepSize: slider.stepSize
@@ -29,7 +32,18 @@ RowLayout {
 		id: slider
 		Layout.fillWidth: configSlider.Layout.fillWidth
 
-		value: plasmoid.configuration[configKey]
+		value: {
+			if (!configKey) {
+				return 0
+			}
+			if (configBridge) {
+				return Number(configBridge.read(configKey, 0))
+			}
+			if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+				return Number(plasmoid.configuration[configKey])
+			}
+			return 0
+		}
 		// onValueChanged: plasmoid.configuration[configKey] = value
 		onValueChanged: serializeTimer.start()
 		to: 2147483647
@@ -44,6 +58,20 @@ RowLayout {
 	Timer { // throttle
 		id: serializeTimer
 		interval: 300
-		onTriggered: plasmoid.configuration[configKey] = value
+		onTriggered: {
+			if (!configKey) {
+				return
+			}
+			if (configBridge) {
+				configBridge.write(configKey, value)
+			} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+				plasmoid.configuration[configKey] = value
+				if (typeof kcm !== "undefined") {
+					kcm.needsSave = true
+				}
+			}
+		}
 	}
+
+	Component.onCompleted: configBridge = ConfigUtils.findBridge(configSlider)
 }

@@ -4,11 +4,25 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import "ConfigUtils.js" as ConfigUtils
+
 RowLayout {
 	id: configSpinBox
 
 	property string configKey: ''
-	readonly property real configValue: configKey ? Number(plasmoid.configuration[configKey]) : 0
+	property var configBridge: null
+	readonly property real configValue: {
+		if (!configKey) {
+			return 0
+		}
+		if (configBridge) {
+			return Number(configBridge.read(configKey, 0))
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			return Number(plasmoid.configuration[configKey])
+		}
+		return 0
+	}
 	property int decimals: 0
 	property int horizontalAlignment: Text.AlignLeft
 	property real maximumValue: 2147483647
@@ -75,7 +89,14 @@ RowLayout {
 		onTriggered: {
 			var newValue = configSpinBox._fromScaled(spinBox.value)
 			if (configKey) {
-				plasmoid.configuration[configKey] = newValue
+				if (configBridge) {
+					configBridge.write(configKey, newValue)
+				} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+					plasmoid.configuration[configKey] = newValue
+					if (typeof kcm !== "undefined") {
+						kcm.needsSave = true
+					}
+				}
 			}
 			configSpinBox.value = newValue
 		}
@@ -126,6 +147,7 @@ RowLayout {
 	}
 
 	Component.onCompleted: {
+		configBridge = ConfigUtils.findBridge(configSpinBox)
 		if (configKey) {
 			value = configValue
 		}

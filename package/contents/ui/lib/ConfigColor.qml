@@ -8,6 +8,7 @@ import QtQuick.Window
 import org.kde.kirigami as Kirigami
 
 import ".."
+import "ConfigUtils.js" as ConfigUtils
 
 RowLayout {
 	id: configColor
@@ -31,10 +32,17 @@ RowLayout {
 	property ColorDialog dialog: dialog
 
 	property string configKey: ''
+	property var configBridge: null
 	property string defaultColor: ''
 	property string value: {
 		if (configKey) {
-			return plasmoid.configuration[configKey]
+			if (configBridge) {
+				return configBridge.read(configKey, "")
+			}
+			if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+				return plasmoid.configuration[configKey]
+			}
+			return ""
 		} else {
 			return "#000"
 		}
@@ -55,9 +63,23 @@ RowLayout {
 		}
 		if (configKey) {
 			if (value == defaultColorValue) {
-				plasmoid.configuration[configKey] = ""
+				if (configBridge) {
+					configBridge.write(configKey, "")
+				} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+					plasmoid.configuration[configKey] = ""
+					if (typeof kcm !== "undefined") {
+						kcm.needsSave = true
+					}
+				}
 			} else {
-				plasmoid.configuration[configKey] = value
+				if (configBridge) {
+					configBridge.write(configKey, value)
+				} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+					plasmoid.configuration[configKey] = value
+					if (typeof kcm !== "undefined") {
+						kcm.needsSave = true
+					}
+				}
 			}
 		}
 	}
@@ -65,6 +87,8 @@ RowLayout {
 	function setValue(newColor) {
 		textField.text = newColor
 	}
+
+	Component.onCompleted: configBridge = ConfigUtils.findBridge(configColor)
 
 	Label {
 		id: label

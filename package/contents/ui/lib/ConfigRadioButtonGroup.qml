@@ -4,6 +4,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import "ConfigUtils.js" as ConfigUtils
+
 /*
 ** Example:
 **
@@ -27,7 +29,19 @@ RowLayout {
 	property alias exclusiveGroup: radioButtonGroup
 
 	property string configKey: ''
-	readonly property var configValue: configKey ? plasmoid.configuration[configKey] : ""
+	property var configBridge: null
+	readonly property var configValue: {
+		if (!configKey) {
+			return ""
+		}
+		if (configBridge) {
+			return configBridge.read(configKey, "")
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			return plasmoid.configuration[configKey]
+		}
+		return ""
+	}
 
 	property alias model: buttonRepeater.model
 
@@ -51,10 +65,19 @@ RowLayout {
 				onClicked: {
 					focus = true
 					if (configKey) {
-						plasmoid.configuration[configKey] = modelData.value
+						if (configBridge) {
+							configBridge.write(configKey, modelData.value)
+						} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+							plasmoid.configuration[configKey] = modelData.value
+							if (typeof kcm !== "undefined") {
+								kcm.needsSave = true
+							}
+						}
 					}
 				}
 			}
 		}
 	}
+
+	Component.onCompleted: configBridge = ConfigUtils.findBridge(configRadioButtonGroup)
 }

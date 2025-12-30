@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
 import ".."
 import "../lib"
@@ -12,11 +13,28 @@ ConfigPage {
 
 	SystemPalette { id: syspal }
 
+	function markDirty() {
+		if (typeof kcm !== "undefined") {
+			kcm.needsSave = true
+		}
+	}
+
+	function save() {
+		if (typeof kcm !== "undefined") {
+			kcm.needsSave = false
+		}
+	}
+
 	function alphaColor(c, a) {
 		return Qt.rgba(c.r, c.g, c.b, a)
 	}
 	readonly property color readablePositiveTextColor: Qt.tint(Kirigami.Theme.textColor, alphaColor(Kirigami.Theme.positiveTextColor, 0.5))
 	readonly property color readableNegativeTextColor: Qt.tint(Kirigami.Theme.textColor, alphaColor(Kirigami.Theme.negativeTextColor, 0.5))
+
+	function localFilePath(url) {
+		var path = String(url)
+		return path.indexOf("file://") === 0 ? path.slice(7) : path
+	}
 
 	function sortByKey(key, a, b){
 		if (typeof a[key] === "string") {
@@ -32,6 +50,20 @@ ConfigPage {
 			predicate = sortByKey.bind(null, predicate)
 		}
 		return arr.concat().sort(predicate)
+	}
+	function stringListEquals(listA, listB) {
+		if (!Array.isArray(listA) || !Array.isArray(listB)) {
+			return false
+		}
+		if (listA.length !== listB.length) {
+			return false
+		}
+		for (var i = 0; i < listA.length; i++) {
+			if (listA[i] !== listB[i]) {
+				return false
+			}
+		}
+		return true
 	}
 
 	property int selectedAccountIndex: 0
@@ -62,6 +94,62 @@ ConfigPage {
 	}
 
 	ListModel { id: accountsModel }
+	ExecUtil { id: callbackListener }
+
+	property bool autoLoginInProgress: false
+
+	function extractJson(text) {
+		var start = text.indexOf('{')
+		var end = text.lastIndexOf('}')
+		if (start >= 0 && end > start) {
+			return text.slice(start, end + 1)
+		}
+		return ""
+	}
+
+	function startAutoLogin(accountId) {
+		if (autoLoginInProgress) {
+			return
+		}
+		autoLoginInProgress = true
+		messageWidget.info(i18n("Waiting for browser callback..."))
+		var cmd = [
+			'python3',
+			localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py")),
+			'--client_id',
+			googleLoginManager.effectiveClientId,
+			'--client_secret',
+			googleLoginManager.effectiveClientSecret,
+			'--listen_port',
+			'53682',
+		]
+		Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+			autoLoginInProgress = false
+			if (exitCode !== 0) {
+				messageWidget.err(i18n("Auto login failed. See logs for details."))
+				return
+			}
+			var payload = extractJson(stdout || "")
+			if (!payload) {
+				messageWidget.err(i18n("Auto login failed: no token data received."))
+				return
+			}
+			var data = null
+			try {
+				data = JSON.parse(payload)
+			} catch (e) {
+				messageWidget.err(i18n("Auto login failed: invalid token data."))
+				return
+			}
+			if (data.error) {
+				messageWidget.err(i18n("Auto login failed: %1", data.error))
+				return
+			}
+			authorizationCodeInput.text = ""
+			googleLoginManager.updateAccessToken(data, accountId)
+		})
+	}
 
 	GoogleLoginManager {
 		id: googleLoginManager
@@ -79,7 +167,7 @@ ConfigPage {
 				calendarsModel.append({
 					calendarId: item.id, 
 					name: item.summary,
-					description: item.description,
+					description: item.description || "",
 					backgroundColor: item.backgroundColor,
 					foregroundColor: item.foregroundColor,
 					show: isShown,
@@ -171,7 +259,7 @@ ConfigPage {
 		MessageWidget {
 			messageType: MessageWidget.MessageType.Warning
 			closeButtonVisible: false
-			text: googleLoginManager.normalizedClientValue(plasmoid.configuration.customClientId)
+			text: googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
 				? ""
 				: i18n("The built-in Google OAuth client is often blocked. Provide your own client ID and secret to enable Google sync.")
 		}
@@ -191,6 +279,7 @@ ConfigPage {
 				Layout.fillWidth: true
 				placeholderText: i18n("Optional")
 				defaultValue: ""
+				onTextChanged: markDirty()
 			}
 		}
 		RowLayout {
@@ -204,6 +293,7 @@ ConfigPage {
 				placeholderText: i18n("Optional")
 				defaultValue: ""
 				echoMode: TextInput.Password
+				onTextChanged: markDirty()
 			}
 		}
 	}
@@ -267,6 +357,12 @@ ConfigPage {
 			wrapMode: Text.Wrap
 			text: i18n("If your browser shows a connection error, that's expected. Copy the URL from the address bar anyway and paste it below.")
 		}
+		Label {
+			Layout.fillWidth: true
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			text: i18n("Tip: Leave the field empty and click Add Account or Update Selected to auto-capture the callback.")
+		}
 		RowLayout {
 			TextField {
 				id: authorizationCodeInput
@@ -277,19 +373,21 @@ ConfigPage {
 			}
 			Button {
 				text: googleLoginManager.isLoggedIn ? i18n("Add Account") : i18n("Submit")
+				enabled: !autoLoginInProgress
 				onClicked: {
 					if (authorizationCodeInput.text) {
 						googleLoginManager.fetchAccessToken({
 							authorizationCode: authorizationCodeInput.text,
 						})
 					} else {
-						messageWidget.err(i18n("Invalid Google Authorization Code"))
+						startAutoLogin("")
 					}
 				}
 			}
 			Button {
 				visible: googleLoginManager.isLoggedIn
 				text: i18n("Update Selected")
+				enabled: !autoLoginInProgress
 				onClicked: {
 					if (authorizationCodeInput.text) {
 						googleLoginManager.fetchAccessToken({
@@ -297,7 +395,7 @@ ConfigPage {
 							accountId: googleLoginManager.activeAccountId,
 						})
 					} else {
-						messageWidget.err(i18n("Invalid Google Authorization Code"))
+						startAutoLogin(googleLoginManager.activeAccountId)
 					}
 				}
 			}
@@ -337,7 +435,10 @@ ConfigPage {
 						calendarIdList.push(item.calendarId)
 					}
 				}
-				googleLoginManager.setCalendarIdList(calendarIdList)
+				if (!stringListEquals(calendarIdList, googleLoginManager.calendarIdList)) {
+					googleLoginManager.setCalendarIdList(calendarIdList)
+					markDirty()
+				}
 			}
 		}
 
@@ -346,44 +447,47 @@ ConfigPage {
 
 			Repeater {
 				model: calendarsModel
-				delegate: CheckBox {
-					id: calendarCheckBox
-					text: model.name
-					checked: model.show
-					indicator: Rectangle {
-						implicitWidth: 12
-						implicitHeight: 12
-						radius: 3
-						border.width: 1
-						border.color: syspal.text
-						color: calendarCheckBox.checked ? model.backgroundColor : syspal.base
-						Label {
-							visible: calendarCheckBox.checked
-							text: "✓"
-							color: model.foregroundColor
-							font.pixelSize: 8
-							anchors.centerIn: parent
-						}
-					}
-					contentItem: RowLayout {
+				delegate: Item {
+					id: calendarRow
+					width: parent.width
+					height: Kirigami.Units.gridUnit * 2
+
+					RowLayout {
+						anchors.fill: parent
+						spacing: Kirigami.Units.smallSpacing
+
 						Rectangle {
-							Layout.fillHeight: true
-							Layout.preferredWidth: height
+							Layout.alignment: Qt.AlignVCenter
+							implicitWidth: Kirigami.Units.iconSizes.smallMedium
+							implicitHeight: Kirigami.Units.iconSizes.smallMedium
+							radius: 4
 							color: model.backgroundColor
+							border.width: 1
+							border.color: Qt.rgba(syspal.text.r, syspal.text.g, syspal.text.b, 0.4)
 						}
-						Label {
-							text: calendarCheckBox.text
+
+						PlasmaComponents3.CheckBox {
+							id: calendarCheckBox
+							text: model.name
+							checked: model.show
+							Layout.fillWidth: true
+							onToggled: {
+								calendarsModel.setProperty(index, 'show', checked)
+								calendarsModel.calendarsShownChanged()
+							}
 						}
+
 						LockIcon {
-							Layout.fillHeight: true
-							Layout.preferredWidth: height
+							Layout.alignment: Qt.AlignVCenter
+							implicitWidth: Kirigami.Units.iconSizes.smallMedium
+							implicitHeight: Kirigami.Units.iconSizes.smallMedium
 							visible: model.isReadOnly
 						}
 					}
 
-					onClicked: {
-						calendarsModel.setProperty(index, 'show', checked)
-						calendarsModel.calendarsShownChanged()
+					MouseArea {
+						anchors.fill: parent
+						onClicked: calendarCheckBox.toggle()
 					}
 				}
 			}
@@ -398,7 +502,7 @@ ConfigPage {
 			text: i18n("Tasks")
 
 			Image {
-				source: plasmoid.file("", "icons/google_tasks_96px.png")
+				source: Qt.resolvedUrl("../../icons/google_tasks_96px.png")
 				smooth: true
 				anchors.leftMargin: parent.contentWidth + Kirigami.Units.smallSpacing
 				anchors.left: parent.left
@@ -432,7 +536,10 @@ ConfigPage {
 						tasklistIdList.push(item.tasklistId)
 					}
 				}
-				googleLoginManager.setTasklistIdList(tasklistIdList)
+				if (!stringListEquals(tasklistIdList, googleLoginManager.tasklistIdList)) {
+					googleLoginManager.setTasklistIdList(tasklistIdList)
+					markDirty()
+				}
 			}
 		}
 
@@ -441,44 +548,47 @@ ConfigPage {
 
 			Repeater {
 				model: tasklistsModel
-				delegate: CheckBox {
-					id: tasklistCheckBox
-					text: model.name
-					checked: model.show
-					indicator: Rectangle {
-						implicitWidth: 12
-						implicitHeight: 12
-						radius: 3
-						border.width: 1
-						border.color: syspal.text
-						color: tasklistCheckBox.checked ? model.backgroundColor : syspal.base
-						Label {
-							visible: tasklistCheckBox.checked
-							text: "✓"
-							color: model.foregroundColor
-							font.pixelSize: 8
-							anchors.centerIn: parent
-						}
-					}
-					contentItem: RowLayout {
+				delegate: Item {
+					id: tasklistRow
+					width: parent.width
+					height: Kirigami.Units.gridUnit * 2
+
+					RowLayout {
+						anchors.fill: parent
+						spacing: Kirigami.Units.smallSpacing
+
 						Rectangle {
-							Layout.fillHeight: true
-							Layout.preferredWidth: height
+							Layout.alignment: Qt.AlignVCenter
+							implicitWidth: Kirigami.Units.iconSizes.smallMedium
+							implicitHeight: Kirigami.Units.iconSizes.smallMedium
+							radius: 4
 							color: model.backgroundColor
+							border.width: 1
+							border.color: Qt.rgba(syspal.text.r, syspal.text.g, syspal.text.b, 0.4)
 						}
-						Label {
-							text: tasklistCheckBox.text
+
+						PlasmaComponents3.CheckBox {
+							id: tasklistCheckBox
+							text: model.name
+							checked: model.show
+							Layout.fillWidth: true
+							onToggled: {
+								tasklistsModel.setProperty(index, 'show', checked)
+								tasklistsModel.tasklistsShownChanged()
+							}
 						}
+
 						LockIcon {
-							Layout.fillHeight: true
-							Layout.preferredWidth: height
+							Layout.alignment: Qt.AlignVCenter
+							implicitWidth: Kirigami.Units.iconSizes.smallMedium
+							implicitHeight: Kirigami.Units.iconSizes.smallMedium
 							visible: model.isReadOnly
 						}
 					}
 
-					onClicked: {
-						tasklistsModel.setProperty(index, 'show', checked)
-						tasklistsModel.tasklistsShownChanged()
+					MouseArea {
+						anchors.fill: parent
+						onClicked: tasklistCheckBox.toggle()
 					}
 				}
 			}
@@ -507,6 +617,7 @@ ConfigPage {
 		ConfigCheckBox {
 			configKey: 'googleHideGoalsDesc'
 			text: i18n("Hide \"This event was added from Goals in Google Calendar\" description")
+			onClicked: markDirty()
 		}
 	}
 

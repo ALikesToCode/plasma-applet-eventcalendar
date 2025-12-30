@@ -1,13 +1,12 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import org.kde.kcmutils as KCM
 import org.kde.kirigami as Kirigami
 
 import ".."
 import "../lib"
 
-KCM.SimpleKCM {
+ConfigPage {
 	id: page
 
 	property int timezoneColumnWidth: Kirigami.Units.gridUnit * 12
@@ -41,7 +40,7 @@ KCM.SimpleKCM {
 	}
 
 	function syncFromConfig() {
-		var zones = normalizedTimezones(plasmoid.configuration.selectedTimeZones)
+		var zones = normalizedTimezones(page.configBridge.read("selectedTimeZones", []))
 		timezoneListModel.clear()
 		for (var i = 0; i < zones.length; i++) {
 			timezoneListModel.append({ zoneId: zones[i] })
@@ -49,7 +48,7 @@ KCM.SimpleKCM {
 	}
 
 	function updateConfig(zones) {
-		plasmoid.configuration.selectedTimeZones = normalizedTimezones(zones)
+		page.configBridge.write("selectedTimeZones", normalizedTimezones(zones))
 	}
 
 	function addTimezone(zoneId) {
@@ -57,7 +56,7 @@ KCM.SimpleKCM {
 		if (!zone) {
 			return
 		}
-		var zones = normalizedTimezones(plasmoid.configuration.selectedTimeZones)
+		var zones = normalizedTimezones(page.configBridge.read("selectedTimeZones", []))
 		if (zones.indexOf(zone) === -1) {
 			zones.push(zone)
 			updateConfig(zones)
@@ -67,7 +66,7 @@ KCM.SimpleKCM {
 	}
 
 	function removeTimezone(zoneId) {
-		var zones = normalizedTimezones(plasmoid.configuration.selectedTimeZones)
+		var zones = normalizedTimezones(page.configBridge.read("selectedTimeZones", []))
 		var index = zones.indexOf(zoneId)
 		if (index >= 0 && zoneId !== "Local") {
 			zones.splice(index, 1)
@@ -86,8 +85,8 @@ KCM.SimpleKCM {
 
 	Component.onCompleted: syncFromConfig()
 	Connections {
-		target: plasmoid.configuration
-		function onSelectedTimeZonesChanged() {
+		target: page
+		function onCfg_selectedTimeZonesChanged() {
 			syncFromConfig()
 		}
 	}
@@ -173,16 +172,16 @@ KCM.SimpleKCM {
 				id: timezoneCityRadio
 				text: i18n("Time zone city")
 				ButtonGroup.group: timezoneDisplayType
-				checked: !plasmoid.configuration.displayTimezoneAsCode
-				onClicked: plasmoid.configuration.displayTimezoneAsCode = false
+				checked: !page.configBridge.read("displayTimezoneAsCode", true)
+				onClicked: page.configBridge.write("displayTimezoneAsCode", false)
 			}
 
 			RadioButton {
 				id: timezoneCodeRadio
 				text: i18n("Time zone code")
 				ButtonGroup.group: timezoneDisplayType
-				checked: plasmoid.configuration.displayTimezoneAsCode
-				onClicked: plasmoid.configuration.displayTimezoneAsCode = true
+				checked: page.configBridge.read("displayTimezoneAsCode", true)
+				onClicked: page.configBridge.write("displayTimezoneAsCode", true)
 			}
 		}
 	}

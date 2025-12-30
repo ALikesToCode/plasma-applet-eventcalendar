@@ -6,6 +6,7 @@ import org.kde.kitemmodels as KItemModels
 
 import ".."
 import "../lib"
+import "../lib/ConfigUtils.js" as ConfigUtils
 import "../lib/Requests.js" as Requests
 
 Dialog {
@@ -20,7 +21,7 @@ Dialog {
 
 	Logger {
 		id: logger
-		showDebug: plasmoid.configuration.debugging
+		showDebug: configBridge ? configBridge.read("debugging", false) : false
 	}
 
 	ListModel { id: cityListModel }
@@ -35,6 +36,7 @@ Dialog {
 	}
 
 	property string selectedCityId: ""
+	property var configBridge: null
 
 	Timer {
 		id: debouceApplyFilter
@@ -158,7 +160,7 @@ Dialog {
 		if (q) {
 			chooseCityDialog.loadingCityList = true
 			fetchCityList({
-				appId: plasmoid.configuration.openWeatherMapAppId,
+				appId: configBridge ? configBridge.read("openWeatherMapAppId", "") : "",
 				q: q,
 			}, function(err, data, xhr) {
 				if (err) return console.log("searchCityList.err", err, xhr && xhr.status, data)
@@ -174,6 +176,8 @@ Dialog {
 			})
 		}
 	}
+
+	Component.onCompleted: configBridge = ConfigUtils.findBridge(chooseCityDialog)
 
 	function fetchCityList(args, callback) {
 		if (!args.appId) return callback("OpenWeatherMap AppId not set")

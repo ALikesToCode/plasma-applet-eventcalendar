@@ -1,14 +1,40 @@
 import QtQuick
 
+import "../lib/ConfigUtils.js" as ConfigUtils
+
 QtObject {
 	id: obj
 	property string configKey: ''
-	readonly property string configValue: configKey ? plasmoid.configuration[configKey] : ''
+	property var configBridge: null
+	readonly property string configValue: {
+		if (!configKey) {
+			return ""
+		}
+		if (configBridge) {
+			var bridged = configBridge.read(configKey, "")
+			return (bridged === undefined || bridged === null) ? "" : String(bridged)
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var directValue = plasmoid.configuration[configKey]
+			return (directValue === undefined || directValue === null) ? "" : String(directValue)
+		}
+		return ""
+	}
 	property var value: null
 	property var defaultValue: ({}) // Empty Map
 
+	Component.onCompleted: configBridge = ConfigUtils.findBridge(obj)
+
 	function serialize() {
-		plasmoid.configuration[configKey] = Qt.btoa(JSON.stringify(value))
+		var payload = Qt.btoa(JSON.stringify(value))
+		if (configBridge) {
+			configBridge.write(configKey, payload)
+		} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			plasmoid.configuration[configKey] = payload
+			if (typeof kcm !== "undefined") {
+				kcm.needsSave = true
+			}
+		}
 	}
 
 	function deserialize() {

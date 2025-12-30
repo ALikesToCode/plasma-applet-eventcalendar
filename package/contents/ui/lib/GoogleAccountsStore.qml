@@ -1,19 +1,24 @@
 import QtQuick
 
+import "ConfigUtils.js" as ConfigUtils
+
 QtObject {
 	id: store
 
 	property string accountsKey: "googleAccounts"
 	property string activeAccountKey: "googleActiveAccountId"
 
-	property string accountsConfigValue: plasmoid.configuration.googleAccounts
-	property string activeAccountId: plasmoid.configuration.googleActiveAccountId
+	property var configBridge: null
+
+	property string accountsConfigValue: readConfig(accountsKey, "")
+	property string activeAccountId: readConfig(activeAccountKey, "")
 
 	property var accounts: []
 
 	signal accountUpdated(string accountId)
 
 	Component.onCompleted: {
+		configBridge = ConfigUtils.findBridge(store)
 		loadAccounts()
 		migrateLegacyAccountIfNeeded()
 	}
@@ -36,6 +41,31 @@ QtObject {
 			accounts = parsed
 		}
 		ensureActiveAccount()
+	}
+
+	function readConfig(key, fallback) {
+		if (configBridge) {
+			var bridged = configBridge.read(key, fallback)
+			return (bridged === undefined || bridged === null) ? fallback : bridged
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var directValue = plasmoid.configuration[key]
+			return (directValue === undefined || directValue === null) ? fallback : directValue
+		}
+		return fallback
+	}
+
+	function writeConfig(key, value) {
+		if (configBridge) {
+			configBridge.write(key, value)
+			return
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			plasmoid.configuration[key] = value
+			if (typeof kcm !== "undefined") {
+				kcm.needsSave = true
+			}
+		}
 	}
 
 	function hasSameAccountIds(listA, listB) {
@@ -111,7 +141,7 @@ QtObject {
 
 	function serialize() {
 		var payload = Qt.btoa(JSON.stringify(accounts || []))
-		plasmoid.configuration[accountsKey] = payload
+		writeConfig(accountsKey, payload)
 	}
 
 	function generateId() {
@@ -185,7 +215,7 @@ QtObject {
 	}
 
 	function setActiveAccountId(accountId) {
-		plasmoid.configuration[activeAccountKey] = accountId
+		writeConfig(activeAccountKey, accountId)
 	}
 
 	function ensureActiveAccount() {
@@ -242,24 +272,24 @@ QtObject {
 		if (accounts.length > 0) {
 			return
 		}
-		if (!plasmoid.configuration.accessToken && !plasmoid.configuration.refreshToken) {
+		if (!readConfig("accessToken", "") && !readConfig("refreshToken", "")) {
 			return
 		}
-		var legacyCalendarList = decodeLegacyBase64Json(plasmoid.configuration.calendarList)
-		var legacyTasklistList = decodeLegacyBase64Json(plasmoid.configuration.tasklistList)
+		var legacyCalendarList = decodeLegacyBase64Json(readConfig("calendarList", ""))
+		var legacyTasklistList = decodeLegacyBase64Json(readConfig("tasklistList", ""))
 		var account = {
 			id: generateId(),
 			label: deriveLabelFromCalendars(legacyCalendarList),
-			sessionClientId: plasmoid.configuration.sessionClientId,
-			sessionClientSecret: plasmoid.configuration.sessionClientSecret,
-			accessToken: plasmoid.configuration.accessToken,
-			accessTokenType: plasmoid.configuration.accessTokenType,
-			accessTokenExpiresAt: plasmoid.configuration.accessTokenExpiresAt,
-			refreshToken: plasmoid.configuration.refreshToken,
+			sessionClientId: readConfig("sessionClientId", ""),
+			sessionClientSecret: readConfig("sessionClientSecret", ""),
+			accessToken: readConfig("accessToken", ""),
+			accessTokenType: readConfig("accessTokenType", ""),
+			accessTokenExpiresAt: readConfig("accessTokenExpiresAt", 0),
+			refreshToken: readConfig("refreshToken", ""),
 			calendarList: legacyCalendarList,
-			calendarIdList: parseLegacyList(plasmoid.configuration.calendarIdList),
+			calendarIdList: parseLegacyList(readConfig("calendarIdList", "")),
 			tasklistList: legacyTasklistList,
-			tasklistIdList: parseLegacyList(plasmoid.configuration.tasklistIdList),
+			tasklistIdList: parseLegacyList(readConfig("tasklistIdList", "")),
 		}
 		addAccount(account)
 		if (account.id) {

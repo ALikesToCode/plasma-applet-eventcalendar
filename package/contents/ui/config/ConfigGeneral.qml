@@ -19,14 +19,14 @@ ConfigPage {
 	property string timeFormat24hour: 'hh:mm'
 	property string timeFormat12hour: 'h:mm AP'
 
-	property bool showDebug: plasmoid.configuration.debugging
+	property bool showDebug: page.configBridge.read("debugging", false)
 	property int indentWidth: 24 * Kirigami.Units.devicePixelRatio
 
 	function setMouseWheelCommands(up, down) {
-		plasmoid.configuration.clockMouseWheel == 'RunCommands'
+		page.configBridge.write("clockMouseWheel", "RunCommands")
 		clockMousewheelGroupRunCommands.checked = true
-		plasmoid.configuration.clockMouseWheelUp = up
-		plasmoid.configuration.clockMouseWheelDown = down
+		page.configBridge.write("clockMouseWheelUp", up)
+		page.configBridge.write("clockMouseWheelDown", down)
 	}
 
 
@@ -279,8 +279,8 @@ ConfigPage {
 				id: clockMousewheelGroupRunCommands
 				text: i18n("Run Commands")
 				ButtonGroup.group: clockMousewheelGroup
-				checked: plasmoid.configuration.clockMouseWheel == 'RunCommands'
-				onClicked: plasmoid.configuration.clockMouseWheel = 'RunCommands'
+				checked: page.configBridge.read("clockMouseWheel", "") == 'RunCommands'
+				onClicked: page.configBridge.write("clockMouseWheel", "RunCommands")
 			}
 			RowLayout {
 				Layout.fillWidth: true

@@ -4,6 +4,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import "ConfigUtils.js" as ConfigUtils
+
 /*
 ** Example:
 **
@@ -33,7 +35,21 @@ RowLayout {
 	property string configKey: ''
 	readonly property var currentItem: comboBox.model[comboBox.currentIndex]
 	readonly property string value: currentItem ? currentItem[valueRole] : ""
-	readonly property string configValue: configKey ? plasmoid.configuration[configKey] : ""
+	property var configBridge: null
+	readonly property string configValue: {
+		if (!configKey) {
+			return ""
+		}
+		if (configBridge) {
+			var bridged = configBridge.read(configKey, "")
+			return (bridged === undefined || bridged === null) ? "" : String(bridged)
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var directValue = plasmoid.configuration[configKey]
+			return (directValue === undefined || directValue === null) ? "" : String(directValue)
+		}
+		return ""
+	}
 	onConfigValueChanged: {
 		if (!comboBox.focus && value != configValue) {
 			selectValue(configValue)
@@ -51,6 +67,7 @@ RowLayout {
 	property bool populated: true
 
 	Component.onCompleted: {
+		configBridge = ConfigUtils.findBridge(configComboBox)
 		populate()
 		selectValue(configValue)
 	}
@@ -74,7 +91,14 @@ RowLayout {
 				if (typeof item !== "undefined") {
 					var val = item[valueRole]
 					if (configKey && (typeof val !== "undefined") && populated) {
-						plasmoid.configuration[configKey] = val
+						if (configBridge) {
+							configBridge.write(configKey, val)
+						} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+							plasmoid.configuration[configKey] = val
+							if (typeof kcm !== "undefined") {
+								kcm.needsSave = true
+							}
+						}
 					}
 				}
 			}
