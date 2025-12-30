@@ -161,6 +161,53 @@ ConfigPage {
 			text: i18n("Widget has been updated. Please logout and login to Google Calendar again.")
 		}
 	}
+
+	HeaderText {
+		text: i18n("Client Credentials")
+	}
+	ColumnLayout {
+		Layout.fillWidth: true
+
+		MessageWidget {
+			messageType: MessageWidget.MessageType.Warning
+			closeButtonVisible: false
+			text: googleLoginManager.normalizedClientValue(plasmoid.configuration.customClientId)
+				? ""
+				: i18n("The built-in Google OAuth client is often blocked. Provide your own client ID and secret to enable Google sync.")
+		}
+		Label {
+			Layout.fillWidth: true
+			text: i18n("Leave these empty to use the default credentials. Custom credentials require a Google Cloud OAuth client (Desktop app) with the redirect URI set to %1.", googleLoginManager.redirectUri)
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+		}
+		RowLayout {
+			Layout.fillWidth: true
+			Label {
+				text: i18n("Client ID")
+			}
+			ConfigString {
+				configKey: "customClientId"
+				Layout.fillWidth: true
+				placeholderText: i18n("Optional")
+				defaultValue: ""
+			}
+		}
+		RowLayout {
+			Layout.fillWidth: true
+			Label {
+				text: i18n("Client Secret")
+			}
+			ConfigString {
+				configKey: "customClientSecret"
+				Layout.fillWidth: true
+				placeholderText: i18n("Optional")
+				defaultValue: ""
+				echoMode: TextInput.Password
+			}
+		}
+	}
+
 	ColumnLayout {
 		Label {
 			Layout.fillWidth: true

@@ -1,6 +1,6 @@
 import QtQuick
 import org.kde.plasma.configuration
-import org.kde.plasma.workspace.calendar as PlasmaCalendar
+import org.kde.plasma.calendar as PlasmaCalendar
 
 import "../ui/calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 

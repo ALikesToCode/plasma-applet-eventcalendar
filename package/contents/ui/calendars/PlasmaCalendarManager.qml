@@ -1,6 +1,6 @@
 import QtQuick
 import org.kde.kirigami as Kirigami
-import org.kde.plasma.workspace.calendar as PlasmaCalendar
+import org.kde.plasma.calendar as PlasmaCalendar
 
 import "../lib"
 import "../Shared.js" as Shared
@@ -71,7 +71,7 @@ CalendarManager {
 
 		// KHolidays
 		calendarList.push({
-			"calendarId": "plasma_Holidays",
+			"id": "plasma_Holidays",
 			"backgroundColor": "" + Kirigami.Theme.highlightColor,
 			"accessRole": "reader",
 			"isTasklist": false,
@@ -131,22 +131,48 @@ CalendarManager {
 		}
 	}
 
-	readonly property string translatedHolidaysType: i18ndc("libplasma5", "Agenda listview section title", "Holidays")
-	readonly property string translatedEventsType: i18ndc("libplasma5", "Agenda listview section title", "Events")
-	readonly property string translatedTodoType: i18ndc("libplasma5", "Agenda listview section title", "Todo")
-	readonly property string translatedOtherType: i18ndc("libplasma5", "Means 'Other calendar items'", "Other")
+	readonly property var eventTypeLabels: ({
+		holidays: [
+			i18ndc("libplasma6", "Agenda listview section title", "Holidays"),
+			i18ndc("libplasma5", "Agenda listview section title", "Holidays"),
+			i18n("Holidays"),
+		],
+		events: [
+			i18ndc("libplasma6", "Agenda listview section title", "Events"),
+			i18ndc("libplasma5", "Agenda listview section title", "Events"),
+			i18n("Events"),
+		],
+		todo: [
+			i18ndc("libplasma6", "Agenda listview section title", "Todo"),
+			i18ndc("libplasma5", "Agenda listview section title", "Todo"),
+			i18n("Todo"),
+		],
+		other: [
+			i18ndc("libplasma6", "Means 'Other calendar items'", "Other"),
+			i18ndc("libplasma5", "Means 'Other calendar items'", "Other"),
+			i18n("Other"),
+		],
+	})
+	function isEventType(dayItem, labels) {
+		for (var i = 0; i < labels.length; i++) {
+			if (dayItem.eventType === labels[i]) {
+				return true
+			}
+		}
+		return false
+	}
 	function parseCalendarId(dayItem) {
 		// dayItem.eventType is translated, but is the only way to tell which plugin it belongs to without
 		// creating a seperate PlasmaCalendar.EventPluginsManager for each plugin (assuming it's not a singleton).
 		// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/calendar/eventdatadecorator.cpp#L60
-		// plasma-framework uses the "libplasma5" translation domain.
-		if (dayItem.eventType == translatedHolidaysType) {
+		// plasma-framework uses the "libplasma5"/"libplasma6" translation domains.
+		if (isEventType(dayItem, eventTypeLabels.holidays)) {
 			return calendarManagerId + "_Holidays"
-		} else if (dayItem.eventType == translatedEventsType) {
+		} else if (isEventType(dayItem, eventTypeLabels.events)) {
 			return calendarManagerId + "_Events"
-		} else if (dayItem.eventType == translatedTodoType) {
+		} else if (isEventType(dayItem, eventTypeLabels.todo)) {
 			return calendarManagerId + "_Todo"
-		} else if (dayItem.eventType == translatedOtherType) {
+		} else if (isEventType(dayItem, eventTypeLabels.other)) {
 			return calendarManagerId + "_Other"
 		} else {
 			return calendarManagerId + "_NotImplemented"
@@ -209,7 +235,7 @@ CalendarManager {
 
 	function getEventsForDate(date) {
 		var dayEvents = calendarBackend.daysModel.eventsForDate(date)
-		return parseEventsForDate(dayEvents)
+		return parseEventsForDate(date, dayEvents)
 	}
 
 	function getEventsForDuration(dateMin, dateMax) {

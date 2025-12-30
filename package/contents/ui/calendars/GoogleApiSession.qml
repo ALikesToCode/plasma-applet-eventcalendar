@@ -79,7 +79,7 @@ QtObject {
 	function fetchNewAccessToken(callback) {
 		logger.debug('fetchNewAccessToken')
 		var account = getAccount()
-		var url = 'https://www.googleapis.com/oauth2/v4/token'
+		var url = 'https://oauth2.googleapis.com/token'
 		Requests.post({
 			url: url,
 			data: {

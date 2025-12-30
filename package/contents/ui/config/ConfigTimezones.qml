@@ -3,32 +3,93 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kcmutils as KCM
 import org.kde.kirigami as Kirigami
-import org.kde.plasma.private.digitalclock as DigitalClock
 
 import ".."
 import "../lib"
 
-// Mostly copied from digitalclock
 KCM.SimpleKCM {
 	id: page
 
-	function digitalclock_i18n(message) {
-		return i18nd("plasma_applet_org.kde.plasma.digitalclock", message)
+	property int timezoneColumnWidth: Kirigami.Units.gridUnit * 12
+
+	ListModel { id: timezoneListModel }
+
+	function normalizedTimezones(list) {
+		var zones = []
+		if (Array.isArray(list)) {
+			zones = list.slice(0)
+		} else if (typeof list === "string") {
+			zones = list.split(',')
+		}
+		var normalized = []
+		for (var i = 0; i < zones.length; i++) {
+			var zone = (zones[i] || "").trim()
+			if (!zone) {
+				continue
+			}
+			if (normalized.indexOf(zone) === -1) {
+				normalized.push(zone)
+			}
+		}
+		if (normalized.indexOf("Local") === -1) {
+			normalized.unshift("Local")
+		} else {
+			normalized.splice(normalized.indexOf("Local"), 1)
+			normalized.unshift("Local")
+		}
+		return normalized
 	}
 
-	property int cityColumnWidth: Kirigami.Units.gridUnit * 10
-	property int regionColumnWidth: Kirigami.Units.gridUnit * 10
-	property int tooltipColumnWidth: Kirigami.Units.gridUnit * 6
-
-	DigitalClock.TimeZoneModel {
-		id: timeZoneModel
-
-		selectedTimeZones: plasmoid.configuration.selectedTimeZones
-		onSelectedTimeZonesChanged: plasmoid.configuration.selectedTimeZones = selectedTimeZones
+	function syncFromConfig() {
+		var zones = normalizedTimezones(plasmoid.configuration.selectedTimeZones)
+		timezoneListModel.clear()
+		for (var i = 0; i < zones.length; i++) {
+			timezoneListModel.append({ zoneId: zones[i] })
+		}
 	}
 
-	MessageWidget {
-		id: messageWidget
+	function updateConfig(zones) {
+		plasmoid.configuration.selectedTimeZones = normalizedTimezones(zones)
+	}
+
+	function addTimezone(zoneId) {
+		var zone = (zoneId || "").trim()
+		if (!zone) {
+			return
+		}
+		var zones = normalizedTimezones(plasmoid.configuration.selectedTimeZones)
+		if (zones.indexOf(zone) === -1) {
+			zones.push(zone)
+			updateConfig(zones)
+			syncFromConfig()
+		}
+		timezoneInput.text = ""
+	}
+
+	function removeTimezone(zoneId) {
+		var zones = normalizedTimezones(plasmoid.configuration.selectedTimeZones)
+		var index = zones.indexOf(zoneId)
+		if (index >= 0 && zoneId !== "Local") {
+			zones.splice(index, 1)
+			updateConfig(zones)
+			syncFromConfig()
+		}
+	}
+
+	function prettyZoneName(zoneId) {
+		if (zoneId === "Local") {
+			return i18n("Local")
+		}
+		var parts = zoneId.split('/')
+		return parts[parts.length - 1].replace(/_/g, ' ')
+	}
+
+	Component.onCompleted: syncFromConfig()
+	Connections {
+		target: plasmoid.configuration
+		function onSelectedTimeZonesChanged() {
+			syncFromConfig()
+		}
 	}
 
 	ColumnLayout {
@@ -36,37 +97,40 @@ KCM.SimpleKCM {
 		Layout.fillHeight: true
 		spacing: Kirigami.Units.smallSpacing
 
-		TextField {
-			id: filter
+		Label {
 			Layout.fillWidth: true
-			placeholderText: digitalclock_i18n("Search Time Zones")
+			text: i18n("Enter time zone IDs (for example: Europe/London, America/New_York). The list controls which zones appear in the tooltip.")
+			wrapMode: Text.Wrap
 		}
 
 		RowLayout {
 			Layout.fillWidth: true
-			spacing: Kirigami.Units.smallSpacing
+			TextField {
+				id: timezoneInput
+				Layout.fillWidth: true
+				placeholderText: i18n("Time zone ID")
+				onAccepted: addTimezone(text)
+			}
+			Button {
+				text: i18n("Add")
+				enabled: timezoneInput.text.trim().length > 0
+				onClicked: addTimezone(timezoneInput.text)
+			}
+		}
 
+		RowLayout {
+			Layout.fillWidth: true
 			Label {
-				text: digitalclock_i18n("City")
+				text: i18n("Time zones")
 				font.bold: true
-				Layout.preferredWidth: page.cityColumnWidth
+				Layout.preferredWidth: page.timezoneColumnWidth
 			}
 			Label {
-				text: digitalclock_i18n("Region")
-				font.bold: true
-				Layout.preferredWidth: page.regionColumnWidth
-			}
-			Label {
-				text: digitalclock_i18n("Comment")
+				text: i18n("Identifier")
 				font.bold: true
 				Layout.fillWidth: true
 			}
-			Label {
-				text: i18n("Tooltip")
-				font.bold: true
-				Layout.preferredWidth: page.tooltipColumnWidth
-				horizontalAlignment: Text.AlignHCenter
-			}
+			Item { Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium }
 		}
 
 		ListView {
@@ -74,70 +138,27 @@ KCM.SimpleKCM {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 			clip: true
-			focus: true
-			highlightFollowsCurrentItem: true
-			highlight: Rectangle {
-				color: Kirigami.Theme.highlightColor
-				opacity: 0.15
-			}
-
-			Keys.onSpacePressed: {
-				if (timeZoneView.currentItem && timeZoneView.currentItem.toggleChecked) {
-					timeZoneView.currentItem.toggleChecked()
-				}
-			}
-
-			model: DigitalClock.TimeZoneFilterProxy {
-				sourceModel: timeZoneModel
-				filterString: filter.text
-			}
-
+			model: timezoneListModel
 			delegate: RowLayout {
-				id: delegateRoot
 				width: timeZoneView.width
 				spacing: Kirigami.Units.smallSpacing
 
-				function setValue(newChecked) {
-					if (!newChecked && region == "Local") {
-						messageWidget.warn(i18n("Cannot deselect Local time from the tooltip"))
-					} else {
-						model.checked = newChecked
-					}
-				}
-
-				function toggleChecked() {
-					setValue(!checkedBox.checked)
-				}
-
-				MouseArea {
-					anchors.fill: parent
-					propagateComposedEvents: true
-					onClicked: {
-						timeZoneView.currentIndex = index
-						mouse.accepted = false
-					}
-				}
-
 				Label {
-					text: city
-					Layout.preferredWidth: page.cityColumnWidth
+					text: prettyZoneName(model.zoneId)
+					Layout.preferredWidth: page.timezoneColumnWidth
 					elide: Text.ElideRight
 				}
 				Label {
-					text: region
-					Layout.preferredWidth: page.regionColumnWidth
-					elide: Text.ElideRight
-				}
-				Label {
-					text: comment
+					text: model.zoneId
 					Layout.fillWidth: true
 					elide: Text.ElideRight
+					opacity: 0.6
 				}
-				CheckBox {
-					id: checkedBox
-					Layout.preferredWidth: page.tooltipColumnWidth
-					checked: model.checked
-					onClicked: delegateRoot.setValue(checked)
+				ToolButton {
+					icon.name: "edit-delete"
+					enabled: model.zoneId !== "Local"
+					onClicked: removeTimezone(model.zoneId)
+					Accessible.name: i18n("Remove time zone")
 				}
 			}
 		}
@@ -145,12 +166,12 @@ KCM.SimpleKCM {
 		ButtonGroup { id: timezoneDisplayType }
 		RowLayout {
 			Label {
-				text: digitalclock_i18n("Display time zone as:")
+				text: i18n("Display time zone as:")
 			}
 
 			RadioButton {
 				id: timezoneCityRadio
-				text: digitalclock_i18n("Time zone city")
+				text: i18n("Time zone city")
 				ButtonGroup.group: timezoneDisplayType
 				checked: !plasmoid.configuration.displayTimezoneAsCode
 				onClicked: plasmoid.configuration.displayTimezoneAsCode = false
@@ -158,7 +179,7 @@ KCM.SimpleKCM {
 
 			RadioButton {
 				id: timezoneCodeRadio
-				text: digitalclock_i18n("Time zone code")
+				text: i18n("Time zone code")
 				ButtonGroup.group: timezoneDisplayType
 				checked: plasmoid.configuration.displayTimezoneAsCode
 				onClicked: plasmoid.configuration.displayTimezoneAsCode = true

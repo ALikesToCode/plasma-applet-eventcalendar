@@ -358,6 +358,12 @@
 		<entry name="latestClientSecret" type="string">
 			<default>Gdr_7lKIQuGBD4Up3MOiw-7i</default>
 		</entry>
+		<entry name="customClientId" type="string">
+			<default></default>
+		</entry>
+		<entry name="customClientSecret" type="string">
+			<default></default>
+		</entry>
 		<entry name="sessionClientId" type="string">
 			<default></default>
 		</entry>

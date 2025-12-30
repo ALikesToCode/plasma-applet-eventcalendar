@@ -11,12 +11,7 @@ CalendarManager {
 	property var eventsData: { "items": [] }
 
 	Component.onCompleted: {
-		// bindSignals(googleCalendarManager)
-		// bindSignals(googleTasksManager)
-		// bindSignals(plasmaCalendarManager)
-		// bindSignals(icalManager)
-		// bindSignals(debugCalendarManager)
-		// bindSignals(debugGoogleCalendarManager)
+		bindSignals(plasmaCalendarManager)
 	}
 
 	//---
@@ -152,9 +147,9 @@ CalendarManager {
 		}
 	}
 
-	// PlasmaCalendarManager {
-	// 	id: plasmaCalendarManager
-	// }
+	PlasmaCalendarManager {
+		id: plasmaCalendarManager
+	}
 
 	//---
 	property var deferredUpdate: Timer {

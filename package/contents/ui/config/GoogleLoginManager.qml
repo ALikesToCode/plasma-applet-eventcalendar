@@ -24,7 +24,7 @@ Item {
 		if (!activeAccount) {
 			return false
 		}
-		if (activeAccount.accessToken && activeAccount.sessionClientId != plasmoid.configuration.latestClientId) {
+		if (activeAccount.accessToken && activeAccount.sessionClientId != effectiveClientId) {
 			return true
 		}
 		return false
@@ -36,6 +36,11 @@ Item {
 	readonly property var tasklistIdList: activeAccount ? (activeAccount.tasklistIdList || []) : []
 
 	property string redirectUri: "http://127.0.0.1:53682/"
+	function normalizedClientValue(value) {
+		return value ? value.trim() : ""
+	}
+	readonly property string effectiveClientId: normalizedClientValue(plasmoid.configuration.customClientId) || plasmoid.configuration.latestClientId
+	readonly property string effectiveClientSecret: normalizedClientValue(plasmoid.configuration.customClientSecret) || plasmoid.configuration.latestClientSecret
 
 	Connections {
 		target: accountsStore
@@ -77,7 +82,7 @@ Item {
 		url += '&redirect_uri=' + encodeURIComponent(redirectUri)
 		url += '&access_type=offline'
 		url += '&prompt=consent'
-		url += '&client_id=' + encodeURIComponent(plasmoid.configuration.latestClientId)
+		url += '&client_id=' + encodeURIComponent(effectiveClientId)
 		return url
 	}
 
@@ -119,12 +124,12 @@ Item {
 			handleError('Invalid Google Authorization Code', null)
 			return
 		}
-		var url = 'https://www.googleapis.com/oauth2/v4/token'
+		var url = 'https://oauth2.googleapis.com/token'
 		Requests.post({
 			url: url,
 			data: {
-				client_id: plasmoid.configuration.latestClientId,
-				client_secret: plasmoid.configuration.latestClientSecret,
+				client_id: effectiveClientId,
+				client_secret: effectiveClientSecret,
 				code: authCode,
 				grant_type: 'authorization_code',
 				redirect_uri: redirectUri,
@@ -163,8 +168,8 @@ Item {
 			targetId = created.id
 		}
 		accountsStore.updateAccount(targetId, {
-			sessionClientId: plasmoid.configuration.latestClientId,
-			sessionClientSecret: plasmoid.configuration.latestClientSecret,
+			sessionClientId: effectiveClientId,
+			sessionClientSecret: effectiveClientSecret,
 			accessToken: data.access_token,
 			accessTokenType: data.token_type,
 			accessTokenExpiresAt: Date.now() + data.expires_in * 1000,

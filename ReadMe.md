@@ -53,8 +53,16 @@ sh ./uninstall
 
 ## Configure
 
-1. Right click the Calendar > Event Calendar Settings > Google Calendar
-2. Open the login link, approve access, then copy the redirect URL (localhost) or code into the settings field.
-3. After the settings window says it's synced, click apply.
-4. Go to the Weather Tab > Enter your city id for OpenWeatherMap. If their search can't find your city, try googling it with [site:openweathermap.org/city](https://www.google.ca/search?q=site%3Aopenweathermap.org%2Fcity+toronto).
+### Google Calendar
 
+1. Right click the calendar > Event Calendar Settings > Google Calendar.
+2. Open the login link in your browser, sign in, and grant access.
+3. After Google redirects to a localhost URL, copy the full URL (or just the `code=` value) into the authorization field.
+4. Click Submit (or Add Account). If your browser shows a connection error, that is expected; copy the URL from the address bar anyway.
+5. Choose which calendars and tasks to sync. Use Refresh if the list does not load.
+6. Click Apply to save your settings.
+
+### Weather
+
+1. Open the Weather tab and enter your OpenWeatherMap city id.
+2. If the search cannot find your city, try searching with `site:openweathermap.org/city YOUR_CITY` (example: [Toronto](https://www.google.ca/search?q=site%3Aopenweathermap.org%2Fcity+toronto)).

@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents3
-import org.kde.plasma.private.digitalclock as DigitalClock
 
 Item {
 	id: tooltipContentItem
@@ -44,9 +43,12 @@ Item {
 	function nameForZone(zone) {
 		if (plasmoid.configuration.displayTimezoneAsCode) {
 			return dataSource.data[zone]["Timezone Abbreviation"]
-		} else {
-			return DigitalClock.TimezonesI18n.i18nCity(dataSource.data[zone]["Timezone City"])
 		}
+		if (dataSource.data[zone] && dataSource.data[zone]["Timezone City"]) {
+			return dataSource.data[zone]["Timezone City"].replace(/_/g, ' ')
+		}
+		var parts = zone.split('/')
+		return parts[parts.length - 1].replace(/_/g, ' ')
 	}
 
 	ColumnLayout {

@@ -49,18 +49,18 @@ install_requirements() {
 
     case "$DISTRO" in
         "debian"|"ubuntu"|"kali"|"raspbian"|"neon")
-            required_commands=("kreadconfig5" "kpackagetool6")
-            packages_to_install=("libkf6coreaddons-bin-dev" "kpackagetool6")
+            required_commands=("kpackagetool6")
+            packages_to_install=("kpackagetool6")
             install_cmd="sudo apt-get update && sudo apt-get install -y"
             ;;
         "arch")
-            required_commands=("kreadconfig5" "kpackagetool6") 
-            packages_to_install=("kf6-kcoreaddons" "kpackagetool6")
+            required_commands=("kpackagetool6") 
+            packages_to_install=("kpackagetool6")
             install_cmd="sudo pacman -S"
             ;;
         "fedora")
-            required_commands=("kreadconfig5" "kpackagetool6")
-            packages_to_install=("kf6-kcoreaddons" "kf6-kpackage")
+            required_commands=("kpackagetool6")
+            packages_to_install=("kf6-kpackage")
             install_cmd="sudo dnf install"
             ;;
         *)

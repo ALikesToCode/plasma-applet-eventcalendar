@@ -9,7 +9,6 @@ import org.kde.plasma.plasma5support as Plasma5Support
 import org.kde.config as KConfig
 import org.kde.kcmutils as KCMUtils
 
-import org.kde.plasma.private.digitalclock as DigitalClock
 
 import "./lib"
 
@@ -47,10 +46,21 @@ PlasmoidItem {
 		source: "../fonts/weathericons-regular-webfont.ttf"
 	}
 
-	Connections {
-		target: plasmoid
-		function onContextualActionsAboutToShow() {
-			DigitalClock.ClipboardMenu.currentDate = timeModel.currentTime
+	function formatClipboardText() {
+		return Qt.formatDateTime(timeModel.currentTime, Qt.locale().dateTimeFormat(Locale.LongFormat))
+	}
+
+	function copyCurrentDateTime() {
+		clipboardHelper.copyText(formatClipboardText())
+	}
+
+	TextEdit {
+		id: clipboardHelper
+		visible: false
+		function copyText(text) {
+			clipboardHelper.text = text
+			clipboardHelper.selectAll()
+			clipboardHelper.copy()
 		}
 	}
 
@@ -221,6 +231,7 @@ PlasmoidItem {
 			id: clipboardAction
 			text: i18n("Copy to Clipboard")
 			icon.name: "edit-copy"
+			onTriggered: copyCurrentDateTime()
 		},
 		PlasmaCore.Action {
 			text: i18nd("plasma_applet_org.kde.plasma.digitalclock", "Adjust Date and Time…")
@@ -240,8 +251,6 @@ PlasmoidItem {
 	]
 
 	Component.onCompleted: {
-		DigitalClock.ClipboardMenu.setupMenu(clipboardAction)
-
 		// Plasmoid.internalAction("configure").trigger()
 	}
 
