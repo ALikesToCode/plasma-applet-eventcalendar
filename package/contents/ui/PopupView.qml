@@ -350,10 +350,10 @@ MouseArea {
 				}
 			}
 
-			onDayDoubleClicked: {
-				var date = new Date(dayData.yearNumber, dayData.monthNumber-1, dayData.dayNumber)
-				// logger.debug('Popup.monthView.onDoubleClicked', date)
-				var doubleClickOption = plasmoid.configuration.monthDayDoubleClick
+				onDayDoubleClicked: function(dayData) {
+					var date = new Date(dayData.yearNumber, dayData.monthNumber-1, dayData.dayNumber)
+					// logger.debug('Popup.monthView.onDoubleClicked', date)
+					var doubleClickOption = plasmoid.configuration.monthDayDoubleClick
 
 				switch (doubleClickOption) {
 					case 'GoogleCalWeb':
