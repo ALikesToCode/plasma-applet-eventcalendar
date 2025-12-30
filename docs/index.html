@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event Calendar OAuth Helper</title>
+  <meta name="description" content="Extract the Google OAuth code from the localhost redirect URL for the KDE Event Calendar widget.">
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap");
+
+    :root {
+      --bg-1: #f4efe3;
+      --bg-2: #f8c877;
+      --bg-3: #f05a3d;
+      --ink: #1d1b18;
+      --muted: #5c564e;
+      --card: #fffaf0;
+      --accent: #1d6f62;
+      --accent-2: #d4533a;
+      --mono: "JetBrains Mono", monospace;
+      --body: "Space Grotesk", sans-serif;
+      --display: "Fraunces", serif;
+      --shadow: 0 18px 50px rgba(29, 27, 24, 0.15);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--body);
+      color: var(--ink);
+      background: linear-gradient(140deg, var(--bg-1) 0%, #f7e6c5 35%, #fbe2d7 100%);
+      min-height: 100vh;
+    }
+
+    .canvas {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .canvas::before,
+    .canvas::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(0px);
+      opacity: 0.25;
+      z-index: 0;
+    }
+
+    .canvas::before {
+      width: 440px;
+      height: 440px;
+      background: radial-gradient(circle at 30% 30%, var(--bg-2), transparent 65%);
+      top: -160px;
+      left: -120px;
+    }
+
+    .canvas::after {
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle at 70% 30%, var(--bg-3), transparent 65%);
+      bottom: -260px;
+      right: -180px;
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+      display: grid;
+      gap: 28px;
+    }
+
+    header {
+      display: grid;
+      gap: 12px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(32px, 5vw, 56px);
+      margin: 0;
+    }
+
+    header p {
+      font-size: 16px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(29, 27, 24, 0.08);
+      animation: rise 0.6s ease both;
+    }
+
+    .card:nth-child(2) {
+      animation-delay: 0.08s;
+    }
+
+    .card:nth-child(3) {
+      animation-delay: 0.16s;
+    }
+
+    .card h2 {
+      font-family: var(--display);
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .steps ol {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .helper {
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    textarea,
+    input[type="text"] {
+      width: 100%;
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(29, 27, 24, 0.2);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    button.secondary {
+      background: #e9e1d3;
+      color: var(--ink);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .status strong {
+      color: var(--ink);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(29, 111, 98, 0.12);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    details {
+      border-top: 1px dashed rgba(29, 27, 24, 0.2);
+      padding-top: 12px;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    details ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .card {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <main>
+      <header>
+        <div class="eyebrow">Event Calendar OAuth Helper</div>
+        <h1>Extract your Google authorization code.</h1>
+        <p>Paste the redirect URL from your browser and copy the code into the KDE Event Calendar widget.</p>
+      </header>
+
+      <section class="grid">
+        <div class="card steps">
+          <span class="pill">Quick flow</span>
+          <h2>What to do</h2>
+          <ol>
+            <li>Open the login link in the widget and sign in to Google.</li>
+            <li>When your browser lands on the localhost page, copy the full URL.</li>
+            <li>Paste the URL here to extract the code.</li>
+            <li>Paste the code back into the widget and click Submit.</li>
+            <li>Select calendars and click Apply.</li>
+          </ol>
+        </div>
+
+        <div class="card helper">
+          <h2>Paste redirect URL</h2>
+          <label for="redirectUrl">Redirect URL (example: http://127.0.0.1:53682/?code=...)</label>
+          <textarea id="redirectUrl" placeholder="Paste the full URL from your browser address bar"></textarea>
+          <div class="row">
+            <button id="extractBtn">Extract code</button>
+            <button class="secondary" id="clearBtn">Clear</button>
+          </div>
+          <label for="authCode">Authorization code</label>
+          <input id="authCode" type="text" readonly placeholder="Code appears here">
+          <div class="row">
+            <button id="copyBtn">Copy code</button>
+            <span class="status" id="status">Waiting for input.</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Notes</h2>
+          <p class="status">
+            This page runs locally in your browser and does not send your URL anywhere.
+          </p>
+          <details>
+            <summary>Troubleshooting HTTP 400</summary>
+            <ul>
+              <li>Make sure you pasted the exact URL from the browser address bar.</li>
+              <li>If Google blocks the built-in client, use a custom OAuth client.</li>
+              <li>Custom client redirect URI must be <strong>http://127.0.0.1:53682/</strong>.</li>
+              <li>After Submit, select calendars and click Apply.</li>
+            </ul>
+          </details>
+        </div>
+      </section>
+
+      <footer>
+        Event Calendar helper page. Safe to share. No data is collected.
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const urlInput = document.getElementById("redirectUrl");
+    const codeOutput = document.getElementById("authCode");
+    const status = document.getElementById("status");
+    const extractBtn = document.getElementById("extractBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    function extractCode(value) {
+      if (!value) {
+        return "";
+      }
+      const trimmed = value.trim();
+      const match = /[?&]code=([^&]+)/.exec(trimmed);
+      if (match && match[1]) {
+        return decodeURIComponent(match[1].replace(/\+/g, " "));
+      }
+      try {
+        const parsed = new URL(trimmed);
+        const code = parsed.searchParams.get("code");
+        if (code) {
+          return code;
+        }
+      } catch (err) {
+        // Not a URL, treat as raw code
+      }
+      return trimmed;
+    }
+
+    function updateFromInput() {
+      const code = extractCode(urlInput.value);
+      codeOutput.value = code;
+      if (code) {
+        status.innerHTML = "Code extracted. Copy it into the widget.";
+      } else {
+        status.textContent = "Waiting for input.";
+      }
+    }
+
+    extractBtn.addEventListener("click", updateFromInput);
+    urlInput.addEventListener("input", updateFromInput);
+
+    clearBtn.addEventListener("click", () => {
+      urlInput.value = "";
+      codeOutput.value = "";
+      status.textContent = "Waiting for input.";
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      if (!codeOutput.value) {
+        status.textContent = "No code to copy yet.";
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(codeOutput.value);
+        status.textContent = "Copied. Paste into the widget.";
+      } catch (err) {
+        codeOutput.select();
+        document.execCommand("copy");
+        status.textContent = "Copied. Paste into the widget.";
+      }
+    });
+
+    (function initFromPage() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      if (code) {
+        urlInput.value = window.location.href;
+        updateFromInput();
+      }
+    })();
+  </script>
+</body>
+</html>

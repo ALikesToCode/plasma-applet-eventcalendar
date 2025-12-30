@@ -58,6 +58,7 @@ sh ./uninstall
 1. Right click the calendar > Event Calendar Settings > Google Calendar.
 2. Open the login link in your browser, sign in, and grant access.
 3. After Google redirects to a localhost URL, copy the full URL (or just the `code=` value) into the authorization field.
+   Optional helper page (if GitHub Pages is enabled): https://alikescode.github.io/plasma-applet-eventcalendar/
 4. Click Submit (or Add Account). If your browser shows a connection error, that is expected; copy the URL from the address bar anyway.
 5. Choose which calendars and tasks to sync. Use Refresh if the list does not load.
 6. Click Apply to save your settings.
