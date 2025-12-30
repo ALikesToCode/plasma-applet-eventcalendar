@@ -41,8 +41,8 @@ Item {
 	function normalizedClientValue(value) {
 		return value ? value.trim() : ""
 	}
-	readonly property string effectiveClientId: normalizedClientValue(readConfig("customClientId", "")) || readConfig("latestClientId", "")
-	readonly property string effectiveClientSecret: normalizedClientValue(readConfig("customClientSecret", "")) || readConfig("latestClientSecret", "")
+	property string effectiveClientId: ""
+	property string effectiveClientSecret: ""
 
 	Connections {
 		target: accountsStore
@@ -66,12 +66,15 @@ Item {
 		configBridge = ConfigUtils.findBridge(session)
 		session.accounts = accountsStore.accounts.slice(0)
 		refreshActiveAccount()
+		refreshClientCredentials()
 	}
 
 	function readConfig(key, fallback) {
 		if (configBridge) {
-			var bridged = configBridge.read(key, fallback)
-			return (bridged === undefined || bridged === null) ? fallback : bridged
+			var bridged = configBridge.read(key, undefined)
+			if (bridged !== undefined && bridged !== null) {
+				return bridged
+			}
 		}
 		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
 			var directValue = plasmoid.configuration[key]
@@ -95,6 +98,15 @@ Item {
 
 	function refreshActiveAccount() {
 		activeAccount = accountsStore.getAccount(activeAccountId)
+	}
+
+	function refreshClientCredentials() {
+		var customId = normalizedClientValue(readConfig("customClientId", ""))
+		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
+		var latestId = readConfig("latestClientId", "")
+		var latestSecret = readConfig("latestClientSecret", "")
+		effectiveClientId = customId || latestId
+		effectiveClientSecret = customSecret || latestSecret
 	}
 
 	//--- Signals

@@ -10,7 +10,7 @@ QtObject {
 
 	property var configBridge: null
 
-	property string accountsConfigValue: readConfig(accountsKey, "")
+	property var accountsConfigValue: readConfig(accountsKey, "")
 	property string activeAccountId: readConfig(activeAccountKey, "")
 
 	property var accounts: []
@@ -45,8 +45,10 @@ QtObject {
 
 	function readConfig(key, fallback) {
 		if (configBridge) {
-			var bridged = configBridge.read(key, fallback)
-			return (bridged === undefined || bridged === null) ? fallback : bridged
+			var bridged = configBridge.read(key, undefined)
+			if (bridged !== undefined && bridged !== null) {
+				return bridged
+			}
 		}
 		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
 			var directValue = plasmoid.configuration[key]
@@ -82,6 +84,12 @@ QtObject {
 
 	function parseAccounts(value) {
 		if (!value) {
+			return []
+		}
+		if (Array.isArray(value)) {
+			return value
+		}
+		if (typeof value === "object") {
 			return []
 		}
 		var decoded = value

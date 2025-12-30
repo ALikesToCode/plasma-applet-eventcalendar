@@ -197,6 +197,9 @@ Item {
 		if (!raw) {
 			return []
 		}
+		if (Array.isArray(raw)) {
+			return raw
+		}
 		var decoded = raw
 		try {
 			decoded = Qt.atob(raw)

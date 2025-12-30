@@ -111,6 +111,7 @@ ConfigPage {
 			return
 		}
 		autoLoginInProgress = true
+		googleLoginManager.refreshClientCredentials()
 		messageWidget.info(i18n("Waiting for browser callback..."))
 		var cmd = [
 			'python3',
@@ -278,7 +279,10 @@ ConfigPage {
 				Layout.fillWidth: true
 				placeholderText: i18n("Optional")
 				defaultValue: ""
-				onTextChanged: markDirty()
+				onTextChanged: {
+					markDirty()
+					googleLoginManager.refreshClientCredentials()
+				}
 			}
 		}
 		RowLayout {
@@ -292,7 +296,10 @@ ConfigPage {
 				placeholderText: i18n("Optional")
 				defaultValue: ""
 				echoMode: TextInput.Password
-				onTextChanged: markDirty()
+				onTextChanged: {
+					markDirty()
+					googleLoginManager.refreshClientCredentials()
+				}
 			}
 		}
 	}
@@ -375,6 +382,7 @@ ConfigPage {
 				enabled: !autoLoginInProgress
 				onClicked: {
 					if (authorizationCodeInput.text) {
+						googleLoginManager.refreshClientCredentials()
 						googleLoginManager.fetchAccessToken({
 							authorizationCode: authorizationCodeInput.text,
 						})
@@ -389,6 +397,7 @@ ConfigPage {
 				enabled: !autoLoginInProgress
 				onClicked: {
 					if (authorizationCodeInput.text) {
+						googleLoginManager.refreshClientCredentials()
 						googleLoginManager.fetchAccessToken({
 							authorizationCode: authorizationCodeInput.text,
 							accountId: googleLoginManager.activeAccountId,

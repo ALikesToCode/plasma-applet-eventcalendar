@@ -5,17 +5,17 @@ import "ConfigUtils.js" as ConfigUtils
 QtObject {
 	property string configKey
 	property var configBridge: null
-	readonly property string configValue: {
+	readonly property var configValue: {
 		if (!configKey) {
 			return ""
 		}
 		if (configBridge) {
-			var bridged = configBridge.read(configKey, "")
-			return (bridged === undefined || bridged === null) ? "" : String(bridged)
+			var bridged = configBridge.read(configKey, undefined)
+			return (bridged === undefined || bridged === null) ? "" : bridged
 		}
 		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
 			var directValue = plasmoid.configuration[configKey]
-			return (directValue === undefined || directValue === null) ? "" : String(directValue)
+			return (directValue === undefined || directValue === null) ? "" : directValue
 		}
 		return ""
 	}
@@ -26,8 +26,25 @@ QtObject {
 	Component.onCompleted: configBridge = ConfigUtils.findBridge(this)
 
 	function deserialize() {
-		var s = JSON.parse(Qt.atob(configValue))
-		value = s
+		if (configValue === "" || configValue === undefined || configValue === null) {
+			value = []
+			return
+		}
+		if (typeof configValue !== "string") {
+			value = configValue || []
+			return
+		}
+		var decoded = configValue
+		try {
+			decoded = Qt.atob(configValue)
+		} catch (e) {
+			decoded = configValue
+		}
+		try {
+			value = JSON.parse(decoded)
+		} catch (e2) {
+			value = []
+		}
 	}
 
 	function serialize() {
