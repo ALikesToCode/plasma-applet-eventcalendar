@@ -214,6 +214,12 @@ ConfigPage {
 				}
 			}
 		}
+		Label {
+			Layout.fillWidth: true
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			text: i18n("If your browser shows a connection error, that's expected. Copy the URL from the address bar anyway and paste it below.")
+		}
 		RowLayout {
 			TextField {
 				id: authorizationCodeInput
