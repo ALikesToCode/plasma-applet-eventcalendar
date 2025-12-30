@@ -45,10 +45,8 @@ QtObject {
 
 	function readConfig(key, fallback) {
 		if (configBridge) {
-			var bridged = configBridge.read(key, undefined)
-			if (bridged !== undefined && bridged !== null) {
-				return bridged
-			}
+			var bridged = configBridge.read(key, fallback)
+			return (bridged === undefined || bridged === null) ? fallback : bridged
 		}
 		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
 			var directValue = plasmoid.configuration[key]
