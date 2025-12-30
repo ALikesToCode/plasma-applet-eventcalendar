@@ -48,7 +48,7 @@ install_requirements() {
     DISTRO=$(echo "$DISTRO" | tr '[:upper:]' '[:lower:]')
 
     case "$DISTRO" in
-        "debian"|"ubuntu"|"kali"|"raspbian")
+        "debian"|"ubuntu"|"kali"|"raspbian"|"neon")
             required_commands=("kreadconfig5" "kpackagetool6")
             packages_to_install=("libkf6coreaddons-bin-dev" "kpackagetool6")
             install_cmd="sudo apt-get update && sudo apt-get install -y"
@@ -141,10 +141,15 @@ fi
 log "Installing package..."
 cp -r package "$INSTALL_DIR/$packageNamespace"
 
+QDBUS_BIN=$(command -v qdbus || command -v qdbus6) || {
+    echo "qdbus not found" >&2
+    exit 1
+}
+
 # Reload plasmoid configuration
 if $restartPlasmashell; then
     log "Reloading plasmoid..."
-    qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+    "$QDBUS_BIN" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
         var allDesktops = desktops();
         for (var i = 0; i < allDesktops.length; i++) {
             var d = allDesktops[i];
