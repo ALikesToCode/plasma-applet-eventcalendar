@@ -18,6 +18,11 @@ CalendarManager {
 		}
 	]
 
+	function localFilePath(url) {
+		var path = String(url)
+		return path.indexOf("file://") === 0 ? path.slice(7) : path
+	}
+
 	function getCalendar(calendarId) {
 		for (var i = 0; i < calendarList.length; i++) {
 			var calendarData = calendarList[i]
@@ -30,11 +35,17 @@ CalendarManager {
 
 	function fetchEvents(calendarData, startTime, endTime, callback) {
 		logger.debug('ical.fetchEvents', calendarData.url)
-		var cmd = 'python3 ' + plasmoid.file("", "scripts/icsjson.py")
-		cmd += ' --url "' + calendarData.url + '"' // TODO proper argument wrapping
-		cmd += ' query'
-		cmd += ' ' + startTime.getFullYear() + '-' + (startTime.getMonth()+1) + '-' + startTime.getDate()
-		cmd += ' ' + endTime.getFullYear() + '-' + (endTime.getMonth()+1) + '-' + endTime.getDate()
+		var startDate = startTime.getFullYear() + '-' + (startTime.getMonth() + 1) + '-' + startTime.getDate()
+		var endDate = endTime.getFullYear() + '-' + (endTime.getMonth() + 1) + '-' + endTime.getDate()
+		var cmd = [
+			'python3',
+			localFilePath(Qt.resolvedUrl("../../scripts/icsjson.py")),
+			'--url',
+			calendarData.url,
+			'query',
+			startDate,
+			endDate,
+		]
 		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (exitCode) {
 				logger.log('ical.stderr', stderr)

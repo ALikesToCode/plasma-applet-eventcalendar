@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import org.kde.plasma.components as PlasmaComponents3
 
 import ".."
 import "../lib"
@@ -447,13 +446,23 @@ ConfigPage {
 
 			Repeater {
 				model: calendarsModel
-				delegate: Item {
+				delegate: CheckDelegate {
 					id: calendarRow
 					width: parent.width
-					height: Kirigami.Units.gridUnit * 2
+					implicitHeight: Kirigami.Units.gridUnit * 2.5
+					checkable: true
+					hoverEnabled: true
+					highlighted: hovered
+					padding: Kirigami.Units.smallSpacing
+					checked: model.show
+					onToggled: {
+						calendarsModel.setProperty(index, 'show', checked)
+						calendarsModel.calendarsShownChanged()
+					}
 
-					RowLayout {
-						anchors.fill: parent
+					contentItem: RowLayout {
+						width: calendarRow.availableWidth - calendarRow.indicator.width - calendarRow.spacing
+						height: calendarRow.availableHeight
 						spacing: Kirigami.Units.smallSpacing
 
 						Rectangle {
@@ -466,15 +475,10 @@ ConfigPage {
 							border.color: Qt.rgba(syspal.text.r, syspal.text.g, syspal.text.b, 0.4)
 						}
 
-						PlasmaComponents3.CheckBox {
-							id: calendarCheckBox
+						Label {
 							text: model.name
-							checked: model.show
 							Layout.fillWidth: true
-							onToggled: {
-								calendarsModel.setProperty(index, 'show', checked)
-								calendarsModel.calendarsShownChanged()
-							}
+							elide: Text.ElideRight
 						}
 
 						LockIcon {
@@ -485,10 +489,7 @@ ConfigPage {
 						}
 					}
 
-					MouseArea {
-						anchors.fill: parent
-						onClicked: calendarCheckBox.toggle()
-					}
+					Accessible.name: model.name
 				}
 			}
 		}
@@ -548,13 +549,23 @@ ConfigPage {
 
 			Repeater {
 				model: tasklistsModel
-				delegate: Item {
+				delegate: CheckDelegate {
 					id: tasklistRow
 					width: parent.width
-					height: Kirigami.Units.gridUnit * 2
+					implicitHeight: Kirigami.Units.gridUnit * 2.5
+					checkable: true
+					hoverEnabled: true
+					highlighted: hovered
+					padding: Kirigami.Units.smallSpacing
+					checked: model.show
+					onToggled: {
+						tasklistsModel.setProperty(index, 'show', checked)
+						tasklistsModel.tasklistsShownChanged()
+					}
 
-					RowLayout {
-						anchors.fill: parent
+					contentItem: RowLayout {
+						width: tasklistRow.availableWidth - tasklistRow.indicator.width - tasklistRow.spacing
+						height: tasklistRow.availableHeight
 						spacing: Kirigami.Units.smallSpacing
 
 						Rectangle {
@@ -567,15 +578,10 @@ ConfigPage {
 							border.color: Qt.rgba(syspal.text.r, syspal.text.g, syspal.text.b, 0.4)
 						}
 
-						PlasmaComponents3.CheckBox {
-							id: tasklistCheckBox
+						Label {
 							text: model.name
-							checked: model.show
 							Layout.fillWidth: true
-							onToggled: {
-								tasklistsModel.setProperty(index, 'show', checked)
-								tasklistsModel.tasklistsShownChanged()
-							}
+							elide: Text.ElideRight
 						}
 
 						LockIcon {
@@ -586,10 +592,7 @@ ConfigPage {
 						}
 					}
 
-					MouseArea {
-						anchors.fill: parent
-						onClicked: tasklistCheckBox.toggle()
-					}
+					Accessible.name: model.name
 				}
 			}
 		}

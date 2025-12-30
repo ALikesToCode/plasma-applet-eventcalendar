@@ -7,13 +7,18 @@ QtObject {
 
 	property var executable: ExecUtil { id: executable }
 
+	function localFilePath(url) {
+		var path = String(url)
+		return path.indexOf("file://") === 0 ? path.slice(7) : path
+	}
+
 	function notify(args, callback) {
 		logger.debugJSON('NotificationMananger.notify', args)
 		args.sound = args.sound || args.soundFile
 
 		var cmd = [
 			'python3',
-			plasmoid.file("", "scripts/notification.py"),
+			localFilePath(Qt.resolvedUrl("../scripts/notification.py")),
 		]
 		if (args.appName) {
 			cmd.push('--app-name', args.appName)

@@ -19,7 +19,7 @@ ConfigComboBox {
 }
 ConfigComboBox {
 	configKey: "appDescription"
-	populated: false
+	isPopulated: false
 	onPopulate: {
 		model = [
 			{ value: "a", text: i18n("A") },
@@ -64,7 +64,7 @@ RowLayout {
 	property alias after: labelAfter.text
 
 	signal populate()
-	property bool populated: true
+	property bool isPopulated: true
 
 	Component.onCompleted: {
 		configBridge = ConfigUtils.findBridge(configComboBox)
@@ -90,7 +90,7 @@ RowLayout {
 				var item = model[currentIndex]
 				if (typeof item !== "undefined") {
 					var val = item[valueRole]
-					if (configKey && (typeof val !== "undefined") && populated) {
+					if (configKey && (typeof val !== "undefined") && isPopulated) {
 						if (configBridge) {
 							configBridge.write(configKey, val)
 						} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {

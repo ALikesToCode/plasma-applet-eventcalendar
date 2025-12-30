@@ -57,69 +57,66 @@ ConfigPage {
 		configurationChanged()
 	}
 
-	ScrollView {
+	ListView {
+		id: configTable
+
 		Layout.fillWidth: true
-		Layout.fillHeight: true
+		implicitHeight: contentHeight
+		interactive: false
 
-		ListView {
-			id: configTable
+		spacing: Kirigami.Units.smallSpacing
 
-			Layout.fillWidth: true
-			Layout.fillHeight: true
+		model: []
+		cacheBuffer: 100000
 
-			spacing: Kirigami.Units.smallSpacing
+		Component {
+			id: boolControl
+			CheckBox {
+				checked: modelValue
+				text: modelValue
+				onClicked: page.updateConfigValue(modelKey, checked)
+			}
+		}
 
-			model: []
-			cacheBuffer: 100000
+		Component {
+			id: numberControl
+			SpinBox {
+				property int decimals: (modelConfigType === "uint" || modelConfigType === "int" || Number.isInteger(modelValue)) ? 0 : 3
+				property real scale: Math.pow(10, decimals)
+				from: Math.round(-Number.MAX_SAFE_INTEGER * scale)
+				to: Math.round(Number.MAX_SAFE_INTEGER * scale)
+				stepSize: Math.round(1 * scale)
+				value: Math.round(Number(modelValue) * scale)
+				editable: true
 
-			Component {
-				id: boolControl
-				CheckBox {
-					checked: modelValue
-					text: modelValue
-					onClicked: page.updateConfigValue(modelKey, checked)
+				textFromValue: function(v) {
+					var numberValue = v / scale
+					return decimals > 0 ? numberValue.toFixed(decimals) : Math.round(numberValue).toString()
+				}
+
+				valueFromText: function(text) {
+					var parsed = parseFloat(text)
+					if (isNaN(parsed)) {
+						parsed = 0
+					}
+					return Math.round(parsed * scale)
+				}
+
+				onValueModified: {
+					page.updateConfigValue(modelKey, value / scale)
 				}
 			}
+		}
 
-			Component {
-				id: numberControl
-				SpinBox {
-					property int decimals: (modelConfigType === "uint" || modelConfigType === "int" || Number.isInteger(modelValue)) ? 0 : 3
-					property real scale: Math.pow(10, decimals)
-					from: Math.round(-Number.MAX_SAFE_INTEGER * scale)
-					to: Math.round(Number.MAX_SAFE_INTEGER * scale)
-					stepSize: Math.round(1 * scale)
-					value: Math.round(Number(modelValue) * scale)
-					editable: true
-
-					textFromValue: function(v) {
-						var numberValue = v / scale
-						return decimals > 0 ? numberValue.toFixed(decimals) : Math.round(numberValue).toString()
-					}
-
-					valueFromText: function(text) {
-						var parsed = parseFloat(text)
-						if (isNaN(parsed)) {
-							parsed = 0
-						}
-						return Math.round(parsed * scale)
-					}
-
-					onValueModified: {
-						page.updateConfigValue(modelKey, value / scale)
-					}
-				}
+		Component {
+			id: stringListControl
+			TextArea {
+				text: '' + modelValue
+				readOnly: true
+				implicitHeight: contentHeight + font.pixelSize
+				wrapMode: TextEdit.Wrap
 			}
-
-			Component {
-				id: stringListControl
-				TextArea {
-					text: '' + modelValue
-					readOnly: true
-					implicitHeight: contentHeight + font.pixelSize
-					wrapMode: TextEdit.Wrap
-				}
-			}
+		}
 
 			Component {
 				id: stringControl
