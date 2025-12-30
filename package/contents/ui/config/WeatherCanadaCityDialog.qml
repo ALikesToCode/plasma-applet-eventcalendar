@@ -115,9 +115,11 @@ Dialog {
 
 				MouseArea {
 					anchors.fill: parent
+					propagateComposedEvents: true
 					onClicked: {
 						cityListView.currentIndex = index
 						chooseCityDialog.selectedCityId = cityId
+						mouse.accepted = false
 					}
 					onDoubleClicked: chooseCityDialog.accept()
 				}

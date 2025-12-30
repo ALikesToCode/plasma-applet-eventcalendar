@@ -81,7 +81,7 @@ QtObject {
 	}
 	// https://stackoverflow.com/questions/28507619/how-to-create-delay-function-in-qml
 	function delay(delayTime, callback) {
-		var timer = Qt.createQmlObject("import QtQuick 2.0; Timer {}", googleCalendarManager)
+		var timer = Qt.createQmlObject("import QtQuick; Timer {}", googleCalendarManager)
 		timer.interval = delayTime
 		timer.repeat = false
 		timer.triggered.connect(callback)

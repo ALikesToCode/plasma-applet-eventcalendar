@@ -75,7 +75,6 @@ KCM.SimpleKCM {
 			Layout.fillHeight: true
 			clip: true
 			focus: true
-			keyNavigationEnabled: true
 			highlightFollowsCurrentItem: true
 			highlight: Rectangle {
 				color: Kirigami.Theme.highlightColor
@@ -112,7 +111,11 @@ KCM.SimpleKCM {
 
 				MouseArea {
 					anchors.fill: parent
-					onClicked: timeZoneView.currentIndex = index
+					propagateComposedEvents: true
+					onClicked: {
+						timeZoneView.currentIndex = index
+						mouse.accepted = false
+					}
 				}
 
 				Label {
