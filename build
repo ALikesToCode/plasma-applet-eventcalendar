@@ -92,9 +92,11 @@ handle_translations() {
 ## Convert metadata.desktop to metadata.json
 convert_metadata() {
         if [ -f "$PWD/package/metadata.desktop" ] && command -v desktoptojson &> /dev/null ; then
-                desktoptojson --serviceType="plasma-applet.desktop" -i "$PWD/package/metadata.desktop" -o "$PWD/package/metadata.json"
-                check_command_success "$?" "desktoptojson conversion failed"
-                sed -i '{s/ \{4\}/\t/g}' "$PWD/package/metadata.json"
+                if desktoptojson --serviceType="plasma-applet.desktop" -i "$PWD/package/metadata.desktop" -o "$PWD/package/metadata.json"; then
+                        sed -i '{s/ \{4\}/\t/g}' "$PWD/package/metadata.json"
+                else
+                        echoRed "[warn] desktoptojson conversion failed, keeping existing metadata.json"
+                fi
         fi
 }
 

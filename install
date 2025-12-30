@@ -53,7 +53,7 @@ install_requirements() {
             packages_to_install=("kpackagetool6")
             install_cmd="sudo apt-get update && sudo apt-get install -y"
             ;;
-        "arch")
+        "arch"|"endeavouros"|"manjaro"|"garuda")
             required_commands=("kpackagetool6") 
             packages_to_install=("kpackagetool6")
             install_cmd="sudo pacman -S"
