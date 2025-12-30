@@ -11,88 +11,123 @@ Item {
 		showDebug: plasmoid.configuration.debugging
 	}
 
-	// Active Session
-	readonly property bool isLoggedIn: !!plasmoid.configuration.accessToken
+	GoogleAccountsStore {
+		id: accountsStore
+	}
+
+	property var accounts: []
+	property string activeAccountId: accountsStore.activeAccountId
+	property var activeAccount: null
+
+	readonly property bool isLoggedIn: accounts && accounts.length > 0
 	readonly property bool needsRelog: {
-		if (plasmoid.configuration.accessToken && plasmoid.configuration.latestClientId != plasmoid.configuration.sessionClientId) {
-			return true
-		} else if (!plasmoid.configuration.accessToken && plasmoid.configuration.access_token) {
-			return true
-		} else {
+		if (!activeAccount) {
 			return false
 		}
-	}
-
-	// Data
-	property var m_calendarList: ConfigSerializedString {
-		id: m_calendarList
-		configKey: 'calendarList'
-		defaultValue: []
-	}
-	property alias calendarList: m_calendarList.value
-
-	property var m_calendarIdList: ConfigSerializedString {
-		id: m_calendarIdList
-		configKey: 'calendarIdList'
-		defaultValue: []
-
-		function serialize() {
-			plasmoid.configuration[configKey] = value.join(',')
+		if (activeAccount.accessToken && activeAccount.sessionClientId != plasmoid.configuration.latestClientId) {
+			return true
 		}
-		function deserialize() {
-			value = configValue.split(',')
-		}
+		return false
 	}
-	property alias calendarIdList: m_calendarIdList.value
 
-	property var m_tasklistList: ConfigSerializedString {
-		id: m_tasklistList
-		configKey: 'tasklistList'
-		defaultValue: []
-	}
-	property alias tasklistList: m_tasklistList.value
+	readonly property var calendarList: activeAccount ? (activeAccount.calendarList || []) : []
+	readonly property var calendarIdList: activeAccount ? (activeAccount.calendarIdList || []) : []
+	readonly property var tasklistList: activeAccount ? (activeAccount.tasklistList || []) : []
+	readonly property var tasklistIdList: activeAccount ? (activeAccount.tasklistIdList || []) : []
 
-	property var m_tasklistIdList: ConfigSerializedString {
-		id: m_tasklistIdList
-		configKey: 'tasklistIdList'
-		defaultValue: []
+	property string redirectUri: "http://127.0.0.1:53682/"
 
-		function serialize() {
-			plasmoid.configuration[configKey] = value.join(',')
+	Connections {
+		target: accountsStore
+		function onAccountsChanged() {
+			session.accounts = accountsStore.accounts.slice(0)
+			session.refreshActiveAccount()
 		}
-		function deserialize() {
-			value = configValue.split(',')
+		function onAccountUpdated(accountId) {
+			session.accounts = accountsStore.accounts.slice(0)
+			if (accountId === session.activeAccountId) {
+				session.refreshActiveAccount()
+			}
+		}
+		function onActiveAccountIdChanged() {
+			session.activeAccountId = accountsStore.activeAccountId
+			session.refreshActiveAccount()
 		}
 	}
-	property alias tasklistIdList: m_tasklistIdList.value
 
+	Component.onCompleted: {
+		session.accounts = accountsStore.accounts.slice(0)
+		refreshActiveAccount()
+	}
+
+	function refreshActiveAccount() {
+		activeAccount = accountsStore.getAccount(activeAccountId)
+	}
 
 	//--- Signals
 	signal newAccessToken()
 	signal sessionReset()
 	signal error(string err)
 
-
 	//---
 	readonly property string authorizationCodeUrl: {
 		var url = 'https://accounts.google.com/o/oauth2/v2/auth'
 		url += '?scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks')
 		url += '&response_type=code'
-		url += '&redirect_uri=' + encodeURIComponent('urn:ietf:wg:oauth:2.0:oob')
+		url += '&redirect_uri=' + encodeURIComponent(redirectUri)
+		url += '&access_type=offline'
+		url += '&prompt=consent'
 		url += '&client_id=' + encodeURIComponent(plasmoid.configuration.latestClientId)
 		return url
 	}
 
+	function setActiveAccountId(accountId) {
+		accountsStore.setActiveAccountId(accountId)
+	}
+
+	function setCalendarIdList(list) {
+		if (activeAccountId) {
+			accountsStore.updateAccount(activeAccountId, { calendarIdList: list })
+		}
+	}
+
+	function setTasklistIdList(list) {
+		if (activeAccountId) {
+			accountsStore.updateAccount(activeAccountId, { tasklistIdList: list })
+		}
+	}
+
+	function removeAccount(accountId) {
+		logout(accountId)
+	}
+
+	function extractAuthorizationCode(input) {
+		if (!input) {
+			return ""
+		}
+		var trimmed = input.trim()
+		var match = /[?&]code=([^&]+)/.exec(trimmed)
+		if (match && match[1]) {
+			return decodeURIComponent(match[1].replace(/\+/g, ' '))
+		}
+		return trimmed
+	}
+
 	function fetchAccessToken(args) {
+		var authCode = extractAuthorizationCode(args.authorizationCode)
+		if (!authCode) {
+			handleError('Invalid Google Authorization Code', null)
+			return
+		}
 		var url = 'https://www.googleapis.com/oauth2/v4/token'
 		Requests.post({
 			url: url,
 			data: {
 				client_id: plasmoid.configuration.latestClientId,
 				client_secret: plasmoid.configuration.latestClientSecret,
-				code: args.authorizationCode,
+				code: authCode,
 				grant_type: 'authorization_code',
-				redirect_uri: 'urn:ietf:wg:oauth:2.0:oob',
+				redirect_uri: redirectUri,
 			},
 		}, function(err, data, xhr) {
 			logger.debug('/oauth2/v4/token Response', data)
@@ -114,17 +149,28 @@ Item {
 			}
 
 			// Ready
-			updateAccessToken(data)
+			updateAccessToken(data, args.accountId)
 		})
 	}
 
-	function updateAccessToken(data) {
-		plasmoid.configuration.sessionClientId = plasmoid.configuration.latestClientId
-		plasmoid.configuration.sessionClientSecret = plasmoid.configuration.latestClientSecret
-		plasmoid.configuration.accessToken = data.access_token
-		plasmoid.configuration.accessTokenType = data.token_type
-		plasmoid.configuration.accessTokenExpiresAt = Date.now() + data.expires_in * 1000
-		plasmoid.configuration.refreshToken = data.refresh_token
+	function updateAccessToken(data, accountId) {
+		var account = accountId ? accountsStore.getAccount(accountId) : null
+		var targetId = accountId
+		if (!account) {
+			var created = accountsStore.addAccount({
+				label: '',
+			})
+			targetId = created.id
+		}
+		accountsStore.updateAccount(targetId, {
+			sessionClientId: plasmoid.configuration.latestClientId,
+			sessionClientSecret: plasmoid.configuration.latestClientSecret,
+			accessToken: data.access_token,
+			accessTokenType: data.token_type,
+			accessTokenExpiresAt: Date.now() + data.expires_in * 1000,
+			refreshToken: data.refresh_token || (account && account.refreshToken) || '',
+		})
+		accountsStore.setActiveAccountId(targetId)
 		newAccessToken()
 	}
 
@@ -137,16 +183,23 @@ Item {
 
 	function updateCalendarList() {
 		logger.debug('updateCalendarList')
-		logger.debug('accessToken', plasmoid.configuration.accessToken)
+		if (!activeAccount || !activeAccount.accessToken) {
+			return
+		}
 		fetchGCalCalendars({
-			accessToken: plasmoid.configuration.accessToken,
+			accessToken: activeAccount.accessToken,
 		}, function(err, data, xhr) {
 			// Check for errors
 			if (err || data.error) {
 				handleError(err, data)
 				return
 			}
-			m_calendarList.value = data.items
+			var label = deriveLabelFromCalendars(data.items)
+			var patch = { calendarList: data.items }
+			if (label && !activeAccount.label) {
+				patch.label = label
+			}
+			accountsStore.updateAccount(activeAccountId, patch)
 		})
 	}
 
@@ -169,16 +222,18 @@ Item {
 
 	function updateTasklistList() {
 		logger.debug('updateTasklistList')
-		logger.debug('accessToken', plasmoid.configuration.accessToken)
+		if (!activeAccount || !activeAccount.accessToken) {
+			return
+		}
 		fetchGoogleTasklistList({
-			accessToken: plasmoid.configuration.accessToken,
+			accessToken: activeAccount.accessToken,
 		}, function(err, data, xhr) {
 			// Check for errors
 			if (err || data.error) {
 				handleError(err, data)
 				return
 			}
-			m_tasklistList.value = data.items
+			accountsStore.updateAccount(activeAccountId, { tasklistList: data.items })
 		})
 	}
 
@@ -199,23 +254,33 @@ Item {
 		})
 	}
 
-	function logout() {
-		plasmoid.configuration.sessionClientId = ''
-		plasmoid.configuration.sessionClientSecret = ''
-		plasmoid.configuration.accessToken = ''
-		plasmoid.configuration.accessTokenType = ''
-		plasmoid.configuration.accessTokenExpiresAt = 0
-		plasmoid.configuration.refreshToken = ''
+	function logout(accountId) {
+		var targetId = accountId || activeAccountId
+		if (!targetId) {
+			return
+		}
+		accountsStore.removeAccount(targetId)
 
-		// Delete relevant data
-		// TODO: only target google calendar data
-		// TODO: Make a signal?
-		plasmoid.configuration.agendaNewEventLastCalendarId = ''
-		calendarList = []
-		calendarIdList = []
-		tasklistList = []
-		tasklistIdList = []
+		if (plasmoid.configuration.agendaNewEventLastCalendarId.indexOf(targetId + '::') === 0) {
+			plasmoid.configuration.agendaNewEventLastCalendarId = ''
+		}
 		sessionReset()
+	}
+
+	function deriveLabelFromCalendars(list) {
+		if (!Array.isArray(list)) {
+			return ''
+		}
+		for (var i = 0; i < list.length; i++) {
+			var item = list[i]
+			if (item && item.primary) {
+				return item.id || item.summary || ''
+			}
+		}
+		if (list.length > 0) {
+			return list[0].summary || list[0].id || ''
+		}
+		return ''
 	}
 
 	// https://developers.google.com/calendar/v3/errors

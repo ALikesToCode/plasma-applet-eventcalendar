@@ -14,7 +14,57 @@ CalendarManager {
 	calendarManagerId: "GoogleCalendar"
 
 	property var session
-	readonly property var calendarIdList: plasmoid.configuration.calendarIdList ? plasmoid.configuration.calendarIdList.split(',') : []
+	property var accountsStore
+	property string accountId: ""
+	property string accountLabel: ""
+
+	function getAccount() {
+		if (!accountsStore || !accountId) {
+			return null
+		}
+		return accountsStore.getAccount(accountId)
+	}
+
+	function getCalendarIdList() {
+		var account = getAccount()
+		return account && account.calendarIdList ? account.calendarIdList : []
+	}
+
+	function scopedCalendarId(rawId) {
+		if (!accountId) {
+			return rawId
+		}
+		return accountId + "::" + rawId
+	}
+
+	function unscopedCalendarId(scopedId) {
+		if (!accountId) {
+			return scopedId
+		}
+		var prefix = accountId + "::"
+		if (scopedId.indexOf(prefix) === 0) {
+			return scopedId.substr(prefix.length)
+		}
+		return scopedId
+	}
+
+	function formatCalendarSummary(calendar) {
+		if (accountLabel) {
+			return accountLabel + " - " + calendar.summary
+		}
+		return calendar.summary
+	}
+
+	function decorateCalendar(calendar) {
+		var decorated = {}
+		for (var key in calendar) {
+			decorated[key] = calendar[key]
+		}
+		decorated.id = scopedCalendarId(calendar.id)
+		decorated.summary = formatCalendarSummary(calendar)
+		decorated.isTasklist = false
+		return decorated
+	}
 
 	onFetchAllCalendars: {
 		fetchGoogleAccountData()
@@ -22,7 +72,7 @@ CalendarManager {
 
 	function fetchGoogleAccountData() {
 		if (session.accessToken) {
-			fetchGoogleAccountEvents(calendarIdList)
+			fetchGoogleAccountEvents(getCalendarIdList())
 		}
 	}
 
@@ -114,7 +164,8 @@ CalendarManager {
 		for (var i = 0; i < results.length; i++) {
 			var calendarId = results[i].calendarId
 			var calendarData = results[i].data
-			setCalendarData(calendarId, calendarData)
+			var scopedId = results[i].scopedCalendarId || scopedCalendarId(calendarId)
+			setCalendarData(scopedId, calendarData)
 		}
 		googleCalendarManager.asyncRequestsDone += 1
 	}
@@ -139,6 +190,7 @@ CalendarManager {
 
 			return callback(null, {
 				calendarId: calendarId,
+				scopedCalendarId: scopedCalendarId(calendarId),
 				data: data,
 			})
 		})
@@ -218,14 +270,14 @@ CalendarManager {
 			session.transactionError('attempting to "fetch an event" without an access token set')
 		}
 	}
-	function fetchGoogleCalendarEvent_run(calendarId, eventId, callback) {
-		logger.debugJSON('fetchGoogleCalendarEvent_run', calendarId, eventId)
-		fetchGCalEvent({
-			accessToken: session.accessToken,
-			calendarId: calendarId,
-			eventId: eventId,
-		}, callback)
-	}
+function fetchGoogleCalendarEvent_run(calendarId, eventId, callback) {
+	logger.debugJSON('fetchGoogleCalendarEvent_run', calendarId, eventId)
+	fetchGCalEvent({
+		accessToken: session.accessToken,
+		calendarId: unscopedCalendarId(calendarId),
+		eventId: eventId,
+	}, callback)
+}
 	function fetchGCalEvent(args, callback) {
 		logger.debug('fetchGCalEvent', args.calendarId, args.eventId)
 
@@ -331,15 +383,20 @@ CalendarManager {
 	}
 	function createEvent_run(calendarId, eventText, callback) {
 		logger.debugJSON(calendarManagerId, 'createEvent_run', calendarId, eventText)
+		var rawCalendarId = unscopedCalendarId(calendarId)
 		createGCalEvent({
 			accessToken: session.accessToken,
-			calendarId: calendarId,
+			calendarId: rawCalendarId,
 			text: eventText,
 		}, callback)
 	}
 	function createEvent_done(calendarId, data) {
 		logger.debugJSON(calendarManagerId, 'createEvent_done', calendarId, data)
-		if (googleCalendarManager.calendarIdList.indexOf(calendarId) >= 0) {
+		var rawCalendarId = unscopedCalendarId(calendarId)
+		var calendar = getCalendar(calendarId)
+		var selectedList = getCalendarIdList()
+		var isPrimarySelected = calendar && calendar.primary && selectedList.indexOf('primary') >= 0
+		if (selectedList.indexOf(rawCalendarId) >= 0 || isPrimarySelected) {
 			parseSingleEvent(calendarId, data)
 			addEvent(calendarId, data)
 			eventCreated(calendarId, data)
@@ -419,7 +476,7 @@ CalendarManager {
 
 		updateGCalEvent({
 			accessToken: session.accessToken,
-			calendarId: calendarId,
+			calendarId: unscopedCalendarId(calendarId),
 			eventId: eventId,
 			data: data,
 		}, callback)
@@ -534,10 +591,10 @@ CalendarManager {
 	}
 	function deleteEvent_run(calendarId, eventId, callback) {
 		logger.debugJSON(calendarManagerId, 'deleteEvent_run', calendarId, eventId)
-
+		var rawCalendarId = unscopedCalendarId(calendarId)
 		deleteGCalEvent({
 			accessToken: session.accessToken,
-			calendarId: calendarId,
+			calendarId: rawCalendarId,
 			eventId: eventId,
 		}, callback)
 	}
@@ -581,24 +638,28 @@ CalendarManager {
 
 	//--- CalendarManager
 	function getCalendarList() {
-		if (session.accessToken && plasmoid.configuration.calendarList) {
-			var calendarList = JSON.parse(Qt.atob(plasmoid.configuration.calendarList))
-			for (var i = 0; i < calendarList.length; i++) {
-				var calendar = calendarList[i]
-				calendar.isTasklist = false
-			}
-			return calendarList
-		} else {
+		var account = getAccount()
+		if (!session.accessToken || !account || !account.calendarList) {
 			return []
 		}
+		var calendarList = account.calendarList
+		var out = []
+		for (var i = 0; i < calendarList.length; i++) {
+			out.push(decorateCalendar(calendarList[i]))
+		}
+		return out
 	}
 
 	function getCalendar(calendarId) {
-		var calendarList = getCalendarList()
-		for (var i = 0; i < calendarList.length; i++) {
-			var calendar = calendarList[i]
-			if (calendarId === calendar.id || (calendarId === 'primary' && calendar.primary)) {
-				return calendar
+		var account = getAccount()
+		if (!account || !account.calendarList) {
+			return null
+		}
+		var rawCalendarId = unscopedCalendarId(calendarId)
+		for (var i = 0; i < account.calendarList.length; i++) {
+			var calendar = account.calendarList[i]
+			if (rawCalendarId === calendar.id || (rawCalendarId === 'primary' && calendar.primary)) {
+				return decorateCalendar(calendar)
 			}
 		}
 		return null

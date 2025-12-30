@@ -163,6 +163,8 @@ Item {
 		function onCalendarIdListChanged() { logic.updateEvents() }
 		function onEnabledCalendarPluginsChanged() { logic.updateEvents() }
 		function onTasklistIdListChanged() { logic.updateEvents() }
+		function onGoogleAccountsChanged() { logic.updateEvents() }
+		function onGoogleActiveAccountIdChanged() { logic.updateEvents() }
 		function onGoogleEventClickActionChanged() { logic.updateEvents() }
 
 		//--- Weather
@@ -190,7 +192,32 @@ Item {
 
 	//---
 	property int currentErrorType: ErrorType.UnknownError
+	function parseGoogleAccounts() {
+		var raw = plasmoid.configuration.googleAccounts
+		if (!raw) {
+			return []
+		}
+		var decoded = raw
+		try {
+			decoded = Qt.atob(raw)
+		} catch (e) {
+			decoded = raw
+		}
+		try {
+			var parsed = JSON.parse(decoded)
+			return Array.isArray(parsed) ? parsed : []
+		} catch (e2) {
+			return []
+		}
+	}
 	property string currentErrorMessage: {
+		var accounts = parseGoogleAccounts()
+		for (var i = 0; i < accounts.length; i++) {
+			var account = accounts[i]
+			if (account.accessToken && account.sessionClientId && account.sessionClientId != plasmoid.configuration.latestClientId) {
+				return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
+			}
+		}
 		if (plasmoid.configuration.accessToken && plasmoid.configuration.latestClientId != plasmoid.configuration.sessionClientId) {
 			return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
 		} else if (!plasmoid.configuration.accessToken && plasmoid.configuration.access_token) {

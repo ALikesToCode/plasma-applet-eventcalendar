@@ -21,7 +21,56 @@ CalendarManager {
 	calendarManagerId: "GoogleTasks"
 
 	property var session
-	readonly property var tasklistIdList: plasmoid.configuration.tasklistIdList ? plasmoid.configuration.tasklistIdList.split(',') : []
+	property var accountsStore
+	property string accountId: ""
+	property string accountLabel: ""
+
+	function getAccount() {
+		if (!accountsStore || !accountId) {
+			return null
+		}
+		return accountsStore.getAccount(accountId)
+	}
+
+	function getTasklistIdList() {
+		var account = getAccount()
+		return account && account.tasklistIdList ? account.tasklistIdList : []
+	}
+
+	function scopedTasklistId(rawId) {
+		if (!accountId) {
+			return rawId
+		}
+		return accountId + "::" + rawId
+	}
+
+	function unscopedTasklistId(scopedId) {
+		if (!accountId) {
+			return scopedId
+		}
+		var prefix = accountId + "::"
+		if (scopedId.indexOf(prefix) === 0) {
+			return scopedId.substr(prefix.length)
+		}
+		return scopedId
+	}
+
+	function formatTasklistSummary(tasklist) {
+		if (accountLabel) {
+			return accountLabel + " - " + tasklist.title
+		}
+		return tasklist.title
+	}
+
+	function decorateTasklist(tasklist) {
+		return {
+			id: scopedTasklistId(tasklist.id),
+			summary: formatTasklistSummary(tasklist),
+			backgroundColor: Kirigami.Theme.highlightColor.toString(),
+			accessRole: 'owner',
+			isTasklist: true,
+		}
+	}
 
 	onFetchAllCalendars: {
 		fetchGoogleAccountData()
@@ -29,7 +78,7 @@ CalendarManager {
 
 	function fetchGoogleAccountData() {
 		if (session.accessToken) {
-			fetchGoogleAccountTasks(tasklistIdList)
+			fetchGoogleAccountTasks(getTasklistIdList())
 		}
 	}
 
@@ -66,23 +115,16 @@ CalendarManager {
 	//-------------------------
 	// CalendarManager
 	function getCalendarList() {
-		if (session.accessToken && plasmoid.configuration.tasklistList) {
-			var tasklistList = JSON.parse(Qt.atob(plasmoid.configuration.tasklistList))
-			var calendarList = []
-			for (var i = 0; i < tasklistList.length; i++) {
-				var tasklist = tasklistList[i]
-				calendarList.push({
-					id: tasklist.id,
-					summary: tasklist.title,
-					backgroundColor: Kirigami.Theme.highlightColor.toString(),
-					accessRole: 'owner',
-					isTasklist: true,
-				})
-			}
-			return calendarList
-		} else {
+		var account = getAccount()
+		if (!session.accessToken || !account || !account.tasklistList) {
 			return []
 		}
+		var tasklistList = account.tasklistList
+		var calendarList = []
+		for (var i = 0; i < tasklistList.length; i++) {
+			calendarList.push(decorateTasklist(tasklistList[i]))
+		}
+		return calendarList
 	}
 
 
@@ -121,7 +163,8 @@ CalendarManager {
 			var tasklistId = results[i].tasklistId
 			var tasklistData = results[i].data
 			var eventList = parseTasklistAsEvents(tasklistData)
-			setCalendarData(tasklistId, eventList)
+			var scopedId = results[i].scopedTasklistId || scopedTasklistId(tasklistId)
+			setCalendarData(scopedId, eventList)
 		}
 		googleTasksManager.asyncRequestsDone += 1
 	}
@@ -250,6 +293,7 @@ CalendarManager {
 
 			return callback(null, {
 				tasklistId: tasklistId,
+				scopedTasklistId: scopedTasklistId(tasklistId),
 				data: data,
 			})
 		})
@@ -338,15 +382,17 @@ CalendarManager {
 	}
 	function createEvent_run(calendarId, eventText, callback) {
 		logger.debugJSON(calendarManagerId, 'createEvent_run', calendarId, eventText)
+		var rawTasklistId = unscopedTasklistId(calendarId)
 		createGoogleTask({
 			accessToken: session.accessToken,
-			tasklistId: calendarId,
+			tasklistId: rawTasklistId,
 			title: eventText,
 		}, callback)
 	}
 	function createEvent_done(calendarId, data) {
 		logger.debugJSON(calendarManagerId, 'createEvent_done', calendarId, data)
-		if (googleTasksManager.tasklistIdList.indexOf(calendarId) >= 0) {
+		var rawTasklistId = unscopedTasklistId(calendarId)
+		if (getTasklistIdList().indexOf(rawTasklistId) >= 0) {
 			var eventData = parseTaskAsEventData(data)
 			parseSingleEvent(calendarId, eventData)
 			addEvent(calendarId, eventData)
@@ -412,7 +458,7 @@ CalendarManager {
 
 		deleteGoogleTask({
 			accessToken: session.accessToken,
-			tasklistId: calendarId,
+			tasklistId: unscopedTasklistId(calendarId),
 			taskId: eventId,
 		}, callback)
 	}
@@ -493,7 +539,7 @@ CalendarManager {
 
 		updateGoogleTask({
 			accessToken: session.accessToken,
-			tasklistId: calendarId,
+			tasklistId: unscopedTasklistId(calendarId),
 			taskId: eventId,
 			data: data,
 		}, callback)

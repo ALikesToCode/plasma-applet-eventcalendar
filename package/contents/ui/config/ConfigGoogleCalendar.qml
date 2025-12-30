@@ -34,8 +34,39 @@ ConfigPage {
 		return arr.concat().sort(predicate)
 	}
 
+	property int selectedAccountIndex: 0
+	function accountLabel(account, index) {
+		if (!account) {
+			return i18n("Google Account")
+		}
+		return account.label || i18n("Google Account %1", index + 1)
+	}
+	function rebuildAccountsModel() {
+		accountsModel.clear()
+		var accounts = googleLoginManager.accounts || []
+		var nextIndex = 0
+		for (var i = 0; i < accounts.length; i++) {
+			var account = accounts[i]
+			if (account && account.id === googleLoginManager.activeAccountId) {
+				nextIndex = i
+			}
+			accountsModel.append({
+				accountId: account.id,
+				label: accountLabel(account, i),
+			})
+		}
+		selectedAccountIndex = nextIndex
+		if (typeof accountSelector !== 'undefined') {
+			accountSelector.currentIndex = nextIndex
+		}
+	}
+
+	ListModel { id: accountsModel }
+
 	GoogleLoginManager {
 		id: googleLoginManager
+		onAccountsChanged: rebuildAccountsModel()
+		onActiveAccountIdChanged: rebuildAccountsModel()
 
 		onCalendarListChanged: {
 			calendarsModel.clear()
@@ -85,25 +116,45 @@ ConfigPage {
 
 
 	HeaderText {
-		text: i18n("Login")
+		text: i18n("Accounts")
 	}
 	MessageWidget {
 		id: messageWidget
 	}
 	ColumnLayout {
 		visible: googleLoginManager.isLoggedIn
+		RowLayout {
+			Layout.fillWidth: true
+			Label {
+				text: i18n("Account")
+			}
+			ComboBox {
+				id: accountSelector
+				Layout.fillWidth: true
+				textRole: "label"
+				model: accountsModel
+				onActivated: {
+					var item = accountsModel.get(currentIndex)
+					if (item && item.accountId) {
+						googleLoginManager.setActiveAccountId(item.accountId)
+					}
+				}
+			}
+			Button {
+				text: i18n("Remove")
+				enabled: accountsModel.count > 0
+				onClicked: {
+					googleLoginManager.removeAccount(googleLoginManager.activeAccountId)
+					calendarsModel.clear()
+					tasklistsModel.clear()
+				}
+			}
+		}
 		Label {
 			Layout.fillWidth: true
-			text: i18n("Currently Synched.")
+			text: i18n("Currently Synced: %1", accountLabel(googleLoginManager.activeAccount, accountSelector.currentIndex))
 			color: readablePositiveTextColor
 			wrapMode: Text.Wrap
-		}
-		Button {
-			text: i18n("Logout")
-			onClicked: {
-				googleLoginManager.logout()
-				calendarsModel.clear()
-			}
 		}
 		MessageWidget {
 			visible: googleLoginManager.needsRelog
@@ -111,16 +162,17 @@ ConfigPage {
 		}
 	}
 	ColumnLayout {
-		visible: !googleLoginManager.isLoggedIn
 		Label {
 			Layout.fillWidth: true
-			text: i18n("To sync with Google Calendar")
+			text: googleLoginManager.isLoggedIn
+				? i18n("Add another Google account")
+				: i18n("To sync with Google Calendar")
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 		}
 		LinkText {
 			Layout.fillWidth: true
-			text: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and give permission to access your calendar, it will give you a code to paste below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
+			text: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to a localhost URL. Copy the full URL (or just the code) and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 
@@ -167,15 +219,29 @@ ConfigPage {
 				id: authorizationCodeInput
 				Layout.fillWidth: true
 
-				placeholderText: i18n("Enter code here (Eg: %1)", '1/2B3C4defghijklmnopqrst-uvwxyz123456789ab-cdeFGHIJKlmnio')
+				placeholderText: i18n("Paste the authorization code or redirect URL here")
 				text: ""
 			}
 			Button {
-				text: i18n("Submit")
+				text: googleLoginManager.isLoggedIn ? i18n("Add Account") : i18n("Submit")
 				onClicked: {
 					if (authorizationCodeInput.text) {
 						googleLoginManager.fetchAccessToken({
 							authorizationCode: authorizationCodeInput.text,
+						})
+					} else {
+						messageWidget.err(i18n("Invalid Google Authorization Code"))
+					}
+				}
+			}
+			Button {
+				visible: googleLoginManager.isLoggedIn
+				text: i18n("Update Selected")
+				onClicked: {
+					if (authorizationCodeInput.text) {
+						googleLoginManager.fetchAccessToken({
+							authorizationCode: authorizationCodeInput.text,
+							accountId: googleLoginManager.activeAccountId,
 						})
 					} else {
 						messageWidget.err(i18n("Invalid Google Authorization Code"))
@@ -218,7 +284,7 @@ ConfigPage {
 						calendarIdList.push(item.calendarId)
 					}
 				}
-				googleLoginManager.calendarIdList = calendarIdList
+				googleLoginManager.setCalendarIdList(calendarIdList)
 			}
 		}
 
@@ -313,7 +379,7 @@ ConfigPage {
 						tasklistIdList.push(item.tasklistId)
 					}
 				}
-				googleLoginManager.tasklistIdList = tasklistIdList
+				googleLoginManager.setTasklistIdList(tasklistIdList)
 			}
 		}
 
@@ -392,6 +458,7 @@ ConfigPage {
 	}
 
 	Component.onCompleted: {
+		rebuildAccountsModel()
 		if (googleLoginManager.isLoggedIn) {
 			googleLoginManager.calendarListChanged()
 			googleLoginManager.tasklistListChanged()

@@ -15,16 +15,61 @@ MouseArea {
 	property int padding: 0 // Assigned in main.qml
 	property int spacing: 10 * Screen.devicePixelRatio
 
-	property int topRowHeight: plasmoid.configuration.topRowHeight * Screen.devicePixelRatio
-	property int bottomRowHeight: plasmoid.configuration.bottomRowHeight * Screen.devicePixelRatio
-	property int singleColumnMonthViewHeight: plasmoid.configuration.monthHeightSingleColumn * Screen.devicePixelRatio
+	property real screenWidth: Screen.width > 0 ? Screen.width : plasmoid.screenGeometry.width
+	property real screenHeight: Screen.height > 0 ? Screen.height : plasmoid.screenGeometry.height
+	property real widthScale: Math.max(1, screenWidth / 1920)
+	property real heightScale: Math.max(1, screenHeight / 1080)
+
+	property int topRowHeight: Math.round(plasmoid.configuration.topRowHeight * Screen.devicePixelRatio * heightScale)
+	property int bottomRowHeight: Math.round(plasmoid.configuration.bottomRowHeight * Screen.devicePixelRatio * heightScale)
+	property int singleColumnMonthViewHeight: Math.round(plasmoid.configuration.monthHeightSingleColumn * Screen.devicePixelRatio * heightScale)
 
 	// DigitalClock LeftColumn minWidth: Kirigami.Units.gridUnit * 22
 	// DigitalClock RightColumn minWidth: Kirigami.Units.gridUnit * 14
 	// 14/(22+14) * 400 = 156
 	// rightColumnWidth=156 looks nice but is very thin for listing events + date + weather.
-	property int leftColumnWidth: plasmoid.configuration.leftColumnWidth * Screen.devicePixelRatio // Meteogram + MonthView
-	property int rightColumnWidth: plasmoid.configuration.rightColumnWidth * Screen.devicePixelRatio // TimerView + AgendaView
+	property int leftColumnWidth: Math.round(plasmoid.configuration.leftColumnWidth * Screen.devicePixelRatio * widthScale) // Meteogram + MonthView
+	property int rightColumnWidth: Math.round(plasmoid.configuration.rightColumnWidth * Screen.devicePixelRatio * widthScale) // TimerView + AgendaView
+
+	property int singleColumnWidth: {
+		if (showAgenda && showCalendar) {
+			return Math.max(leftColumnWidth, rightColumnWidth)
+		} else if (showCalendar) {
+			return leftColumnWidth
+		} else if (showAgenda) {
+			return rightColumnWidth
+		}
+
+		var width = 0
+		if (showMeteogram) {
+			width = Math.max(width, leftColumnWidth)
+		}
+		if (showTimer) {
+			width = Math.max(width, rightColumnWidth)
+		}
+		return width
+	}
+
+	property int singleColumnHeight: {
+		var rows = []
+		if (showMeteogram) {
+			rows.push(topRowHeight)
+		}
+		if (showTimer) {
+			rows.push(topRowHeight)
+		}
+		if (showCalendar || showAgenda) {
+			rows.push(bottomRowHeight)
+		}
+		var h = 0
+		for (var i = 0; i < rows.length; i++) {
+			h += rows[i]
+		}
+		if (rows.length > 1) {
+			h += spacing * (rows.length - 1)
+		}
+		return h
+	}
 
 	property bool singleColumn: !showAgenda || !showCalendar
 	property bool singleColumnFullHeight: !plasmoid.configuration.twoColumns && showAgenda && showCalendar
@@ -41,7 +86,7 @@ MouseArea {
 		if (twoColumns) {
 			return (leftColumnWidth + spacing + rightColumnWidth) + padding * 2
 		} else {
-			return leftColumnWidth + padding * 2
+			return singleColumnWidth + padding * 2
 		}
 	}
 
@@ -50,14 +95,7 @@ MouseArea {
 		if (singleColumnFullHeight) {
 			return plasmoid.screenGeometry.height
 		} else if (singleColumn) {
-			var h = bottomRowHeight // showAgenda || showCalendar
-			if (showMeteogram) {
-				h += spacing + topRowHeight
-			}
-			if (showTimer) {
-				h += spacing + topRowHeight
-			}
-			return h + padding * 2
+			return singleColumnHeight + padding * 2
 		} else { // twoColumns
 			var h = bottomRowHeight // showAgenda || showCalendar
 			if (showMeteogram || showTimer) {
@@ -122,8 +160,8 @@ MouseArea {
 			PropertyChanges { target: popup
 				// Use the same size as the digitalclock popup
 				// since we don't need more space to fit more agenda items.
-				Layout.preferredWidth: 378 * Screen.devicePixelRatio
-				Layout.preferredHeight: 378 * Screen.devicePixelRatio
+				Layout.preferredWidth: 378 * Screen.devicePixelRatio * popup.widthScale
+				Layout.preferredHeight: 378 * Screen.devicePixelRatio * popup.heightScale
 			}
 			PropertyChanges { target: monthView
 				Layout.preferredWidth: -1

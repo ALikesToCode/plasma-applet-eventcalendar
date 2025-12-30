@@ -54,8 +54,7 @@ sh ./uninstall
 ## Configure
 
 1. Right click the Calendar > Event Calendar Settings > Google Calendar
-2. Copy the Code and enter it at the given link. Keep the settings window open.
-3. After the settings window says it's synched, click apply.
+2. Open the login link, approve access, then copy the redirect URL (localhost) or code into the settings field.
+3. After the settings window says it's synced, click apply.
 4. Go to the Weather Tab > Enter your city id for OpenWeatherMap. If their search can't find your city, try googling it with [site:openweathermap.org/city](https://www.google.ca/search?q=site%3Aopenweathermap.org%2Fcity+toronto).
-
 

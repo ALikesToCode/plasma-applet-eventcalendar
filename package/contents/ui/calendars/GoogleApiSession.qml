@@ -5,12 +5,29 @@ import "../lib/Requests.js" as Requests
 QtObject {
 	id: googleApiSession
 
-	readonly property string accessToken: plasmoid.configuration.accessToken
+	property var accountsStore
+	property string accountId: ""
+
+	readonly property string accessToken: {
+		var account = getAccount()
+		return account ? account.accessToken : ""
+	}
+
+	function getAccount() {
+		if (!accountsStore || !accountId) {
+			return null
+		}
+		return accountsStore.getAccount(accountId)
+	}
 
 	//--- Refresh Credentials
 	function checkAccessToken(callback) {
 		logger.debug('checkAccessToken')
-		if (plasmoid.configuration.accessTokenExpiresAt < Date.now() + 5000) {
+		var account = getAccount()
+		if (!account || !account.accessToken) {
+			return callback('No access token.')
+		}
+		if (account.accessTokenExpiresAt < Date.now() + 5000) {
 			updateAccessToken(callback)
 		} else {
 			callback(null)
@@ -21,7 +38,8 @@ QtObject {
 		// logger.debug('accessTokenExpiresAt', plasmoid.configuration.accessTokenExpiresAt)
 		// logger.debug('                 now', Date.now())
 		// logger.debug('refreshToken', plasmoid.configuration.refreshToken)
-		if (plasmoid.configuration.refreshToken) {
+		var account = getAccount()
+		if (account && account.refreshToken) {
 			logger.debug('updateAccessToken')
 			fetchNewAccessToken(function(err, data, xhr) {
 				if (err || (!err && data && data.error)) {
@@ -47,21 +65,27 @@ QtObject {
 	onTransactionError: logger.log(msg)
 
 	function applyAccessToken(data) {
-		plasmoid.configuration.accessToken = data.access_token
-		plasmoid.configuration.accessTokenType = data.token_type
-		plasmoid.configuration.accessTokenExpiresAt = Date.now() + data.expires_in * 1000
+		if (!accountsStore || !accountId) {
+			return
+		}
+		accountsStore.updateAccount(accountId, {
+			accessToken: data.access_token,
+			accessTokenType: data.token_type,
+			accessTokenExpiresAt: Date.now() + data.expires_in * 1000,
+		})
 		newAccessToken()
 	}
 
 	function fetchNewAccessToken(callback) {
 		logger.debug('fetchNewAccessToken')
+		var account = getAccount()
 		var url = 'https://www.googleapis.com/oauth2/v4/token'
 		Requests.post({
 			url: url,
 			data: {
-				client_id: plasmoid.configuration.sessionClientId,
-				client_secret: plasmoid.configuration.sessionClientSecret,
-				refresh_token: plasmoid.configuration.refreshToken,
+				client_id: account ? account.sessionClientId : "",
+				client_secret: account ? account.sessionClientSecret : "",
+				refresh_token: account ? account.refreshToken : "",
 				grant_type: 'refresh_token',
 			},
 		}, callback)
