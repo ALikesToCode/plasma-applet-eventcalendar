@@ -4,7 +4,7 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 
-import org.kde.kcoreaddons as KCoreAddons
+import org.kde.coreaddons as KCoreAddons
 
 import ".."
 import "../lib"

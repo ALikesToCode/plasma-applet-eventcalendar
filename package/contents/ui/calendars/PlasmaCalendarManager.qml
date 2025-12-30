@@ -1,6 +1,6 @@
 import QtQuick
 import org.kde.kirigami as Kirigami
-import org.kde.plasma.calendar as PlasmaCalendar
+import org.kde.plasma.workspace.calendar as PlasmaCalendar
 
 import "../lib"
 import "../Shared.js" as Shared

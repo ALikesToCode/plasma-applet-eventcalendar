@@ -64,7 +64,7 @@ ConfigPage {
 	Component.onCompleted: {
 		try {
 			eventPluginsManager = Qt.createQmlObject(
-				"import org.kde.plasma.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
+				"import org.kde.plasma.workspace.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
 				page
 			)
 		} catch (e) {

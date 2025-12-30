@@ -68,7 +68,7 @@ ConfigModel {
 	Component.onCompleted: {
 		try {
 			eventPluginsManager = Qt.createQmlObject(
-				"import org.kde.plasma.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
+				"import org.kde.plasma.workspace.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
 				configModel
 			)
 		} catch (e) {
@@ -86,7 +86,11 @@ ConfigModel {
 			visible: plasmoid.configuration.enabledCalendarPlugins.indexOf(pluginFilename) > -1
 		}
 
-		onObjectAdded: configModel.appendCategory(object)
-		onObjectRemoved: configModel.removeCategory(object)
+		onObjectAdded: function(index, object) {
+			configModel.appendCategory(object)
+		}
+		onObjectRemoved: function(index, object) {
+			configModel.removeCategory(object)
+		}
 	}
 }

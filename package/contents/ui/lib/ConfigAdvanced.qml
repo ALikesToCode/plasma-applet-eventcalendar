@@ -210,10 +210,8 @@ ConfigPage {
 					}
 				}
 				
-			}
 		}
 	}
-
 	// Note: Since KF5 5.78 (released 2021-01-02) (Debian 11 / Ubuntu 21.04),
 	//   ConfigPropertyMap loads the default values as plasmoid.configuration.____Default
 	//   https://invent.kde.org/frameworks/kdeclarative/-/merge_requests/38

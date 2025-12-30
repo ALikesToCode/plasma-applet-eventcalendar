@@ -13,6 +13,8 @@ Button {
 	Label {
 		id: colorTextLabel
 		anchors.centerIn: parent
-		color: Kirigami.Theme.buttonTextColor
+		color: Kirigami.Theme.buttonTextColor === undefined
+			? Kirigami.Theme.textColor
+			: Kirigami.Theme.buttonTextColor
 	}
 }
