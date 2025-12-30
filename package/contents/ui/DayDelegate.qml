@@ -19,7 +19,7 @@
 import QtQuick
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.core as PlasmaCore
-// import org.kde.plasma.workspace.calendar as PlasmaCalendar
+import org.kde.plasma.workspace.calendar as PlasmaCalendar
 
 import "LocaleFuncs.js" as LocaleFuncs
 
@@ -37,13 +37,13 @@ MouseArea {
 	readonly property bool today: {
 		var today = root.today
 		var result = true
-		if (dateMatchingPrecision >= Calendar.MatchYear) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYear) {
 			result = result && today.getFullYear() === thisDate.getFullYear()
 		}
-		if (dateMatchingPrecision >= Calendar.MatchYearAndMonth) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYearAndMonth) {
 			result = result && today.getMonth() === thisDate.getMonth()
 		}
-		if (dateMatchingPrecision >= Calendar.MatchYearMonthAndDay) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYearMonthAndDay) {
 			result = result && today.getDate() === thisDate.getDate()
 		}
 		return result
@@ -51,13 +51,13 @@ MouseArea {
 	readonly property bool selected: {
 		var current = root.currentDate
 		var result = true
-		if (dateMatchingPrecision >= Calendar.MatchYear) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYear) {
 			result = result && current.getFullYear() === thisDate.getFullYear()
 		}
-		if (dateMatchingPrecision >= Calendar.MatchYearAndMonth) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYearAndMonth) {
 			result = result && current.getMonth() === thisDate.getMonth()
 		}
-		if (dateMatchingPrecision >= Calendar.MatchYearMonthAndDay) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYearMonthAndDay) {
 			result = result && current.getDate() === thisDate.getDate()
 		}
 		return result

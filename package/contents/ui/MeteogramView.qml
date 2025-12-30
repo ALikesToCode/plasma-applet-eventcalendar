@@ -36,11 +36,11 @@ Item {
 
 	Connections {
 		target: appletConfig
-		onMeteogramTextColorChanged: graph.update()
-		onMeteogramScaleColorChanged: graph.update()
-		onMeteogramPositiveTempColorChanged: graph.update()
-		onMeteogramNegativeTempColorChanged: graph.update()
-		onMeteogramPrecipitationRawColorChanged: graph.update()
+		function onMeteogramTextColorChanged() { graph.update() }
+		function onMeteogramScaleColorChanged() { graph.update() }
+		function onMeteogramPositiveTempColorChanged() { graph.update() }
+		function onMeteogramNegativeTempColorChanged() { graph.update() }
+		function onMeteogramPrecipitationRawColorChanged() { graph.update() }
 	}
 
 	Item {

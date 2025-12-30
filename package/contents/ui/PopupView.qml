@@ -83,7 +83,7 @@ MouseArea {
 
 	Connections {
 		target: monthView
-		onDateSelected: {
+		function onDateSelected(date) {
 			// logger.debug('onDateSelected', selectedDate)
 			scrollToSelection()
 		}
@@ -255,13 +255,13 @@ MouseArea {
 			property int hoursPerDataPoint: WeatherApi.getDataPointDuration(plasmoid.configuration)
 			rainUnits: WeatherApi.getRainUnits(plasmoid.configuration)
 
-			Rectangle {
-				id: meteogramMessageBox
-				anchors.fill: parent
-				anchors.margins: Kirigami.Units.smallSpacing
-				color: "transparent"
-				border.color: Kirigami.Theme.buttonBackgroundColor
-				border.width: 1
+				Rectangle {
+					id: meteogramMessageBox
+					anchors.fill: parent
+					anchors.margins: Kirigami.Units.smallSpacing
+					color: "transparent"
+					border.color: Kirigami.Theme.buttonBackgroundColor ? Kirigami.Theme.buttonBackgroundColor : Kirigami.Theme.backgroundColor
+					border.width: 1
 
 				readonly property string message: {
 					if (!WeatherApi.weatherIsSetup(plasmoid.configuration)) {

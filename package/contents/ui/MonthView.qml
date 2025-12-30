@@ -407,7 +407,7 @@ PinchArea {
 			onHeaderClicked: {
 				stack.push(yearOverview)
 			}
-			onActivated: {
+			function onActivated(index, date, item) {
 				var rowNumber = Math.floor(index / columns)
 				week = 1 + calendarBackend.weeksModel[rowNumber]
 				root.date = date
@@ -415,7 +415,7 @@ PinchArea {
 				root.setSelectedDate(dt)
 				root.dateClicked(dt)
 			}
-			onDoubleClicked: {
+			function onDoubleClicked(index, date, item) {
 				root.dayDoubleClicked(date)
 			}
 		}
@@ -442,7 +442,7 @@ PinchArea {
 				updateDecadeOverview()
 				stack.push(decadeOverview)
 			}
-			onActivated: {
+			function onActivated(index, date, item) {
 				calendarBackend.goToMonth(date.monthNumber)
 				stack.pop()
 			}
@@ -471,7 +471,7 @@ PinchArea {
 
 			onPrevious: calendarBackend.previousDecade()
 			onNext: calendarBackend.nextDecade()
-			onActivated: {
+			function onActivated(index, date, item) {
 				calendarBackend.goToYear(date.yearNumber)
 				stack.pop()
 			}

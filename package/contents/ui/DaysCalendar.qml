@@ -54,6 +54,8 @@ Item {
 	property string todayStyle: "theme"
 
 	onShowWeekNumbersChanged: canvas.requestPaint()
+	property color themeTextColor: Kirigami.Theme.textColor
+	onThemeTextColorChanged: canvas.requestPaint()
 
 	// how precise date matching should be, 3 = day+month+year, 2 = month+year, 1 = just year
 	property int dateMatchingPrecision
@@ -296,13 +298,6 @@ Item {
 		EventCountBadge {}
 	}
 
-	Connections {
-		target: theme
-		onTextColorChanged: {
-			canvas.requestPaint()
-		}
-	}
-
 	Column {
 		id: weeksColumn
 		visible: showWeekNumbers
@@ -421,13 +416,13 @@ Item {
 					}
 				}
 
-				Connections {
-					target: daysCalendar
-					onActivateHighlightedItem: {
-						if (delegate.containsMouse) {
-							delegate.clicked(null)
+					Connections {
+						target: daysCalendar
+						function onActivateHighlightedItem() {
+							if (delegate.containsMouse) {
+								delegate.clicked(null)
+							}
 						}
-					}
 				}
 			}
 		}

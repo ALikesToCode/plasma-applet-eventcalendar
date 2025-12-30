@@ -212,7 +212,7 @@ Item {
 
 	Connections {
 		target: timerModel
-		onSecondsLeftChanged: {
+		function onSecondsLeftChanged() {
 			timerLabel.text = timerModel.formatTimer(timerModel.secondsLeft)
 		}
 	}

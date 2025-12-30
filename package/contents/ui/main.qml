@@ -74,7 +74,9 @@ PlasmoidItem {
 		id: executable
 		engine: "executable"
 		connectedSources: []
-		onNewData: disconnectSource(sourceName) // cmd finished
+		function onNewData(sourceName, data) {
+			disconnectSource(sourceName) // cmd finished
+		}
 		function getUniqueId(cmd) {
 			// Note: we assume that 'cmd' is executed quickly so that a previous call
 			// with the same 'cmd' has already finished (otherwise no new cmd will be
@@ -106,7 +108,7 @@ PlasmoidItem {
 
 			onClicked: {
 				if (mouse.button == Qt.LeftButton) {
-					plasmoid.expanded = !plasmoid.expanded
+					root.expanded = !root.expanded
 				}
 			}
 
@@ -160,7 +162,7 @@ PlasmoidItem {
 			}
 		}
 
-		property bool isExpanded: plasmoid.expanded
+		property bool isExpanded: root.expanded
 		onIsExpandedChanged: {
 			logger.debug('isExpanded', isExpanded)
 			if (isExpanded) {
@@ -185,16 +187,10 @@ PlasmoidItem {
 
 		Connections {
 			target: timeModel
-			onDateChanged: {
+			function onDateChanged() {
 				popup.updateToday()
 				logger.debug('root.onDateChanged', timeModel.currentTime, popup.today)
 			}
-		}
-
-		Binding {
-			target: plasmoid
-			property: "hideOnWindowDeactivate"
-			value: !plasmoid.configuration.pin
 		}
 
 		// Allows the user to keep the calendar open for reference
@@ -213,6 +209,7 @@ PlasmoidItem {
 	}
 
 	Plasmoid.backgroundHints: plasmoid.configuration.showBackground ? PlasmaCore.Types.DefaultBackground : PlasmaCore.Types.NoBackground
+	hideOnWindowDeactivate: !plasmoid.configuration.pin
 
 	property bool isDesktopContainment: plasmoid.location == PlasmaCore.Types.Floating
 	preferredRepresentation: isDesktopContainment ? fullRepresentation : compactRepresentation

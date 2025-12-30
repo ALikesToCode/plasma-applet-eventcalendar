@@ -9,7 +9,7 @@ import "LocaleFuncs.js" as LocaleFuncs
 Item {
 	id: agendaView
 
-	readonly property int scrollbarWidth: width - agendaScrollView.contentWidth
+	readonly property int scrollbarWidth: width - (agendaScrollView.contentItem ? agendaScrollView.contentItem.contentWidth : width)
 
 	property color inProgressColor: appletConfig.agendaInProgressColor
 	property int inProgressFontWeight: Font.Bold
@@ -22,7 +22,7 @@ Item {
 
 	Connections {
 		target: eventModel
-		onEventCreated: {
+		function onEventCreated(data) {
 			notificationManager.notify({
 				appName: i18n("Event Calendar"),
 				appIcon: "resource-calendar-insert",
@@ -34,7 +34,7 @@ Item {
 				})
 			})
 		}
-		onEventDeleted: {
+		function onEventDeleted(data) {
 			logger.logJSON('AgendaView.onEventDeleted', data)
 			notificationManager.notify({
 				appName: i18n("Event Calendar"),
@@ -53,9 +53,10 @@ Item {
 		id: agendaScrollView
 		anchors.fill: parent
 		// clip: true
-		readonly property int viewportWidth: viewport ? viewport.width : width
-		readonly property int viewportHeight: viewport ? viewport.height : height
-		readonly property int scrollY: flickableItem ? flickableItem.contentY : 0
+		readonly property int viewportWidth: contentItem ? contentItem.width : width
+		readonly property int viewportHeight: contentItem ? contentItem.height : height
+		readonly property int scrollY: contentItem ? contentItem.contentY : 0
+		readonly property int contentHeightValue: contentItem ? contentItem.contentHeight : 0
 
 		// onScrollYChanged: console.log('scrollY', scrollY)
 
@@ -83,13 +84,13 @@ Item {
 					// Component.onDestruction: console.log(Date.now(), 'AgendaListItem.onDestruction', index)
 				}
 
-				onItemAdded: {
+				function onItemAdded(index, item) {
 					// console.log(Date.now(), 'agendaRepeater.itemAdded', index)
 					if (index === root.agendaModel.count-1) {
 						populated = true
 					}
 				}
-				onItemRemoved: {
+				function onItemRemoved(index, item) {
 					// console.log(Date.now(), 'agendaRepeater.onItemRemoved', index)
 					populated = false
 				}
@@ -134,12 +135,14 @@ Item {
 				}
 				return offsetY
 			} else { // index >= agendaRepeater.count
-				return agendaScrollView.contentHeight
+				return agendaScrollView.contentHeightValue
 			}
 		}
 
 		function scrollToY(offsetY) {
-			flickableItem.contentY = Math.min(offsetY, contentHeight-viewportHeight)
+			if (contentItem) {
+				contentItem.contentY = Math.min(offsetY, contentHeightValue - viewportHeight)
+			}
 		}
 
 		function positionViewAtBeginning() {
@@ -167,7 +170,7 @@ Item {
 		}
 
 		function positionViewAtEnd() {
-			scrollToY(contentHeight)
+			scrollToY(contentHeightValue)
 		}
 	}
 

@@ -23,8 +23,12 @@ LinkRect {
 	}
 	Connections {
 		target: timeModel
-		onLoaded: agendaTaskItem.checkIfIsOverdue()
-		onMinuteChanged: agendaTaskItem.checkIfIsOverdue()
+		function onLoaded() {
+			agendaTaskItem.checkIfIsOverdue()
+		}
+		function onMinuteChanged() {
+			agendaTaskItem.checkIfIsOverdue()
+		}
 	}
 	Component.onCompleted: {
 		agendaTaskItem.checkIfIsOverdue()
@@ -180,7 +184,7 @@ LinkRect {
 
 		menuItem = contextMenu.newMenuItem()
 		menuItem.text = i18n("Edit")
-		menuItem.icon = "edit-rename"
+		menuItem.icon.name = "edit-rename"
 		menuItem.enabled = task.canEdit
 		menuItem.clicked.connect(function() {
 			editTaskForm.active = !editTaskForm.active
@@ -188,24 +192,23 @@ LinkRect {
 		})
 		contextMenu.addMenuItem(menuItem)
 
-		var deleteMenuItem = contextMenu.newSubMenu()
-		deleteMenuItem.text = i18n("Delete Event")
-		deleteMenuItem.icon = "delete"
-		menuItem = contextMenu.newMenuItem(deleteMenuItem)
+		var deleteMenu = contextMenu.newSubMenu()
+		deleteMenu.title = i18n("Delete Event")
+		deleteMenu.icon.name = "delete"
+		menuItem = deleteMenu.newMenuItem()
 		menuItem.text = i18n("Confirm Deletion")
-		menuItem.icon = "delete"
+		menuItem.icon.name = "delete"
 		menuItem.enabled = task.canEdit
 		menuItem.clicked.connect(function() {
 			logger.debug('eventModel.deleteTask', task.calendarId, task.id)
 			eventModel.deleteEvent(task.calendarId, task.id)
 		})
-		// deleteMenuItem.enabled = task.canEdit
-		deleteMenuItem.subMenu.addMenuItem(menuItem)
-		contextMenu.addMenuItem(deleteMenuItem)
+		// deleteMenu.enabled = task.canEdit
+		deleteMenu.addMenuItem(menuItem)
 
 		menuItem = contextMenu.newMenuItem()
 		menuItem.text = i18n("Edit in browser")
-		menuItem.icon = "internet-web-browser"
+		menuItem.icon.name = "internet-web-browser"
 		menuItem.enabled = !!task.htmlLink
 		menuItem.clicked.connect(function() {
 			Qt.openUrlExternally(task.htmlLink)

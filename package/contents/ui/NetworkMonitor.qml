@@ -58,33 +58,22 @@ QtObject {
 	// While comparing the i18n messages could be buggy in certain locales, at least we have a simple complete list of states.
 
 
-	// https://invent.kde.org/plasma/plasma-nm/-/blame/master/libs/declarative/networkstatus.cpp#L115
-	readonly property var connectedMessages: [
-		i18ndc("plasmanetworkmanagement-libs", "A network device is connected, but there is only link-local connectivity", "Connected"),
-		i18ndc("plasmanetworkmanagement-libs", "A network device is connected, but there is only site-local connectivity", "Connected"),
-		i18ndc("plasmanetworkmanagement-libs", "A network device is connected, with global network connectivity", "Connected"),
-	]
-	// readonly property var disconnectedMessages: [
-	// 	i18ndc("plasmanetworkmanagement-libs", "Networking is inactive and all devices are disabled", "Inactive"),
-	// 	i18ndc("plasmanetworkmanagement-libs", "There is no active network connection", "Disconnected"),
-	// 	i18ndc("plasmanetworkmanagement-libs", "Network connections are being cleaned up", "Disconnecting"),
-	// 	i18ndc("plasmanetworkmanagement-libs", "A network device is connecting to a network and there is no other available network connection", "Connecting"),
-	// ]
-
-	readonly property string networkStatus: {
-		if (plasmaNMStatusLoader.status == Loader.Ready) {
-			return plasmaNMStatusLoader.item.networkStatus
-		} else {
-			return ''
+	readonly property int connectivity: {
+		if (plasmaNMStatusLoader.status == Loader.Ready && plasmaNMStatusLoader.item) {
+			return plasmaNMStatusLoader.item.connectivity
 		}
+		return -1
 	}
 	readonly property bool isConnected: {
 		if (plasmaNMStatusLoader.status == Loader.Error) {
 			// Failed to load PlasmaNM, so treat it as connected.
 			return true
-		} else {
-			return connectedMessages.indexOf(networkStatus) >= 0
 		}
+		if (connectivity < 0) {
+			return true
+		}
+		// NetworkManager::Connectivity::NoConnectivity == 1
+		return connectivity !== 1
 	}
 
 	onIsConnectedChanged: logger.debug('NetworkMonitor.isConnected', isConnected)

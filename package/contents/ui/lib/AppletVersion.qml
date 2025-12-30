@@ -18,7 +18,7 @@ Item {
 		id: executable
 		engine: "executable"
 		connectedSources: []
-		onNewData: {
+		function onNewData(sourceName, data) {
 			var exitCode = data["exit code"]
 			var exitStatus = data["exit status"]
 			var stdout = data["stdout"]
@@ -34,7 +34,7 @@ Item {
 
 	Connections {
 		target: executable
-		onExited: {
+		function onExited(exitCode, exitStatus, stdout, stderr) {
 			version = stdout.replace('\n', ' ').trim()
 		}
 	}

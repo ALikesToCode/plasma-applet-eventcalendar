@@ -24,8 +24,12 @@ LinkRect {
 	}
 	Connections {
 		target: timeModel
-		onLoaded: agendaEventItem.checkIfInProgress()
-		onMinuteChanged: agendaEventItem.checkIfInProgress()
+		function onLoaded() {
+			agendaEventItem.checkIfInProgress()
+		}
+		function onMinuteChanged() {
+			agendaEventItem.checkIfInProgress()
+		}
 	}
 	Component.onCompleted: {
 		agendaEventItem.checkIfInProgress()
@@ -248,7 +252,7 @@ LinkRect {
 
 		menuItem = contextMenu.newMenuItem()
 		menuItem.text = i18n("Edit")
-		menuItem.icon = "edit-rename"
+		menuItem.icon.name = "edit-rename"
 		menuItem.enabled = event.canEdit
 		menuItem.clicked.connect(function() {
 			editEventForm.active = !editEventForm.active
@@ -256,24 +260,23 @@ LinkRect {
 		})
 		contextMenu.addMenuItem(menuItem)
 
-		var deleteMenuItem = contextMenu.newSubMenu()
-		deleteMenuItem.text = i18n("Delete Event")
-		deleteMenuItem.icon = "delete"
-		menuItem = contextMenu.newMenuItem(deleteMenuItem)
+		var deleteMenu = contextMenu.newSubMenu()
+		deleteMenu.title = i18n("Delete Event")
+		deleteMenu.icon.name = "delete"
+		menuItem = deleteMenu.newMenuItem()
 		menuItem.text = i18n("Confirm Deletion")
-		menuItem.icon = "delete"
+		menuItem.icon.name = "delete"
 		menuItem.enabled = event.canEdit
 		menuItem.clicked.connect(function() {
 			logger.debug('eventModel.deleteEvent', event.calendarId, event.id)
 			eventModel.deleteEvent(event.calendarId, event.id)
 		})
-		deleteMenuItem.enabled = event.canEdit
-		deleteMenuItem.subMenu.addMenuItem(menuItem)
-		contextMenu.addMenuItem(deleteMenuItem)
+		deleteMenu.enabled = event.canEdit
+		deleteMenu.addMenuItem(menuItem)
 
 		menuItem = contextMenu.newMenuItem()
 		menuItem.text = i18n("Edit in browser")
-		menuItem.icon = "internet-web-browser"
+		menuItem.icon.name = "internet-web-browser"
 		menuItem.enabled = !!event.htmlLink
 		menuItem.clicked.connect(function() {
 			Qt.openUrlExternally(event.htmlLink)
