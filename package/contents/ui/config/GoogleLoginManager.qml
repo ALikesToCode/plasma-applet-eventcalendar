@@ -14,6 +14,7 @@ Item {
 
 	GoogleAccountsStore {
 		id: accountsStore
+		configBridge: session.configBridge
 	}
 
 	property var accounts: []
@@ -63,7 +64,9 @@ Item {
 	}
 
 	Component.onCompleted: {
-		configBridge = ConfigUtils.findBridge(session)
+		if (!configBridge) {
+			configBridge = ConfigUtils.findBridge(session)
+		}
 		session.accounts = accountsStore.accounts.slice(0)
 		refreshActiveAccount()
 		refreshClientCredentials()
@@ -273,7 +276,7 @@ Item {
 		}, function(err, data, xhr) {
 			// Check for errors
 			if (err || data.error) {
-				handleError(err, data)
+				logger.log('updateTasklistList error', err, data)
 				return
 			}
 			accountsStore.updateAccount(activeAccountId, { tasklistList: data.items })

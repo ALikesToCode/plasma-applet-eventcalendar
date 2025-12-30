@@ -18,7 +18,9 @@ QtObject {
 	signal accountUpdated(string accountId)
 
 	Component.onCompleted: {
-		configBridge = ConfigUtils.findBridge(store)
+		if (!configBridge) {
+			configBridge = ConfigUtils.findBridge(store)
+		}
 		loadAccounts()
 		migrateLegacyAccountIfNeeded()
 	}

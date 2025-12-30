@@ -153,6 +153,7 @@ ConfigPage {
 
 	GoogleLoginManager {
 		id: googleLoginManager
+		configBridge: page.configBridge
 		onAccountsChanged: rebuildAccountsModel()
 		onActiveAccountIdChanged: rebuildAccountsModel()
 
