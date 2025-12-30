@@ -133,6 +133,14 @@ function parseMetadata(data) {
 	return d
 }
 
+function parseJsonMetadata(data) {
+	try {
+		return JSON.parse(data)
+	} catch (e) {
+		return null
+	}
+}
+
 function getAppletMetadata(callback) {
 	var url = Qt.resolvedUrl('.')
 
@@ -142,13 +150,16 @@ function getAppletMetadata(callback) {
 		var a = index + s.length
 		var b = url.indexOf('/', a)
 		// var packageName = url.substr(a, b-a)
-		var metadataUrl = url.substr(0, b) + '/metadata.desktop'
+		var metadataUrl = url.substr(0, b) + '/metadata.json'
 		Requests.getFile(metadataUrl, function(err, data) {
 			if (err) {
 				return callback(err)
 			}
 
-			var metadata = parseMetadata(data)
+			var metadata = parseJsonMetadata(data)
+			if (!metadata) {
+				return callback('Could not parse metadata.json.')
+			}
 			callback(null, metadata)
 		})
 	} else {
@@ -160,6 +171,6 @@ function getAppletVersion(callback) {
 	getAppletMetadata(function(err, metadata) {
 		if (err) return callback(err)
 
-		callback(err, metadata['X-KDE-PluginInfo-Version'])
+		callback(err, metadata.KPlugin && metadata.KPlugin.Version)
 	})
 }

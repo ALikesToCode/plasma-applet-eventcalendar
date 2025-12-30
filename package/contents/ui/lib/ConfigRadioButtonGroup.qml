@@ -1,8 +1,8 @@
 // Version 4
 
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 /*
 ** Example:
@@ -23,7 +23,8 @@ RowLayout {
 	default property alias _contentChildren: content.data
 	property alias label: label.text
 
-	property var exclusiveGroup: ExclusiveGroup { id: radioButtonGroup }
+	property ButtonGroup buttonGroup: ButtonGroup { id: radioButtonGroup }
+	property alias exclusiveGroup: radioButtonGroup
 
 	property string configKey: ''
 	readonly property var configValue: configKey ? plasmoid.configuration[configKey] : ""
@@ -46,7 +47,7 @@ RowLayout {
 				enabled: typeof modelData.enabled !== "undefined" ? modelData.enabled : true
 				text: modelData.text
 				checked: modelData.value === configValue
-				exclusiveGroup: radioButtonGroup
+				ButtonGroup.group: radioButtonGroup
 				onClicked: {
 					focus = true
 					if (configKey) {

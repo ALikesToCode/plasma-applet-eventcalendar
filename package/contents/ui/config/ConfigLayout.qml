@@ -1,8 +1,8 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
-import org.kde.kirigami 2.0 as Kirigami
-import QtGraphicalEffects 1.0 // Colorize
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import Qt5Compat.GraphicalEffects as QtGraphicalEffects // Colorize
 
 import ".."
 import "../lib"
@@ -15,10 +15,10 @@ ConfigPage {
 	}
 
 	//---
-	ExclusiveGroup { id: layoutGroup }
+	ButtonGroup { id: layoutGroup }
 	RadioButton {
 		text: i18n("Calendar to the left of the Agenda (Two Columns)")
-		exclusiveGroup: layoutGroup
+		ButtonGroup.group: layoutGroup
 		checked: plasmoid.configuration.twoColumns
 		onClicked: plasmoid.configuration.twoColumns = true
 		Layout.fillWidth: false
@@ -90,7 +90,7 @@ ConfigPage {
 				visible: false
 			}
 
-			ColorOverlay {
+			QtGraphicalEffects.ColorOverlay {
 				anchors.fill: parent
 				source: twoColumnsImage
 				color: syspal.text
@@ -107,7 +107,7 @@ ConfigPage {
 	//---
 	RadioButton {
 		text: i18n("Agenda below the Calendar (Single Column)")
-		exclusiveGroup: layoutGroup
+		ButtonGroup.group: layoutGroup
 		checked: !plasmoid.configuration.twoColumns
 		onClicked: plasmoid.configuration.twoColumns = false
 		Layout.fillWidth: false
@@ -174,7 +174,7 @@ ConfigPage {
 				visible: false
 			}
 
-			ColorOverlay {
+			QtGraphicalEffects.ColorOverlay {
 				anchors.fill: parent
 				source: singleColumnImage
 				color: syspal.text

@@ -1,9 +1,7 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Controls.Styles 1.1
-import QtQuick.Controls 2.0 as QQC2
-import QtQuick.Layouts 1.1
-import org.kde.kirigami 2.0 as Kirigami
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 
 import ".."
 import "../lib"
@@ -11,6 +9,8 @@ import "../lib/Requests.js" as Requests
 
 ConfigPage {
 	id: page
+
+	SystemPalette { id: syspal }
 
 	function alphaColor(c, a) {
 		return Qt.rgba(c.r, c.g, c.b, a)
@@ -143,9 +143,9 @@ ConfigPage {
 					}
 				}
 
-				QQC2.Menu {
+				Menu {
 					id: contextMenu
-					QQC2.MenuItem {
+					MenuItem {
 						text: i18n("Copy Link")
 						onTriggered: clipboardHelper.copyText(googleLoginManager.authorizationCodeUrl)
 					}
@@ -195,7 +195,7 @@ ConfigPage {
 		}
 
 		Button {
-			iconName: "view-refresh"
+			icon.name: "view-refresh"
 			text: i18n("Refresh")
 			onClicked: googleLoginManager.updateCalendarList()
 		}
@@ -228,26 +228,38 @@ ConfigPage {
 			Repeater {
 				model: calendarsModel
 				delegate: CheckBox {
+					id: calendarCheckBox
 					text: model.name
 					checked: model.show
-					style: CheckBoxStyle {
-						label: RowLayout {
-							Rectangle {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								color: model.backgroundColor
-							}
-							Label {
-								id: labelText
-								text: control.text
-							}
-							LockIcon {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								visible: model.isReadOnly
-							}
+					indicator: Rectangle {
+						implicitWidth: 12
+						implicitHeight: 12
+						radius: 3
+						border.width: 1
+						border.color: syspal.text
+						color: calendarCheckBox.checked ? model.backgroundColor : syspal.base
+						Label {
+							visible: calendarCheckBox.checked
+							text: "✓"
+							color: model.foregroundColor
+							font.pixelSize: 8
+							anchors.centerIn: parent
 						}
-						
+					}
+					contentItem: RowLayout {
+						Rectangle {
+							Layout.fillHeight: true
+							Layout.preferredWidth: height
+							color: model.backgroundColor
+						}
+						Label {
+							text: calendarCheckBox.text
+						}
+						LockIcon {
+							Layout.fillHeight: true
+							Layout.preferredWidth: height
+							visible: model.isReadOnly
+						}
 					}
 
 					onClicked: {
@@ -278,7 +290,7 @@ ConfigPage {
 		}
 
 		Button {
-			iconName: "view-refresh"
+			icon.name: "view-refresh"
 			text: i18n("Refresh")
 			onClicked: googleLoginManager.updateTasklistList()
 		}
@@ -311,26 +323,38 @@ ConfigPage {
 			Repeater {
 				model: tasklistsModel
 				delegate: CheckBox {
+					id: tasklistCheckBox
 					text: model.name
 					checked: model.show
-					style: CheckBoxStyle {
-						label: RowLayout {
-							Rectangle {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								color: model.backgroundColor
-							}
-							Label {
-								id: labelText
-								text: control.text
-							}
-							LockIcon {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								visible: model.isReadOnly
-							}
+					indicator: Rectangle {
+						implicitWidth: 12
+						implicitHeight: 12
+						radius: 3
+						border.width: 1
+						border.color: syspal.text
+						color: tasklistCheckBox.checked ? model.backgroundColor : syspal.base
+						Label {
+							visible: tasklistCheckBox.checked
+							text: "✓"
+							color: model.foregroundColor
+							font.pixelSize: 8
+							anchors.centerIn: parent
 						}
-						
+					}
+					contentItem: RowLayout {
+						Rectangle {
+							Layout.fillHeight: true
+							Layout.preferredWidth: height
+							color: model.backgroundColor
+						}
+						Label {
+							text: tasklistCheckBox.text
+						}
+						LockIcon {
+							Layout.fillHeight: true
+							Layout.preferredWidth: height
+							visible: model.isReadOnly
+						}
 					}
 
 					onClicked: {

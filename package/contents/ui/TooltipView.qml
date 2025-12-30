@@ -2,12 +2,12 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents3
-import org.kde.plasma.extras as PlasmaExtras
 import org.kde.plasma.private.digitalclock as DigitalClock
 
 Item {
 	id: tooltipContentItem
 
+	property Item appletItem
 	property int preferredTextWidth: Kirigami.Units.gridUnit * 20
 
 	width: childrenRect.width + Kirigami.Units.gridUnit
@@ -20,7 +20,7 @@ Item {
 	readonly property string timezoneTimeFormat: Qt.locale().timeFormat(Locale.ShortFormat)
 
 	function timeForZone(zone) {
-		var compactRepresentationItem = plasmoid.compactRepresentationItem
+		var compactRepresentationItem = appletItem ? appletItem.compactRepresentationItem : null
 		if (!compactRepresentationItem) {
 			return ""
 		}
@@ -74,7 +74,7 @@ Item {
 			ColumnLayout {
 				spacing: 0
 
-				PlasmaExtras.Heading {
+				Kirigami.Heading {
 					id: tooltipMaintext
 					level: 3
 					Layout.minimumWidth: Math.min(implicitWidth, preferredTextWidth)

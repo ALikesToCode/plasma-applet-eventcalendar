@@ -25,7 +25,6 @@ import org.kde.kirigami as Kirigami
 import org.kde.ksvg as KSvg
 // import org.kde.plasma.workspace.calendar as PlasmaCalendar
 import org.kde.plasma.components as PlasmaComponents3
-import org.kde.plasma.extras as PlasmaExtras
 
 import "./badges"
 
@@ -101,7 +100,7 @@ Item {
 		}
 		spacing: Kirigami.Units.smallSpacing
 
-		PlasmaExtras.Heading {
+		Kirigami.Heading {
 			id: heading
 
 			Layout.fillWidth: true

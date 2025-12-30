@@ -1,17 +1,17 @@
 // Version 2
 
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 RowLayout {
 	id: configSlider
 
 	property string configKey: ''
-	property alias maximumValue: slider.maximumValue
-	property alias minimumValue: slider.minimumValue
+	property alias maximumValue: slider.to
+	property alias minimumValue: slider.from
 	property alias stepSize: slider.stepSize
-	property alias updateValueWhileDragging: slider.updateValueWhileDragging
+	property alias updateValueWhileDragging: slider.live
 	property alias value: slider.value
 
 	property alias before: labelBefore.text
@@ -32,7 +32,7 @@ RowLayout {
 		value: plasmoid.configuration[configKey]
 		// onValueChanged: plasmoid.configuration[configKey] = value
 		onValueChanged: serializeTimer.start()
-		maximumValue: 2147483647
+		to: 2147483647
 	}
 
 	Label {

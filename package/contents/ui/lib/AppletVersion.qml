@@ -1,17 +1,20 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.plasmoid 2.0
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import org.kde.plasma.plasma5support as Plasma5Support
+import org.kde.plasma.plasmoid
 
 Item {
 	implicitWidth: label.implicitWidth
 	implicitHeight: label.implicitHeight
 
 	property string version: "?"
-	property string metadataFilepath: plasmoid.file("", "../metadata.desktop")
+	property string metadataFilepath: {
+		var path = plasmoid.file("", "metadata.json")
+		return path.indexOf("file://") === 0 ? path.slice(7) : path
+	}
 
-	PlasmaCore.DataSource {
+	Plasma5Support.DataSource {
 		id: executable
 		engine: "executable"
 		connectedSources: []
@@ -42,7 +45,7 @@ Item {
 	}
 
 	Component.onCompleted: {
-		var cmd = 'kreadconfig5 --file "' + metadataFilepath + '" --group "Desktop Entry" --key "X-KDE-PluginInfo-Version"'
+		var cmd = "python3 -c \"import json;print(json.load(open('" + metadataFilepath + "'))['KPlugin']['Version'])\""
 		executable.exec(cmd)
 	}
 

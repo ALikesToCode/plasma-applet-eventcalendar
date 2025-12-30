@@ -1,19 +1,24 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
-
-import org.kde.plasma.private.digitalclock 1.0 as DigitalClock
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import org.kde.kcmutils as KCM
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.private.digitalclock as DigitalClock
 
 import ".."
 import "../lib"
 
 // Mostly copied from digitalclock
-ColumnLayout { // ConfigPage creates a binding loop when a child uses fillHeight
+KCM.SimpleKCM {
 	id: page
 
 	function digitalclock_i18n(message) {
 		return i18nd("plasma_applet_org.kde.plasma.digitalclock", message)
 	}
+
+	property int cityColumnWidth: Kirigami.Units.gridUnit * 10
+	property int regionColumnWidth: Kirigami.Units.gridUnit * 10
+	property int tooltipColumnWidth: Kirigami.Units.gridUnit * 6
 
 	DigitalClock.TimeZoneModel {
 		id: timeZoneModel
@@ -26,94 +31,135 @@ ColumnLayout { // ConfigPage creates a binding loop when a child uses fillHeight
 		id: messageWidget
 	}
 
-	TextField {
-		id: filter
-		Layout.fillWidth: true
-		placeholderText: digitalclock_i18n("Search Time Zones")
-	}
-
-	TableView {
-		id: timeZoneView
+	ColumnLayout {
 		Layout.fillWidth: true
 		Layout.fillHeight: true
+		spacing: Kirigami.Units.smallSpacing
 
-		signal toggleCurrent
-
-		Keys.onSpacePressed: toggleCurrent()
-
-		model: DigitalClock.TimeZoneFilterProxy {
-			sourceModel: timeZoneModel
-			filterString: filter.text
+		TextField {
+			id: filter
+			Layout.fillWidth: true
+			placeholderText: digitalclock_i18n("Search Time Zones")
 		}
 
-		TableViewColumn {
-			role: "city"
-			title: digitalclock_i18n("City")
-		}
-		TableViewColumn {
-			role: "region"
-			title: digitalclock_i18n("Region")
-		}
-		TableViewColumn {
-			role: "comment"
-			title: digitalclock_i18n("Comment")
-		}
-		TableViewColumn {
-			role: "checked"
-			title: i18n("Tooltip")
-			delegate: CheckBox {
-				id: checkBox
-				anchors.centerIn: parent
-				checked: styleData.value
-				activeFocusOnTab: false // only let the TableView as a whole get focus
+		RowLayout {
+			Layout.fillWidth: true
+			spacing: Kirigami.Units.smallSpacing
 
-				function setValue(checked) {
-					if (!checked && model.region == "Local") {
-						messageWidget.warn(i18n("Cannot deselect Local time from the tooltip"))
-					} else {
-						model.checked = checked // needed for model's setData to be called
-					}
-					checkBox.checked = Qt.binding(function(){ return styleData.value })
-				}
+			Label {
+				text: digitalclock_i18n("City")
+				font.bold: true
+				Layout.preferredWidth: page.cityColumnWidth
+			}
+			Label {
+				text: digitalclock_i18n("Region")
+				font.bold: true
+				Layout.preferredWidth: page.regionColumnWidth
+			}
+			Label {
+				text: digitalclock_i18n("Comment")
+				font.bold: true
+				Layout.fillWidth: true
+			}
+			Label {
+				text: i18n("Tooltip")
+				font.bold: true
+				Layout.preferredWidth: page.tooltipColumnWidth
+				horizontalAlignment: Text.AlignHCenter
+			}
+		}
 
-				onClicked: checkBox.setValue(checked)
+		ListView {
+			id: timeZoneView
+			Layout.fillWidth: true
+			Layout.fillHeight: true
+			clip: true
+			focus: true
+			keyNavigationEnabled: true
+			highlightFollowsCurrentItem: true
+			highlight: Rectangle {
+				color: Kirigami.Theme.highlightColor
+				opacity: 0.15
+			}
 
-				Connections {
-					target: timeZoneView
-					onToggleCurrent: {
-						if (styleData.row === timeZoneView.currentRow) {
-							checkBox.setValue(!checkBox.checked)
-						}
-					}
+			Keys.onSpacePressed: {
+				if (timeZoneView.currentItem && timeZoneView.currentItem.toggleChecked) {
+					timeZoneView.currentItem.toggleChecked()
 				}
 			}
 
-			resizable: false
-			movable: false
+			model: DigitalClock.TimeZoneFilterProxy {
+				sourceModel: timeZoneModel
+				filterString: filter.text
+			}
+
+			delegate: RowLayout {
+				id: delegateRoot
+				width: timeZoneView.width
+				spacing: Kirigami.Units.smallSpacing
+
+				function setValue(newChecked) {
+					if (!newChecked && region == "Local") {
+						messageWidget.warn(i18n("Cannot deselect Local time from the tooltip"))
+					} else {
+						model.checked = newChecked
+					}
+				}
+
+				function toggleChecked() {
+					setValue(!checkedBox.checked)
+				}
+
+				MouseArea {
+					anchors.fill: parent
+					onClicked: timeZoneView.currentIndex = index
+				}
+
+				Label {
+					text: city
+					Layout.preferredWidth: page.cityColumnWidth
+					elide: Text.ElideRight
+				}
+				Label {
+					text: region
+					Layout.preferredWidth: page.regionColumnWidth
+					elide: Text.ElideRight
+				}
+				Label {
+					text: comment
+					Layout.fillWidth: true
+					elide: Text.ElideRight
+				}
+				CheckBox {
+					id: checkedBox
+					Layout.preferredWidth: page.tooltipColumnWidth
+					checked: model.checked
+					onClicked: delegateRoot.setValue(checked)
+				}
+			}
 		}
-	}
 
+		ButtonGroup { id: timezoneDisplayType }
+		RowLayout {
+			Label {
+				text: digitalclock_i18n("Display time zone as:")
+			}
 
-	ExclusiveGroup { id: timezoneDisplayType }
-	RowLayout {
-		Label {
-			text: digitalclock_i18n("Display time zone as:")
-		}
+			RadioButton {
+				id: timezoneCityRadio
+				text: digitalclock_i18n("Time zone city")
+				ButtonGroup.group: timezoneDisplayType
+				checked: !plasmoid.configuration.displayTimezoneAsCode
+				onClicked: plasmoid.configuration.displayTimezoneAsCode = false
+			}
 
-		RadioButton {
-			id: timezoneCityRadio
-			text: digitalclock_i18n("Time zone city")
-			exclusiveGroup: timezoneDisplayType
-			checked: !plasmoid.configuration.displayTimezoneAsCode
-			onClicked: plasmoid.configuration.displayTimezoneAsCode = false
-		}
-
-		RadioButton {
-			id: timezoneCodeRadio
-			text: digitalclock_i18n("Time zone code")
-			exclusiveGroup: timezoneDisplayType
-			checked: plasmoid.configuration.displayTimezoneAsCode
-			onClicked: plasmoid.configuration.displayTimezoneAsCode = true
+			RadioButton {
+				id: timezoneCodeRadio
+				text: digitalclock_i18n("Time zone code")
+				ButtonGroup.group: timezoneDisplayType
+				checked: plasmoid.configuration.displayTimezoneAsCode
+				onClicked: plasmoid.configuration.displayTimezoneAsCode = true
+			}
 		}
 	}
 }
