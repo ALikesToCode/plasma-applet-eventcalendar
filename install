@@ -24,6 +24,100 @@ cleanup() {
 
 trap cleanup EXIT
 
+detect_plasma_major() {
+    local version_line=""
+    if command -v plasmashell >/dev/null 2>&1; then
+        version_line=$(plasmashell --version 2>/dev/null | head -n1 || true)
+        if [[ "$version_line" =~ ([0-9]+)\. ]]; then
+            echo "${BASH_REMATCH[1]}"
+            return 0
+        fi
+    fi
+
+    if command -v kpackagetool6 >/dev/null 2>&1; then
+        echo "6"
+        return 0
+    fi
+
+    if command -v kpackagetool5 >/dev/null 2>&1; then
+        echo "5"
+        return 0
+    fi
+
+    return 1
+}
+
+select_target_branch() {
+    local plasma_major="$1"
+    local default_branch="master"
+
+    if [ "$plasma_major" = "6" ]; then
+        echo "plasma-6"
+        return 0
+    fi
+
+    echo "$default_branch"
+}
+
+update_repo_for_plasma() {
+    local plasma_major="$1"
+    local target_branch=""
+    local current_branch=""
+
+    if ! command -v git >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        return 0
+    fi
+
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        log "WARNING: Uncommitted changes detected. Skipping branch update."
+        return 0
+    fi
+
+    target_branch="$(select_target_branch "$plasma_major")"
+
+    log "Fetching updates from origin..."
+    if ! git fetch --prune origin; then
+        log "WARNING: Git fetch failed. Continuing install."
+        return 0
+    fi
+
+    if ! git show-ref --verify --quiet "refs/remotes/origin/$target_branch" \
+        && ! git show-ref --verify --quiet "refs/heads/$target_branch"; then
+        log "WARNING: Target branch '$target_branch' not found. Staying on current branch."
+        return 0
+    fi
+
+    current_branch="$(git rev-parse --abbrev-ref HEAD)"
+    if [ "$current_branch" != "$target_branch" ]; then
+        log "Switching to branch '$target_branch'..."
+        if git show-ref --verify --quiet "refs/heads/$target_branch"; then
+            git checkout "$target_branch"
+        else
+            git checkout -b "$target_branch" "origin/$target_branch"
+        fi
+    fi
+
+    log "Pulling updates from the '$target_branch' branch..."
+    if ! git pull --ff-only origin "$target_branch"; then
+        log "WARNING: Git pull failed. Continuing install."
+    fi
+}
+
+select_kpackage_tool() {
+    local plasma_major="$1"
+
+    if [ "$plasma_major" = "6" ]; then
+        echo "kpackagetool6"
+        return 0
+    fi
+
+    echo "kpackagetool5"
+}
+
 # Function to check if a command was successful
 check_command_success() {
     if [ "$1" != "0" ]; then
@@ -35,6 +129,8 @@ check_command_success() {
 DISTRO=""
 DISTRO_LIKE=""
 DISTRO_FAMILY=""
+PLASMA_MAJOR=""
+KPACKAGE_TOOL=""
 
 detect_distro() {
     if [ -f /etc/os-release ]; then
@@ -91,16 +187,31 @@ install_requirements() {
 
     case "$DISTRO_FAMILY" in
         "debian")
-            required_commands=("kpackagetool6")
-            packages_to_install=("kpackagetool6")
+            if [ "$PLASMA_MAJOR" = "6" ]; then
+                required_commands=("kpackagetool6")
+                packages_to_install=("kpackagetool6")
+            else
+                required_commands=("kpackagetool5")
+                packages_to_install=("kpackagetool5")
+            fi
             ;;
         "arch")
-            required_commands=("kpackagetool6")
-            packages_to_install=("kpackage")
+            if [ "$PLASMA_MAJOR" = "6" ]; then
+                required_commands=("kpackagetool6")
+                packages_to_install=("kpackage")
+            else
+                required_commands=("kpackagetool5")
+                packages_to_install=("kpackage5")
+            fi
             ;;
         "fedora")
-            required_commands=("kpackagetool6")
-            packages_to_install=("kf6-kpackage")
+            if [ "$PLASMA_MAJOR" = "6" ]; then
+                required_commands=("kpackagetool6")
+                packages_to_install=("kf6-kpackage")
+            else
+                required_commands=("kpackagetool5")
+                packages_to_install=("kf5-kpackage")
+            fi
             ;;
         *)
             echo "Unsupported distribution: ${DISTRO:-unknown}"
@@ -117,8 +228,32 @@ install_requirements() {
     done
 }
 
+PLASMA_MAJOR="$(detect_plasma_major || true)"
+if [ -z "$PLASMA_MAJOR" ]; then
+    log "WARNING: Unable to detect Plasma version; defaulting to Plasma 6."
+    PLASMA_MAJOR="6"
+fi
+
+update_repo_for_plasma "$PLASMA_MAJOR"
+
+KPACKAGE_TOOL="$(select_kpackage_tool "$PLASMA_MAJOR")"
+
 # Install script requirements
 install_requirements
+
+if ! command -v "$KPACKAGE_TOOL" >/dev/null 2>&1; then
+    for candidate in kpackagetool6 kpackagetool5 kpackagetool; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            KPACKAGE_TOOL="$candidate"
+            break
+        fi
+    done
+fi
+
+if ! command -v "$KPACKAGE_TOOL" >/dev/null 2>&1; then
+    log "ERROR: kpackagetool not found"
+    exit 1
+fi
 
 # Parse arguments
 restartPlasmashell=false
@@ -153,7 +288,7 @@ if [ -z "$packageNamespace" ]; then
 fi
 
 # Check if package is already installed
-if ! kpackagetool6 --list-types | grep -q "Plasma/Applet"; then
+if ! "$KPACKAGE_TOOL" --list-types | grep -q "Plasma/Applet"; then
     log "ERROR: Plasma/Applet package type not available"
     exit 1
 fi

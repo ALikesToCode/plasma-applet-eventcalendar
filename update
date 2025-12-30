@@ -24,14 +24,84 @@ cleanup() {
 
 trap cleanup EXIT
 
+detect_plasma_major() {
+    local version_line=""
+    if command -v plasmashell >/dev/null 2>&1; then
+        version_line=$(plasmashell --version 2>/dev/null | head -n1 || true)
+        if [[ "$version_line" =~ ([0-9]+)\. ]]; then
+            echo "${BASH_REMATCH[1]}"
+            return 0
+        fi
+    fi
+
+    if command -v kpackagetool6 >/dev/null 2>&1; then
+        echo "6"
+        return 0
+    fi
+
+    if command -v kpackagetool5 >/dev/null 2>&1; then
+        echo "5"
+        return 0
+    fi
+
+    return 1
+}
+
+# Select the target branch based on the detected Plasma version.
+select_target_branch() {
+    local plasma_major="$1"
+    local default_branch="master"
+
+    if [ "$plasma_major" = "6" ]; then
+        echo "plasma-6"
+        return 0
+    fi
+
+    echo "$default_branch"
+}
+
 # Ensure we're in a git repository
 if ! git rev-parse --git-dir > /dev/null 2>&1; then
     log "ERROR: Not in a git repository"
     exit 1
 fi
 
-log "Pulling updates from the master branch..."
-if ! git pull origin master; then
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    log "ERROR: Uncommitted changes detected. Please commit or stash before updating."
+    exit 1
+fi
+
+plasma_major="$(detect_plasma_major || true)"
+if [ -z "$plasma_major" ]; then
+    log "WARNING: Unable to detect Plasma version; defaulting to master branch."
+fi
+
+target_branch="$(select_target_branch "$plasma_major")"
+
+log "Fetching updates from origin..."
+if ! git fetch --prune origin; then
+    log "ERROR: Git fetch failed"
+    exit 1
+fi
+
+if ! git show-ref --verify --quiet "refs/remotes/origin/$target_branch" \
+    && ! git show-ref --verify --quiet "refs/heads/$target_branch"; then
+    log "WARNING: Target branch '$target_branch' not found. Staying on current branch."
+    target_branch="$(git rev-parse --abbrev-ref HEAD)"
+fi
+
+current_branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$current_branch" != "$target_branch" ]; then
+    log "Switching to branch '$target_branch'..."
+    if git show-ref --verify --quiet "refs/heads/$target_branch"; then
+        git checkout "$target_branch"
+    else
+        git checkout -b "$target_branch" "origin/$target_branch"
+    fi
+fi
+
+log "Pulling updates from the '$target_branch' branch..."
+if ! git pull --ff-only origin "$target_branch"; then
     log "ERROR: Git pull failed"
     exit 1
 fi
