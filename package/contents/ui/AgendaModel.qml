@@ -210,10 +210,10 @@ ListModel {
 					var taskIsOverdue = eventItem.dueEndTime < now
 					if (taskIsOverdue) {
 						eventItem.start = {
-							date: Shared.dateString(now),
+							date: Shared.localeDateString(now),
 						}
 						eventItem.end = {
-							date: Shared.dateString(now),
+							date: Shared.localeDateString(now),
 						}
 						eventItem.startDateTime = now
 						eventItem.endDateTime = now

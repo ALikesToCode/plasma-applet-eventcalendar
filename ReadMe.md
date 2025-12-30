@@ -1,4 +1,7 @@
-Please note that this is a work in progress and is not currently operational.
+Note: This project has been updated for KDE Plasma 6 compatibility.
+
+This is a fork of the original Event Calendar applet, featuring several quality-of-life improvements and a fix for Google Calendar synchronization. While it is functional, there may still be minor issues, please report them in the Issues tab.
+
 <hr>
 
 # Event Calendar Updated version

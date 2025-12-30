@@ -157,7 +157,7 @@ Loader {
 						}
 						function getDueDate() {
 							if (dueTimeSelector.hasDueDate) {
-								return Shared.dateString(dateTime)  + 'T00:00:00.000Z'
+								return Shared.localeDateString(dateTime) + 'T00:00:00.000Z'
 							} else {
 								return null
 							}
