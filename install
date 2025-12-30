@@ -32,39 +32,78 @@ check_command_success() {
     fi
 }
 
-# Function to install required packages
-install_requirements() {
-    # Determine the Linux distribution
+DISTRO=""
+DISTRO_LIKE=""
+DISTRO_FAMILY=""
+
+detect_distro() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        DISTRO=$ID
+        DISTRO="${ID:-}"
+        DISTRO_LIKE="${ID_LIKE:-}"
     elif type lsb_release >/dev/null 2>&1; then
         DISTRO=$(lsb_release -i | cut -d: -f2 | sed s/'^\t'//)
+        DISTRO_LIKE=""
     else
         DISTRO=$(uname -s)
+        DISTRO_LIKE=""
     fi
 
-    # Normalize distro names to lowercase
     DISTRO=$(echo "$DISTRO" | tr '[:upper:]' '[:lower:]')
+    DISTRO_LIKE=$(echo "$DISTRO_LIKE" | tr '[:upper:]' '[:lower:]')
 
-    case "$DISTRO" in
-        "debian"|"ubuntu"|"kali"|"raspbian"|"neon")
+    DISTRO_FAMILY="$DISTRO"
+    case " $DISTRO $DISTRO_LIKE " in
+        *"arch"*|*"endeavouros"*|*"manjaro"*|*"garuda"*)
+            DISTRO_FAMILY="arch"
+            ;;
+        *"debian"*|*"ubuntu"*|*"neon"*|*"kali"*|*"raspbian"*)
+            DISTRO_FAMILY="debian"
+            ;;
+        *"fedora"*|*"rhel"*|*"centos"*)
+            DISTRO_FAMILY="fedora"
+            ;;
+    esac
+}
+
+install_packages() {
+    case "$DISTRO_FAMILY" in
+        "debian")
+            sudo apt-get update
+            sudo apt-get install -y "$@"
+            ;;
+        "arch")
+            sudo pacman -S --needed "$@"
+            ;;
+        "fedora")
+            sudo dnf install -y "$@"
+            ;;
+        *)
+            echo "Unsupported distribution: ${DISTRO:-unknown}"
+            return 1
+            ;;
+    esac
+}
+
+# Function to install required packages
+install_requirements() {
+    detect_distro
+
+    case "$DISTRO_FAMILY" in
+        "debian")
             required_commands=("kpackagetool6")
             packages_to_install=("kpackagetool6")
-            install_cmd="sudo apt-get update && sudo apt-get install -y"
             ;;
-        "arch"|"endeavouros"|"manjaro"|"garuda")
-            required_commands=("kpackagetool6") 
-            packages_to_install=("kpackagetool6")
-            install_cmd="sudo pacman -S"
+        "arch")
+            required_commands=("kpackagetool6")
+            packages_to_install=("kpackage")
             ;;
         "fedora")
             required_commands=("kpackagetool6")
             packages_to_install=("kf6-kpackage")
-            install_cmd="sudo dnf install"
             ;;
         *)
-            echo "Unsupported distribution: $DISTRO"
+            echo "Unsupported distribution: ${DISTRO:-unknown}"
             return 1
             ;;
     esac
@@ -72,7 +111,7 @@ install_requirements() {
     for i in "${!required_commands[@]}"; do
         if ! command -v "${required_commands[$i]}" &> /dev/null; then
             echo "${required_commands[$i]} is not installed. Attempting to install..."
-            $install_cmd "${packages_to_install[$i]}"
+            install_packages "${packages_to_install[$i]}"
             check_command_success "$?" "Failed to install ${packages_to_install[$i]}"
         fi
     done
@@ -101,17 +140,8 @@ fi
 # Install jq if needed
 if ! command -v jq &> /dev/null; then
     log "Installing jq..."
-    case "$DISTRO" in
-        "debian"|"ubuntu"|"kali"|"raspbian")
-            sudo apt-get install -y jq
-            ;;
-        "arch")
-            sudo pacman -S jq
-            ;;
-        "fedora")
-            sudo dnf install -y jq
-            ;;
-    esac
+    install_packages "jq"
+    check_command_success "$?" "Failed to install jq"
 fi
 
 # Read package information
@@ -123,8 +153,7 @@ if [ -z "$packageNamespace" ]; then
 fi
 
 # Check if package is already installed
-kpackagetool6 --list-types | grep -q "Plasma/Applet" || true
-if [ $? -ne 0 ]; then
+if ! kpackagetool6 --list-types | grep -q "Plasma/Applet"; then
     log "ERROR: Plasma/Applet package type not available"
     exit 1
 fi

@@ -21,7 +21,7 @@ Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.
 ## A) Install via GitHub
 
 ```
-git clone https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
+git clone -b plasma-6 https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
 cd eventcalendar
 sh ./install
 ```
