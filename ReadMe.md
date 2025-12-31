@@ -4,6 +4,15 @@ This is an updated version that I modified for my own needs, with fix for Google
 
 Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.
 
+## Branch guide
+
+- Plasma 6: use the `plasma-6` branch.
+- Plasma 5: `master` is the legacy branch.
+
+## Contributing
+
+See `CONTRIBUTING.md` for guidelines and `MAINTENANCE.md` for project status.
+
 ## Screenshots
 
 ![](https://i.imgur.com/qdJ71sb.jpg)
@@ -13,6 +22,16 @@ Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.
 
 
 ## A) Install via GitHub
+
+Plasma 6:
+
+```
+git clone -b plasma-6 https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
+cd eventcalendar
+sh ./install
+```
+
+Plasma 5 (legacy):
 
 ```
 git clone https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
@@ -24,7 +43,7 @@ To update, run the `sh ./update` script. It will run a `git pull` then reinstall
 
 
 
-## Update to GitHub master
+## Update to GitHub master (Plasma 5 only)
 
 If you're asked to test something, you can do so by installing the latest unreleased code.
 
@@ -51,5 +70,4 @@ sh ./uninstall
 2. Copy the Code and enter it at the given link. Keep the settings window open.
 3. After the settings window says it's synched, click apply.
 4. Go to the Weather Tab > Enter your city id for OpenWeatherMap. If their search can't find your city, try googling it with [site:openweathermap.org/city](https://www.google.ca/search?q=site%3Aopenweathermap.org%2Fcity+toronto).
-
 
