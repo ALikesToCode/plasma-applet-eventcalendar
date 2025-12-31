@@ -213,7 +213,7 @@ CalendarManager {
 	function fetchGoogleAccountTasks_err(err, data, xhr) {
 		logger.debug('fetchGoogleAccountTasks_err', err, data, xhr)
 		googleTasksManager.asyncRequestsDone += 1
-		return handleError(err, data, xhr)
+		return googleTasksManager.handleError(err, data, xhr)
 	}
 	function fetchGoogleAccountTasks_done(results) {
 		for (var i = 0; i < results.length; i++) {
@@ -460,7 +460,7 @@ CalendarManager {
 	}
 	function createEvent_err(err, data, xhr) {
 		logger.log(calendarManagerId, 'createEvent_err', err, data, xhr)
-		return handleError(err, data, xhr)
+		return googleTasksManager.handleError(err, data, xhr)
 	}
 
 	function createGoogleTask(args, callback) {
@@ -535,7 +535,7 @@ CalendarManager {
 	}
 	function deleteEvent_err(err, data, xhr) {
 		logger.log(calendarManagerId, 'deleteEvent_err', err, data, xhr)
-		return handleError(err, data, xhr)
+		return googleTasksManager.handleError(err, data, xhr)
 	}
 
 	function deleteGoogleTask(args, callback) {
@@ -620,7 +620,7 @@ CalendarManager {
 	}
 	function setEventProperties_err(err, data, xhr) {
 		logger.log(calendarManagerId, 'setEventProperties_err', err, data, xhr)
-		return handleError(err, data, xhr)
+		return googleTasksManager.handleError(err, data, xhr)
 	}
 
 	function updateGoogleTask(args, callback) {

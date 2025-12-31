@@ -40,10 +40,10 @@ LinkRect {
 	readonly property string eventTimestamp: {
 		if (model.due) {
 			var dueDateTime = model.dueDateTime
-			if (!Shared.isValidDate(dueDateTime)) {
+			if (!(dueDateTime instanceof Date)) {
 				dueDateTime = new Date(dueDateTime)
 			}
-			if (!Shared.isValidDate(dueDateTime)) {
+			if (!(dueDateTime instanceof Date) || isNaN(dueDateTime.getTime())) {
 				return ''
 			}
 			if (model.due.indexOf('T00:00:00.000Z') !== -1) {
