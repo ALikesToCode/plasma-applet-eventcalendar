@@ -153,11 +153,19 @@ Item {
 		if (customId || customSecret) {
 			return
 		}
+		var useDesktopClient = readConfig("useDesktopClient", false)
 		var latestId = readConfig("latestClientId", "")
-		if (!latestId) {
-			writeConfig("latestClientId", defaultClientId)
-		}
 		var latestSecret = readConfig("latestClientSecret", "")
+		if (!latestId) {
+			writeConfig("latestClientId", legacyClientId)
+			writeConfig("latestClientSecret", legacyClientSecret)
+			return
+		}
+		if (!useDesktopClient && latestId === defaultClientId) {
+			writeConfig("latestClientId", legacyClientId)
+			writeConfig("latestClientSecret", legacyClientSecret)
+			return
+		}
 		if (latestId === legacyClientId && !latestSecret) {
 			writeConfig("latestClientSecret", legacyClientSecret)
 		}

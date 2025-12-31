@@ -132,14 +132,18 @@ ConfigPage {
 			cmd.push('--client_secret')
 			cmd.push(authContext.clientSecret)
 		}
+		debugOutput.text = "Attempting to run:\n" + JSON.stringify(cmd) + "\n\n"
 		if (authContext.pkceVerifier) {
 			cmd.push('--code_verifier')
 			cmd.push(authContext.pkceVerifier)
 		}
-		Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
-		console.log('google_redirect.py command:', JSON.stringify(cmd))
+// 		Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+		var cmdStr = JSON.stringify(cmd)
+		console.log('google_redirect.py command:', cmdStr)
+		// debugOutput.text = "Running:\n" + cmdStr + "\n\n"
 		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			autoLoginInProgress = false
+			debugOutput.text += "Exit: " + exitCode + "\nStdout: " + stdout + "\nStderr: " + stderr + "\n"
 			if (exitCode !== 0) {
 				console.error('google_redirect.py failed:', exitCode, stderr)
 				messageWidget.err(i18n("Auto login failed. See logs for details."))
@@ -714,6 +718,48 @@ ConfigPage {
 			configKey: 'googleHideGoalsDesc'
 			text: i18n("Hide \"This event was added from Goals in Google Calendar\" description")
 			onClicked: markDirty()
+		}
+	}
+
+	HeaderText {
+		text: "Debug Info (Temporary)"
+		visible: true
+	}
+	ColumnLayout {
+		Layout.fillWidth: true
+		RowLayout {
+			Button {
+				text: "Test Echo"
+				onClicked: {
+					var cmd = ['echo', 'Hello World']
+					debugOutput.text = "Running: echo Hello World\n"
+					callbackListener.exec(cmd, function(c, code, status, out, err) {
+						debugOutput.text += "Result: " + out + " (Code: " + code + ")\n"
+					})
+				}
+			}
+			Button {
+				text: "Show Python Path"
+				onClicked: {
+					var path = localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py"))
+					debugOutput.text = "Script Path: " + path + "\n"
+					var cmd = ['python3', '--version']
+					callbackListener.exec(cmd, function(c, code, status, out, err) {
+						debugOutput.text += "Python Version: " + out + " " + err + "\n"
+					})
+				}
+			}
+		}
+		TextArea {
+			id: debugOutput
+			Layout.fillWidth: true
+			implicitHeight: 200
+			readOnly: true
+			text: "Debug logs will appear here..."
+			background: Rectangle {
+				color: syspal.base
+				border.color: syspal.mid
+			}
 		}
 	}
 
