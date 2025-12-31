@@ -1,119 +1,354 @@
-#!/bin/bash
+#!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then
+    exec /usr/bin/env bash "$0" "$@"
+fi
+
+set -euo pipefail
+
+# Set up logging
+LOG_FILE="/tmp/plasma-widget-install.log"
+exec 1> >(tee -a "$LOG_FILE")
+exec 2> >(tee -a "$LOG_FILE" >&2)
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+cleanup() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log "ERROR: Script failed with exit code $exit_code"
+    fi
+    exit $exit_code
+}
+
+trap cleanup EXIT
+
+detect_plasma_major() {
+    local version_line=""
+    if command -v plasmashell >/dev/null 2>&1; then
+        version_line=$(plasmashell --version 2>/dev/null | head -n1 || true)
+        if [[ "$version_line" =~ ([0-9]+)\. ]]; then
+            echo "${BASH_REMATCH[1]}"
+            return 0
+        fi
+    fi
+
+    if command -v kpackagetool6 >/dev/null 2>&1; then
+        echo "6"
+        return 0
+    fi
+
+    if command -v kpackagetool5 >/dev/null 2>&1; then
+        echo "5"
+        return 0
+    fi
+
+    return 1
+}
+
+select_target_branch() {
+    local plasma_major="$1"
+    local default_branch="master"
+
+    if [ "$plasma_major" = "5" ]; then
+        echo "plasma-5"
+        return 0
+    fi
+
+    echo "$default_branch"
+}
+
+update_repo_for_plasma() {
+    local plasma_major="$1"
+    local target_branch=""
+    local current_branch=""
+
+    if ! command -v git >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        return 0
+    fi
+
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        log "WARNING: Uncommitted changes detected. Skipping branch update."
+        return 0
+    fi
+
+    target_branch="$(select_target_branch "$plasma_major")"
+
+    log "Fetching updates from origin..."
+    if ! git fetch --prune origin; then
+        log "WARNING: Git fetch failed. Continuing install."
+        return 0
+    fi
+
+    if ! git show-ref --verify --quiet "refs/remotes/origin/$target_branch" \
+        && ! git show-ref --verify --quiet "refs/heads/$target_branch"; then
+        log "WARNING: Target branch '$target_branch' not found. Staying on current branch."
+        return 0
+    fi
+
+    current_branch="$(git rev-parse --abbrev-ref HEAD)"
+    if [ "$current_branch" != "$target_branch" ]; then
+        log "Switching to branch '$target_branch'..."
+        if git show-ref --verify --quiet "refs/heads/$target_branch"; then
+            git checkout "$target_branch"
+        else
+            git checkout -b "$target_branch" "origin/$target_branch"
+        fi
+    fi
+
+    log "Pulling updates from the '$target_branch' branch..."
+    if ! git pull --ff-only origin "$target_branch"; then
+        log "WARNING: Git pull failed. Continuing install."
+    fi
+}
+
+select_kpackage_tool() {
+    local plasma_major="$1"
+
+    if [ "$plasma_major" = "6" ]; then
+        echo "kpackagetool6"
+        return 0
+    fi
+
+    echo "kpackagetool5"
+}
 
 # Function to check if a command was successful
 check_command_success() {
-    if [ "$1" -ne 0 ]; then
+    if [ "$1" != "0" ]; then
         echo "Error executing command: $2"
         exit 1
     fi
 }
 
-# Function to install required packages
-install_requirements() {
-    # Determine the Linux distribution
+DISTRO=""
+DISTRO_LIKE=""
+DISTRO_FAMILY=""
+PLASMA_MAJOR=""
+KPACKAGE_TOOL=""
+
+detect_distro() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        DISTRO=$ID
+        DISTRO="${ID:-}"
+        DISTRO_LIKE="${ID_LIKE:-}"
     elif type lsb_release >/dev/null 2>&1; then
         DISTRO=$(lsb_release -i | cut -d: -f2 | sed s/'^\t'//)
+        DISTRO_LIKE=""
     else
         DISTRO=$(uname -s)
+        DISTRO_LIKE=""
     fi
 
-    # Normalize distro names to lowercase
     DISTRO=$(echo "$DISTRO" | tr '[:upper:]' '[:lower:]')
+    DISTRO_LIKE=$(echo "$DISTRO_LIKE" | tr '[:upper:]' '[:lower:]')
 
-    case "$DISTRO" in
-        "debian"|"ubuntu"|"kali"|"raspbian")
-            required_packages=("jq" "libkf5coreaddons-bin" "kpackagetool5")
+    DISTRO_FAMILY="$DISTRO"
+    case " $DISTRO $DISTRO_LIKE " in
+        *"arch"*|*"endeavouros"*|*"manjaro"*|*"garuda"*)
+            DISTRO_FAMILY="arch"
             ;;
-        "arch"|"manjaro")
-            required_packages=("jq" "kcoreaddons" "kpackagetool5")
+        *"debian"*|*"ubuntu"*|*"neon"*|*"kali"*|*"raspbian"*)
+            DISTRO_FAMILY="debian"
+            ;;
+        *"fedora"*|*"rhel"*|*"centos"*)
+            DISTRO_FAMILY="fedora"
+            ;;
+    esac
+}
+
+install_packages() {
+    case "$DISTRO_FAMILY" in
+        "debian")
+            sudo apt-get update
+            sudo apt-get install -y "$@"
+            ;;
+        "arch")
+            sudo pacman -S --needed "$@"
             ;;
         "fedora")
-            required_packages=("jq" "kf5-kcoreaddons" "kf5-kpackage")
+            sudo dnf install -y "$@"
             ;;
         *)
-            echo "Unsupported distribution: $DISTRO"
-            exit 1
+            echo "Unsupported distribution: ${DISTRO:-unknown}"
+            return 1
+            ;;
+    esac
+}
+
+# Function to install required packages
+install_requirements() {
+    detect_distro
+
+    case "$DISTRO_FAMILY" in
+        "debian")
+            if [ "$PLASMA_MAJOR" = "6" ]; then
+                required_commands=("kpackagetool6")
+                packages_to_install=("kpackagetool6")
+            else
+                required_commands=("kpackagetool5")
+                packages_to_install=("kpackagetool5")
+            fi
+            ;;
+        "arch")
+            if [ "$PLASMA_MAJOR" = "6" ]; then
+                required_commands=("kpackagetool6")
+                packages_to_install=("kpackage")
+            else
+                required_commands=("kpackagetool5")
+                packages_to_install=("kpackage5")
+            fi
+            ;;
+        "fedora")
+            if [ "$PLASMA_MAJOR" = "6" ]; then
+                required_commands=("kpackagetool6")
+                packages_to_install=("kf6-kpackage")
+            else
+                required_commands=("kpackagetool5")
+                packages_to_install=("kf5-kpackage")
+            fi
+            ;;
+        *)
+            echo "Unsupported distribution: ${DISTRO:-unknown}"
+            return 1
             ;;
     esac
 
-    # Install required packages
-    echo "Checking and installing required packages..."
-    for pkg in "${required_packages[@]}"; do
-        if ! command -v $pkg &> /dev/null; then
-            echo "$pkg is not installed. Attempting to install..."
-            case "$DISTRO" in
-                "debian"|"ubuntu"|"kali"|"raspbian")
-                    sudo apt-get update && sudo apt-get install -y $pkg
-                    ;;
-                "arch"|"manjaro")
-                    sudo pacman -Sy $pkg
-                    ;;
-                "fedora")
-                    sudo dnf install -y $pkg
-                    ;;
-            esac
-            check_command_success "$?" "Installation of $pkg failed"
+    for i in "${!required_commands[@]}"; do
+        if ! command -v "${required_commands[$i]}" &> /dev/null; then
+            echo "${required_commands[$i]} is not installed. Attempting to install..."
+            install_packages "${packages_to_install[$i]}"
+            check_command_success "$?" "Failed to install ${packages_to_install[$i]}"
         fi
     done
 }
 
+read_metadata_desktop_value() {
+    local file="$1"
+    local key="$2"
+
+    if command -v kreadconfig5 >/dev/null 2>&1; then
+        kreadconfig5 --file="$file" --group="Desktop Entry" --key="$key"
+        return 0
+    fi
+
+    local raw
+    raw=$(grep -m1 "^${key}=" "$file" | cut -d= -f2-)
+    echo "${raw:-}"
+}
+
+PLASMA_MAJOR="$(detect_plasma_major || true)"
+if [ -z "$PLASMA_MAJOR" ]; then
+    log "WARNING: Unable to detect Plasma version; defaulting to Plasma 6."
+    PLASMA_MAJOR="6"
+fi
+
+update_repo_for_plasma "$PLASMA_MAJOR"
+
+KPACKAGE_TOOL="$(select_kpackage_tool "$PLASMA_MAJOR")"
+
 # Install script requirements
 install_requirements
 
-# Parse arguments for restart option
-restartPlasmashell=false
-for arg in "$@"; do
-    case "$arg" in
-        -r|--restart)
-            restartPlasmashell=true
-            ;;
-        *)
-            ;;
-    esac
-done
+if ! command -v "$KPACKAGE_TOOL" >/dev/null 2>&1; then
+    for candidate in kpackagetool6 kpackagetool5 kpackagetool; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            KPACKAGE_TOOL="$candidate"
+            break
+        fi
+    done
+fi
 
-# Determine if the package is already installed and prepare package installation
-metadataFile="$PWD/package/metadata.desktop"
-metadataJsonFile="$PWD/package/metadata.json"
-
-# Check for metadata and convert if necessary
-if [ -f "$metadataFile" ]; then
-    # Plasma 5 compatibility
-    packageNamespace=$(kreadconfig5 --file="$metadataFile" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name")
-    packageServiceType=$(kreadconfig5 --file="$metadataFile" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
-elif [ -f "$metadataJsonFile" ]; then
-    # Plasma 6 compatibility
-    packageNamespace=$(jq -r '.KPlugin.Id' "$metadataJsonFile")
-    packageServiceType="Plasma/Applet"
-    if [ -z "$packageNamespace" ]; then
-        echo "Error: Unable to read the package namespace from metadata.json."
-        exit 1
-    fi
-else
-    echo "Error: No compatible metadata file found in the package directory."
+if ! command -v "$KPACKAGE_TOOL" >/dev/null 2>&1; then
+    log "ERROR: kpackagetool not found"
     exit 1
 fi
 
-kpackagetool5 --type="${packageServiceType}" --show="$packageNamespace" &> /dev/null
-isAlreadyInstalled=$?
+# Parse arguments
+restartPlasmashell=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -r|--restart) restartPlasmashell=true; shift ;;
+        *) log "WARNING: Unknown parameter: $1"; shift ;;
+    esac
+done
+
+METADATA_DESKTOP="$PWD/package/metadata.desktop"
+METADATA_JSON="$PWD/package/metadata.json"
+
+# Read package information
+packageNamespace=""
+packageServiceType="Plasma/Applet"
+
+if [ -f "$METADATA_JSON" ]; then
+    if ! command -v jq &> /dev/null; then
+        log "Installing jq..."
+        install_packages "jq"
+        check_command_success "$?" "Failed to install jq"
+    fi
+
+    packageNamespace=$(jq -r '.KPlugin.Id' "$METADATA_JSON")
+elif [ -f "$METADATA_DESKTOP" ]; then
+    packageNamespace=$(read_metadata_desktop_value "$METADATA_DESKTOP" "X-KDE-PluginInfo-Name")
+    packageServiceType=$(read_metadata_desktop_value "$METADATA_DESKTOP" "X-KDE-ServiceTypes")
+    if [ -z "$packageServiceType" ]; then
+        packageServiceType="Plasma/Applet"
+    fi
+else
+    log "ERROR: No compatible metadata file found in the package directory."
+    exit 1
+fi
+
+if [ -z "$packageNamespace" ] || [ "$packageNamespace" = "null" ]; then
+    log "ERROR: Failed to read package information from metadata."
+    exit 1
+fi
+
+# Check if package type is available
+if ! "$KPACKAGE_TOOL" --list-types | grep -q "Plasma/Applet"; then
+    log "ERROR: Plasma/Applet package type not available"
+    exit 1
+fi
 
 # Install or update the package
-if [ "$isAlreadyInstalled" -eq 0 ]; then
-    echo "Updating package: $packageNamespace"
-    kpackagetool5 -t "${packageServiceType}" -u package
-    check_command_success "$?" "Package update failed"
-else
-    echo "Installing package: $packageNamespace"
-    kpackagetool5 -t "${packageServiceType}" -i package
-    check_command_success "$?" "Package installation failed"
+INSTALL_DIR="$HOME/.local/share/plasma/plasmoids"
+mkdir -p "$INSTALL_DIR"
+
+if [ -d "$INSTALL_DIR/$packageNamespace" ]; then
+    log "Updating existing package..."
+    rm -rf "$INSTALL_DIR/$packageNamespace"
 fi
 
-# Restart Plasma shell if required
+log "Installing package..."
+cp -r package "$INSTALL_DIR/$packageNamespace"
+
+QDBUS_BIN=$(command -v qdbus || command -v qdbus6) || {
+    echo "qdbus not found" >&2
+    exit 1
+}
+
+# Reload plasmoid configuration
 if $restartPlasmashell; then
-    kquitapp5 plasmashell && kstart5 plasmashell
-    check_command_success "$?" "Failed to restart Plasma shell"
+    log "Reloading plasmoid configuration..."
+    "$QDBUS_BIN" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        var allDesktops = desktops();
+        for (var i = 0; i < allDesktops.length; i++) {
+            var d = allDesktops[i];
+            var widgets = d.widgets();
+            for (var j = 0; j < widgets.length; j++) {
+                var w = widgets[j];
+                if (w.type == 'org.kde.plasma.eventcalendar') {
+                    w.reloadConfig();
+                }
+            }
+        }
+    "
 fi
 
+log "Installation completed successfully."
