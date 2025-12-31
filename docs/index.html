@@ -4,140 +4,186 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Event Calendar OAuth Helper</title>
+  <meta name="google-site-verification" content="PUCLooPU0FvNiO0oqbFmyojhCnlc4vwSjeYfHlY7_Mc" />
+  <title>KDE Plasma Event Calendar Fork</title>
   <meta name="description"
-    content="Extract the Google OAuth code from the redirect URL for the KDE Event Calendar widget.">
+    content="Event Calendar Updated is a KDE Plasma 6 widget with Google Calendar sync, agenda, and weather.">
   <link rel="canonical" href="https://alikestocode.github.io/plasma-applet-eventcalendar/index.html">
   <link rel="home" href="https://alikestocode.github.io/plasma-applet-eventcalendar/index.html">
   <meta property="og:url" content="https://alikestocode.github.io/plasma-applet-eventcalendar/index.html">
+  <meta property="og:title" content="KDE Plasma Event Calendar Fork">
+  <meta property="og:description"
+    content="A KDE Plasma widget with agenda, weather, and Google Calendar sync. Includes an OAuth helper.">
   <link rel="stylesheet" href="css/style.css">
   <script src="js/main.js" defer></script>
 </head>
 
 <body>
-  <div class="canvas">
-    <main>
-      <header class="hero">
-        <div class="hero-copy">
-          <div class="eyebrow">Event Calendar OAuth Helper</div>
-          <h1>Extract your Google authorization code.</h1>
-          <p>Paste the redirect URL from your browser and copy the code into the KDE Event Calendar widget.</p>
-        </div>
-        <div class="hero-media">
-          <img class="hero-logo" src="kde_plasma_calendar.png" alt="KDE Plasma Event Calendar logo">
-        </div>
-      </header>
 
-      <section class="grid">
-        <div class="card steps">
-          <span class="pill">Quick flow</span>
-          <h2>What to do</h2>
-          <ol>
-            <li>Open the login link in the widget and sign in to Google.</li>
-            <li>After consent, Google redirects you either here or to localhost.</li>
-            <li>If you land on localhost, copy the full URL and paste it here.</li>
-            <li>Paste the code back into the widget and click Submit.</li>
-            <li>Select calendars and click Apply.</li>
+  <main>
+    <!-- Hero Section -->
+    <header class="hero">
+      <div class="hero-media">
+        <img class="hero-logo" src="kde_plasma_calendar.png" alt="KDE Plasma Event Calendar logo">
+      </div>
+      <div class="hero-copy">
+        <div class="eyebrow">Updated for Plasma 6</div>
+        <h1>KDE Plasma Event Calendar Fork</h1>
+        <p>A feature-rich Plasmoid for calendar, agenda, and weather. Now featuring fixed Google Calendar sync and
+          quality-of-life improvements.</p>
+        <div class="row" style="justify-content: center;">
+          <a href="#install" role="button"><button>Install Now</button></a>
+          <a href="#oauth-helper" role="button"><button class="secondary">Configure Google Calendar</button></a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Features Section -->
+    <section id="features">
+      <h2 class="section-title">Features</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <h3>Google Calendar Sync</h3>
+          <p>Seamlessly sync your events and tasks. Includes fixes for recent API changes.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Weather Integration</h3>
+          <p>Built-in weather forecast powered by OpenWeatherMap.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Plasma 6 Ready</h3>
+          <p>Fully updated compatible with the latest KDE Plasma desktop environment.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Agenda View</h3>
+          <p>Clean and organized agenda view to keep track of your daily schedule.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screenshots Section -->
+    <section id="screenshots">
+      <h2 class="section-title">Screenshots</h2>
+      <div class="screenshot-grid">
+        <div class="screenshot-frame">
+          <img src="https://i.imgur.com/qdJ71sb.jpg" alt="Event Calendar Month View" loading="lazy">
+        </div>
+        <div class="screenshot-frame">
+          <img src="https://i.imgur.com/Ow8UlFj.jpg" alt="Event Calendar Agenda View" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <!-- Installation Section -->
+    <section id="install">
+      <h2 class="section-title">Installation</h2>
+
+      <div class="card">
+        <h3>Install via GitHub</h3>
+        <p style="margin-bottom: 12px;">Run the following commands in your terminal:</p>
+        <pre class="code-block"><code>git clone -b plasma-6 https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
+cd eventcalendar
+sh ./install</code></pre>
+
+        <h3>Updating</h3>
+        <p style="margin-bottom: 12px;">To update to the latest version:</p>
+        <pre class="code-block"><code>cd eventcalendar
+sh ./update</code></pre>
+        <p class="status">Note: The install script will restart Plasmashell so you don't have to relog.</p>
+      </div>
+    </section>
+
+    <!-- Configuration Section -->
+    <section id="config">
+      <h2 class="section-title">Configuration</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Weather Setup</h3>
+          <ol class="steps-list">
+            <li>Open the widget settings.</li>
+            <li>Go to the <strong>Weather</strong> tab.</li>
+            <li>Enter your OpenWeatherMap city ID.</li>
+            <li>If needed, search for your city ID on <a href="https://openweathermap.org/find" target="_blank"
+                rel="noopener">OpenWeatherMap.org</a>.</li>
           </ol>
         </div>
-
-        <div class="card helper">
-          <h2>Paste redirect URL</h2>
-          <label for="redirectUrl">Redirect URL (example:
-            https://alikestocode.github.io/plasma-applet-eventcalendar/?code=... or
-            http://127.0.0.1:53682/?code=...)</label>
-          <textarea id="redirectUrl" placeholder="Paste the full URL from your browser address bar"></textarea>
-          <div class="row">
-            <button id="extractBtn">Extract code</button>
-            <button class="secondary" id="clearBtn">Clear</button>
-          </div>
-          <label for="authCode">Authorization code</label>
-          <input id="authCode" type="text" readonly placeholder="Code appears here">
-          <div class="row">
-            <button id="copyBtn">Copy code</button>
-            <button class="secondary" id="sendBtn">Send to widget</button>
-            <span class="status" id="status">Waiting for input.</span>
-          </div>
-        </div>
-
         <div class="card">
-          <h2>Notes</h2>
-          <p class="status">
-            This page runs locally in your browser and does not send your URL anywhere, except an optional post to your
-            own localhost widget listener.
-          </p>
-          <p class="status">
-            For auto-send, click Add Account with an empty field in the widget before logging in.
-          </p>
-          <details>
-            <summary>Troubleshooting HTTP 400</summary>
-            <ul>
-              <li>Make sure you pasted the exact URL from the browser address bar.</li>
-              <li>If Google blocks the built-in client, use a custom OAuth client.</li>
-              <li>Custom client redirect URI must match your redirect mode (localhost or helper page).</li>
-              <li>If you still use a localhost redirect, paste that URL here too.</li>
-              <li>If sending to the widget fails, copy the code manually.</li>
-              <li>After Submit, select calendars and click Apply.</li>
-            </ul>
-          </details>
+          <h3>Google Calendar Setup</h3>
+          <ol class="steps-list">
+            <li>Right click the widget > <strong>Settings</strong> > <strong>Google Calendar</strong>.</li>
+            <li>Open the login link in your browser.</li>
+            <li>Sign in and grant access.</li>
+            <li>Use the <strong>OAuth Helper</strong> below to extract your code.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- OAuth Helper Section -->
+    <section id="oauth-helper" class="oauth-container">
+      <div class="oauth-inner">
+        <div class="hero-copy" style="text-align: center; margin-bottom: 32px;">
+          <div class="eyebrow">OAuth Helper</div>
+          <h2 style="font-size: 2rem;">Extract Authorization Code</h2>
+          <p>Paste the redirect URL from your Google login to generate the code for the widget.</p>
         </div>
 
-        <div class="card">
-          <h2>Privacy</h2>
-          <p class="status">
-            By downloading the widget from the KDE panel directly, you are downloading from the KDE Store which has a
-            privacy policy at
-            <a href="https://store.kde.org/privacy">https://store.kde.org/privacy</a>.
-            By downloading the widget from Arch Linux's AUR, you are downloading from GitHub which has their own privacy
-            policy.
-          </p>
-          <p class="status">
-            The widget developer has access to the number of downloads for each release of the widget. The developer
-            does not have access to where each download originates.
-          </p>
-          <h2>Google</h2>
-          <p class="status">
-            By default the widget will not connect to the Google Calendar API. You need to click a link in the widget's
-            config that will open up a login form in your web browser.
-            Once you have logged in, it will give you a "login code" to paste into the widget. The widget will then
-            fetch your calendar, event, and task data from the Google Calendar
-            and Google Tasks API. This data will be displayed in your KDE Plasma panel. The widget will periodically
-            synchronize this data in order to keep it up to date.
-            The user can also manually synchronize the data. The widget will store a cached list of your
-            events/calendars/tasks locally on your computer so it can fallback to the
-            cached copy when your PC is offline. The widget will also store a login/refresh token in your widget config
-            <code>~/.config/plasma-org.kde.plasma.desktop-appletsrc</code> so you do not need to login every time you
-            restart KDE Plasma. You may wish to read Google's privacy policy if you have not already.
-          </p>
-          <p class="status">
-            The developer has access to Google API's application metrics for this widget. This allows the developer to
-            see the total number of correct API responses, or errors,
-            broken down by action. Some example actions are "fetch all calendars", "fetch all events", "create event",
-            "delete event". The totals are not broken down by user.
-            Each action has a sum of requests by all users. This is useful for knowing how close to the Google API quota
-            the widget is, and if there are any spikes in errors.
-            The errors are displayed as HTTP Error codes and do not expose any personal data to the developer.
-          </p>
-          <h2>OpenWeatherMap</h2>
-          <p class="status">
-            By default the widget will not connect to OpenWeatherMap.org. You need to manually select your city in the
-            widget's config. Once you have selected a city,
-            you will then fetch the current weather forecast every hour. OpenWeatherMap will be able to know the city
-            you requested as well as your IP address.
-            You may wish to read OpenWeatherMap's privacy policy as well.
-          </p>
-        </div>
-      </section>
+        <div class="grid">
+          <div class="card helper">
+            <h3>Paste Redirect URL</h3>
+            <label for="redirectUrl">URL from browser address bar:</label>
+            <textarea id="redirectUrl"
+              placeholder="https://alikestocode.github.io/plasma-applet-eventcalendar/?code=..."></textarea>
+            <div class="row">
+              <button id="extractBtn">Extract Code</button>
+              <button class="secondary" id="clearBtn">Clear</button>
+            </div>
 
-      <footer>
-        Event Calendar helper page. Safe to share. No data is collected.
-        <br>
-        <a href="privacy.html">Privacy Policy</a> |
-        <a href="terms.html">Terms of Service</a> |
-        <a href="index.html">Home</a>
-      </footer>
-    </main>
-  </div>
+            <label for="authCode" style="margin-top: 16px;">Authorization Code:</label>
+            <input id="authCode" type="text" readonly placeholder="Code will appear here">
+            <div class="row">
+              <button id="copyBtn">Copy Code</button>
+              <button class="secondary" id="sendBtn">Send to Widget</button>
+              <span class="status" id="status">Waiting for input.</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Troubleshooting</h3>
+            <p class="status" style="margin-bottom: 16px;">
+              This tool runs locally in your browser. It parses the URL to extract the code needed for the widget.
+            </p>
+            <details>
+              <summary>How to use</summary>
+              <ol class="steps-list">
+                <li>Login to Google via the link in the widget.</li>
+                <li>You will be redirected to a page (either this one or localhost).</li>
+                <li>Copy the <strong>entire URL</strong> from your browser's address bar.</li>
+                <li>Paste it into the box on the left.</li>
+                <li>Copy the extracted code back to the widget.</li>
+              </ol>
+            </details>
+            <details>
+              <summary>HTTP 400 Error?</summary>
+              <ul>
+                <li>Ensure you copied the full URL.</li>
+                <li>If using a custom client ID, ensure the redirect URI matches exactly.</li>
+              </ul>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      KDE Plasma Event Calendar Fork &copy; 2025
+      <br>
+      <a href="privacy.html">Privacy Policy</a> |
+      <a href="terms.html">Terms of Service</a> |
+      <a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">GitHub Repository</a>
+    </footer>
+  </main>
+
 </body>
 
 </html>
