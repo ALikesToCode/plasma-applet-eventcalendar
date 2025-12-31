@@ -111,9 +111,10 @@ ConfigPage {
 		if (autoLoginInProgress) {
 			return
 		}
-		googleLoginManager.resetPkce()
 		autoLoginInProgress = true
-		googleLoginManager.refreshClientCredentials()
+		googleLoginManager.prepareAuthorization()
+		googleLoginManager.maybeUseLegacyForLocal()
+		var authContext = googleLoginManager.currentAuthContext()
 		messageWidget.info(localRedirect
 			? i18n("Waiting for browser callback...")
 			: i18n("Waiting for the helper page to send the code..."))
@@ -121,27 +122,30 @@ ConfigPage {
 			'python3',
 			localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py")),
 			'--client_id',
-			googleLoginManager.effectiveClientId,
+			authContext.clientId,
 			'--listen_port',
 			'53682',
 			'--redirect_uri',
-			googleLoginManager.redirectUri,
+			authContext.redirectUri,
 		]
-		if (googleLoginManager.effectiveClientSecret) {
+		if (authContext.clientSecret) {
 			cmd.push('--client_secret')
-			cmd.push(googleLoginManager.effectiveClientSecret)
+			cmd.push(authContext.clientSecret)
 		}
-		if (googleLoginManager.pkceVerifier) {
+		if (authContext.pkceVerifier) {
 			cmd.push('--code_verifier')
-			cmd.push(googleLoginManager.pkceVerifier)
+			cmd.push(authContext.pkceVerifier)
 		}
 		Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+		console.log('google_redirect.py command:', JSON.stringify(cmd))
 		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			autoLoginInProgress = false
 			if (exitCode !== 0) {
+				console.error('google_redirect.py failed:', exitCode, stderr)
 				messageWidget.err(i18n("Auto login failed. See logs for details."))
 				return
 			}
+			console.log('google_redirect.py stdout:', stdout)
 			var payload = extractJson(stdout || "")
 			if (!payload) {
 				messageWidget.err(i18n("Auto login failed: no token data received."))
@@ -271,6 +275,8 @@ ConfigPage {
 	}
 	ColumnLayout {
 		Layout.fillWidth: true
+		property bool credentialsReady: false
+		Component.onCompleted: credentialsReady = true
 
 		MessageWidget {
 			messageType: MessageWidget.MessageType.Warning
@@ -284,6 +290,18 @@ ConfigPage {
 			text: i18n("Leave these empty to use the default credentials. Custom credentials require a Google Cloud OAuth client with the redirect URI set to %1.", googleLoginManager.redirectUri)
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
+		}
+		ConfigCheckBox {
+			id: useDesktopClientToggle
+			configKey: "useDesktopClient"
+			visible: !googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
+			text: i18n("Try desktop built-in client (no secret)")
+			onCheckedChanged: {
+				if (!credentialsReady) {
+					return
+				}
+				googleLoginManager.refreshClientCredentials()
+			}
 		}
 		RowLayout {
 			Layout.fillWidth: true
@@ -368,6 +386,8 @@ ConfigPage {
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 			onLinkActivated: function(link) {
+				googleLoginManager.prepareAuthorization()
+				googleLoginManager.maybeUseLegacyForLocal()
 				Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
 			}
 

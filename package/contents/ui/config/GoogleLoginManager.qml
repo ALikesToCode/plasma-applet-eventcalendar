@@ -48,6 +48,7 @@ Item {
 		? hostedRedirectUri
 		: localRedirectUri
 	property string legacyClientId: "391436299960-k0s16nm589meovhoblpcquqgbbrena17.apps.googleusercontent.com"
+	property string legacyClientSecret: "Gdr_7lKIQuGBD4Up3MOiw-7i"
 	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
 	property var configBridge: null
 	function normalizedClientValue(value) {
@@ -57,6 +58,7 @@ Item {
 	property string effectiveClientSecret: ""
 	property string pkceVerifier: ""
 	property string pkceChallenge: ""
+	property var pendingAuthContext: null
 
 	Connections {
 		target: accountsStore
@@ -128,12 +130,21 @@ Item {
 
 	function refreshClientCredentials() {
 		migrateDefaultClientIfNeeded()
+		var useDesktopClient = readConfig("useDesktopClient", false)
 		var customId = normalizedClientValue(readConfig("customClientId", ""))
 		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
 		var latestId = readConfig("latestClientId", "")
 		var latestSecret = readConfig("latestClientSecret", "")
-		effectiveClientId = customId || latestId
-		effectiveClientSecret = customSecret || latestSecret
+		if (customId || customSecret) {
+			effectiveClientId = customId
+			effectiveClientSecret = customSecret
+		} else if (useDesktopClient) {
+			effectiveClientId = defaultClientId
+			effectiveClientSecret = ""
+		} else {
+			effectiveClientId = latestId
+			effectiveClientSecret = latestSecret
+		}
 	}
 
 	function migrateDefaultClientIfNeeded() {
@@ -143,12 +154,12 @@ Item {
 			return
 		}
 		var latestId = readConfig("latestClientId", "")
-		if (!latestId || latestId === legacyClientId) {
+		if (!latestId) {
 			writeConfig("latestClientId", defaultClientId)
 		}
 		var latestSecret = readConfig("latestClientSecret", "")
-		if (latestSecret) {
-			writeConfig("latestClientSecret", "")
+		if (latestId === legacyClientId && !latestSecret) {
+			writeConfig("latestClientSecret", legacyClientSecret)
 		}
 	}
 
@@ -162,6 +173,70 @@ Item {
 		pkceVerifier = Pkce.generateVerifier()
 		pkceChallenge = Pkce.challengeFromVerifier(pkceVerifier)
 	}
+	function redirectUriForMode(mode) {
+		return normalizedRedirectMode(mode) === "hosted" ? hostedRedirectUri : localRedirectUri
+	}
+	function buildAuthContext(modeOverride) {
+		var mode = typeof modeOverride === "string" ? modeOverride : redirectMode
+		return {
+			clientId: effectiveClientId,
+			clientSecret: effectiveClientSecret,
+			redirectUri: redirectUriForMode(mode),
+			pkceVerifier: pkceVerifier,
+			pkceChallenge: pkceChallenge,
+		}
+	}
+	function currentAuthContext() {
+		return pendingAuthContext || buildAuthContext()
+	}
+	function prepareAuthorization() {
+		refreshClientCredentials()
+		var mode = normalizedRedirectMode(redirectMode)
+		if (mode === "hosted" && !effectiveClientSecret) {
+			writeConfig("googleRedirectMode", "local")
+			error("Hosted mode requires a client secret. Switching to localhost.")
+			mode = "local"
+		}
+		resetPkce()
+		pendingAuthContext = buildAuthContext(mode)
+	}
+	function switchToLegacyClient() {
+		writeConfig("latestClientId", legacyClientId)
+		writeConfig("latestClientSecret", legacyClientSecret)
+		refreshClientCredentials()
+		prepareAuthorization()
+	}
+	function maybeUseLegacyForLocal() {
+		var ctx = currentAuthContext()
+		if (normalizedRedirectMode(redirectMode) !== "local") {
+			return false
+		}
+		if (ctx.clientSecret) {
+			return false
+		}
+		if (ctx.clientId !== defaultClientId) {
+			return false
+		}
+		switchToLegacyClient()
+		return true
+	}
+	function clearAuthorizationContext() {
+		pendingAuthContext = null
+	}
+	function buildAuthorizationUrl(ctx) {
+		var url = 'https://accounts.google.com/o/oauth2/v2/auth'
+		url += '?scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks')
+		url += '&response_type=code'
+		url += '&redirect_uri=' + encodeURIComponent(ctx.redirectUri)
+		url += '&access_type=offline'
+		url += '&prompt=consent'
+		url += '&client_id=' + encodeURIComponent(ctx.clientId)
+		if (ctx.pkceChallenge) {
+			url += '&code_challenge=' + encodeURIComponent(ctx.pkceChallenge)
+			url += '&code_challenge_method=S256'
+		}
+		return url
+	}
 
 	//--- Signals
 	signal newAccessToken()
@@ -170,18 +245,7 @@ Item {
 
 	//---
 	readonly property string authorizationCodeUrl: {
-		var url = 'https://accounts.google.com/o/oauth2/v2/auth'
-		url += '?scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks')
-		url += '&response_type=code'
-		url += '&redirect_uri=' + encodeURIComponent(redirectUri)
-		url += '&access_type=offline'
-		url += '&prompt=consent'
-		url += '&client_id=' + encodeURIComponent(effectiveClientId)
-		if (pkceChallenge) {
-			url += '&code_challenge=' + encodeURIComponent(pkceChallenge)
-			url += '&code_challenge_method=S256'
-		}
-		return url
+		return buildAuthorizationUrl(currentAuthContext())
 	}
 
 	function setActiveAccountId(accountId) {
@@ -217,27 +281,28 @@ Item {
 	}
 
 	function fetchAccessToken(args) {
+		var ctx = currentAuthContext()
 		var authCode = extractAuthorizationCode(args.authorizationCode)
 		if (!authCode) {
 			handleError('Invalid Google Authorization Code', null)
 			return
 		}
 		var url = 'https://oauth2.googleapis.com/token'
-		if (!pkceVerifier && !effectiveClientSecret) {
+		if (!ctx.pkceVerifier && !ctx.clientSecret) {
 			handleError('Missing PKCE verifier. Start login from the widget and try again.', null)
 			return
 		}
 		var payload = {
-			client_id: effectiveClientId,
+			client_id: ctx.clientId,
 			code: authCode,
 			grant_type: 'authorization_code',
-			redirect_uri: redirectUri,
+			redirect_uri: ctx.redirectUri,
 		}
-		if (effectiveClientSecret) {
-			payload.client_secret = effectiveClientSecret
+		if (ctx.clientSecret) {
+			payload.client_secret = ctx.clientSecret
 		}
-		if (pkceVerifier) {
-			payload.code_verifier = pkceVerifier
+		if (ctx.pkceVerifier) {
+			payload.code_verifier = ctx.pkceVerifier
 		}
 		Requests.post({
 			url: url,
@@ -262,6 +327,18 @@ Item {
 				return
 			}
 			if (parsed && parsed.error) {
+				var errorDesc = parsed.error_description || ""
+				var missingSecret = parsed.error === "invalid_request" && errorDesc.indexOf("client_secret") !== -1
+				if (missingSecret
+					&& !ctx.clientSecret
+					&& ctx.clientId === defaultClientId
+					&& normalizedRedirectMode(redirectMode) === "local"
+				) {
+					switchToLegacyClient()
+					error("Google requires a client secret for the built-in client. Switching to a fallback login. Please complete the login again.")
+					Qt.openUrlExternally(authorizationCodeUrl)
+					return
+				}
 				handleError(err, parsed)
 				return
 			}
@@ -290,6 +367,7 @@ Item {
 		})
 		accountsStore.setActiveAccountId(targetId)
 		newAccessToken()
+		clearAuthorizationContext()
 	}
 
 	onNewAccessToken: updateData()
@@ -407,11 +485,14 @@ Item {
 		if (data && data.error && data.error_description) {
 			var errorMessage = '' + data.error + ' (' + data.error_description + ')'
 			session.error(errorMessage)
+			clearAuthorizationContext()
 		} else if (data && data.error && data.error.message && typeof data.error.code !== "undefined") {
 			var errorMessage = '' + data.error.message + ' (' + data.error.code + ')'
 			session.error(errorMessage)
+			clearAuthorizationContext()
 		} else if (err) {
 			session.error(err)
+			clearAuthorizationContext()
 		}
 	}
 }

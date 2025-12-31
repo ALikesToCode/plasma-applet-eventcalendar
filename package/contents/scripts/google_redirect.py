@@ -10,6 +10,16 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
+import logging
+
+# Configure logging
+logging.basicConfig(
+    filename='/tmp/google_redirect.log',
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s: %(message)s'
+)
+logging.info("Script started with args: %s", sys.argv)
+
 client_id = client_secret = listen_port = redirect_uri = code_verifier = None
 exit_code = 0
 
@@ -147,6 +157,11 @@ if __name__ == "__main__":
     code_verifier = args.code_verifier
 
     server_address = ("", listen_port)
-    httpd = HTTPServer(server_address, OAuthRedirectHandler)
-    httpd.serve_forever()
+    try:
+        httpd = HTTPServer(server_address, OAuthRedirectHandler)
+        logging.info("Server started on port %s", listen_port)
+        httpd.serve_forever()
+    except Exception as e:
+        logging.exception("Failed to start server")
+        sys.exit(1)
     sys.exit(exit_code)

@@ -356,10 +356,13 @@
 			<default>local</default>
 		</entry>
 		<entry name="latestClientId" type="string">
-			<default>352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com</default>
+			<default>391436299960-k0s16nm589meovhoblpcquqgbbrena17.apps.googleusercontent.com</default>
 		</entry>
 		<entry name="latestClientSecret" type="string">
-			<default></default>
+			<default>Gdr_7lKIQuGBD4Up3MOiw-7i</default>
+		</entry>
+		<entry name="useDesktopClient" type="bool">
+			<default>false</default>
 		</entry>
 		<entry name="customClientId" type="string">
 			<default></default>

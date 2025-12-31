@@ -219,6 +219,8 @@ KCM.SimpleKCM {
 	property var cfg_latestClientIdDefault
 	property var cfg_latestClientSecret
 	property var cfg_latestClientSecretDefault
+	property var cfg_useDesktopClient
+	property var cfg_useDesktopClientDefault
 	property var cfg_customClientId
 	property var cfg_customClientIdDefault
 	property var cfg_customClientSecret
