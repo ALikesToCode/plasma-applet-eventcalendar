@@ -1,6 +1,7 @@
-import QtQuick 2.0
+import QtQuick
 
 import "./calendars"
+import "./lib"
 
 CalendarManager {
 	id: eventModel
@@ -10,12 +11,7 @@ CalendarManager {
 	property var eventsData: { "items": [] }
 
 	Component.onCompleted: {
-		bindSignals(googleCalendarManager)
-		bindSignals(googleTasksManager)
 		bindSignals(plasmaCalendarManager)
-		// bindSignals(icalManager)
-		// bindSignals(debugCalendarManager)
-		// bindSignals(debugGoogleCalendarManager)
 	}
 
 	//---
@@ -65,29 +61,90 @@ CalendarManager {
 		calendarManagerList.push(calendarManager)
 	}
 
+	function unbindSignals(calendarManager) {
+		var index = calendarManagerList.indexOf(calendarManager)
+		if (index >= 0) {
+			calendarManagerList.splice(index, 1)
+		}
+		for (var calendarId in eventModel.calendarPluginMap) {
+			if (eventModel.calendarPluginMap[calendarId] === calendarManager) {
+				delete eventModel.calendarPluginMap[calendarId]
+			}
+		}
+	}
+
 	function getCalendarManager(calendarId) {
 		return eventModel.calendarPluginMap[calendarId]
 	}
 
 	//---
+	GoogleAccountsStore {
+		id: googleAccountsStore
+	}
+
 	ICalManager {
 		id: icalManager
 		calendarList: appletConfig.icalCalendarList.value
 	}
 
 	DebugCalendarManager { id: debugCalendarManager }
-	DebugGoogleCalendarManager { id: debugGoogleCalendarManager }
+	// DebugGoogleCalendarManager { id: debugGoogleCalendarManager }
 
-	GoogleApiSession {
-		id: googleApiSession
+	Repeater {
+		id: googleAccountsRepeater
+		model: googleAccountsStore.accounts
+		delegate: Item {
+			id: googleAccountItem
+			property string accountId: modelData.id
+			property string accountLabel: modelData.label || ""
+
+			GoogleApiSession {
+				id: googleApiSession
+				accountsStore: googleAccountsStore
+				accountId: googleAccountItem.accountId
+			}
+			GoogleCalendarManager {
+				id: googleCalendarManager
+				session: googleApiSession
+				accountsStore: googleAccountsStore
+				accountId: googleAccountItem.accountId
+				accountLabel: googleAccountItem.accountLabel
+			}
+			GoogleTasksManager {
+				id: googleTasksManager
+				session: googleApiSession
+				accountsStore: googleAccountsStore
+				accountId: googleAccountItem.accountId
+				accountLabel: googleAccountItem.accountLabel
+			}
+
+			Connections {
+				target: googleAccountsStore
+				function onAccountUpdated(updatedId) {
+					if (updatedId === googleAccountItem.accountId) {
+						var account = googleAccountsStore.getAccount(updatedId)
+						googleAccountItem.accountLabel = account && account.label ? account.label : ""
+					}
+				}
+			}
+
+			Component.onCompleted: {
+				eventModel.bindSignals(googleCalendarManager)
+				eventModel.bindSignals(googleTasksManager)
+			}
+			Component.onDestruction: {
+				eventModel.unbindSignals(googleCalendarManager)
+				eventModel.unbindSignals(googleTasksManager)
+			}
+		}
 	}
-	GoogleCalendarManager {
-		id: googleCalendarManager
-		session: googleApiSession
-	}
-	GoogleTasksManager {
-		id: googleTasksManager
-		session: googleApiSession
+
+	Connections {
+		target: googleAccountsStore
+		function onAccountsChanged() {
+			eventModel.clear()
+			deferredUpdate.restart()
+		}
 	}
 
 	PlasmaCalendarManager {

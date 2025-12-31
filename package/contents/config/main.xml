@@ -72,9 +72,6 @@
 		<entry name="showBackground" type="bool">
 			<default>true</default>
 		</entry>
-		<entry name="forceExpanded" type="bool">
-			<default>false</default>
-		</entry>
 		<entry name="topRowHeight" type="uint">
 			<default>100</default>
 		</entry>
@@ -247,9 +244,6 @@
 		<entry name="agendaBreakupMultiDayEvents" type="bool">
 			<default>false</default>
 		</entry>
-		<entry name="agendaBreakupReccurentEvents" type="bool">
-			<default>true</default>
-		</entry>
 		<entry name="agendaNewEventRememberCalendar" type="bool">
 			<default>true</default>
 		</entry>
@@ -352,11 +346,29 @@
 
 
 	<group name="Google Calendar">
+		<entry name="googleAccounts" type="string" stringType="base64json">
+			<default></default>
+		</entry>
+		<entry name="googleActiveAccountId" type="string">
+			<default></default>
+		</entry>
+		<entry name="googleRedirectMode" type="string">
+			<default>local</default>
+		</entry>
 		<entry name="latestClientId" type="string">
 			<default>391436299960-k0s16nm589meovhoblpcquqgbbrena17.apps.googleusercontent.com</default>
 		</entry>
 		<entry name="latestClientSecret" type="string">
 			<default>Gdr_7lKIQuGBD4Up3MOiw-7i</default>
+		</entry>
+		<entry name="useDesktopClient" type="bool">
+			<default>false</default>
+		</entry>
+		<entry name="customClientId" type="string">
+			<default></default>
+		</entry>
+		<entry name="customClientSecret" type="string">
+			<default></default>
 		</entry>
 		<entry name="sessionClientId" type="string">
 			<default></default>

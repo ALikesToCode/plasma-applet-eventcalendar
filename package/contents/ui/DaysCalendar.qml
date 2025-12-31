@@ -1,4 +1,3 @@
-import org.kde.ksvg 1.0 as KSvg
 /*
  * Copyright 2013  Heena Mahour <heena393@gmail.com>
  * Copyright 2013 Sebastian Kügler <sebas@kde.org>
@@ -18,15 +17,14 @@ import org.kde.ksvg 1.0 as KSvg
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.2
-import QtQuick.Layouts 1.1
-import QtQuick.Controls 2.0 as QQC2
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 
-import org.kde.kirigami 2.0 as Kirigami
-import org.kde.plasma.calendar 2.0
-import org.kde.plasma.core
-import org.kde.kirigami 2.15 as Kirigami
-import org.kde.plasma.extras 2.0 as PlasmaExtras
+import org.kde.kirigami as Kirigami
+import org.kde.ksvg as KSvg
+// import org.kde.plasma.workspace.calendar as PlasmaCalendar
+import org.kde.plasma.components as PlasmaComponents3
 
 import "./badges"
 
@@ -56,6 +54,8 @@ Item {
 	property string todayStyle: "theme"
 
 	onShowWeekNumbersChanged: canvas.requestPaint()
+	property color themeTextColor: Kirigami.Theme.textColor
+	onThemeTextColorChanged: canvas.requestPaint()
 
 	// how precise date matching should be, 3 = day+month+year, 2 = month+year, 1 = just year
 	property int dateMatchingPrecision
@@ -83,7 +83,7 @@ Item {
 	Behavior on scale {
 		id: scaleBehavior
 		ScaleAnimator {
-			duration: units.longDuration
+			duration: Kirigami.Units.longDuration
 		}
 	}
 
@@ -100,9 +100,9 @@ Item {
 			left: parent.left
 			right: parent.right
 		}
-		spacing: units.smallSpacing
+		spacing: Kirigami.Units.smallSpacing
 
-		PlasmaExtras.Heading {
+		Kirigami.Heading {
 			id: heading
 
 			Layout.fillWidth: true
@@ -212,7 +212,7 @@ Item {
 			ctx.reset()
 			ctx.save()
 			ctx.clearRect(0, 0, canvas.width, canvas.height)
-			ctx.strokeStyle = PlasmaCore.ColorScope.textColor
+			ctx.strokeStyle = Kirigami.Theme.textColor
 			ctx.lineWidth = root.borderWidth
 			ctx.globalAlpha = 1.0
 
@@ -298,13 +298,6 @@ Item {
 		EventCountBadge {}
 	}
 
-	Connections {
-		target: theme
-		function onTextColorChanged() {
-			canvas.requestPaint()
-		}
-	}
-
 	Column {
 		id: weeksColumn
 		visible: showWeekNumbers
@@ -328,10 +321,10 @@ Item {
 				horizontalAlignment: Text.AlignHCenter
 				verticalAlignment: Text.AlignVCenter
 				font.pointSize: -1 // Ignore pixelSize warning
-				font.pixelSize: Math.max(theme.smallestFont.pixelSize, Math.min(daysCalendar.cellHeight / 3, daysCalendar.cellWidth * 5/8))
+				font.pixelSize: Math.max(Kirigami.Theme.smallFont.pixelSize, Math.min(daysCalendar.cellHeight / 3, daysCalendar.cellWidth * 5/8))
 				readonly property bool isCurrentWeek: root.currentMonthContainsToday && modelData == calendarBackend.currentWeek()
 				readonly property bool showHighlight: isCurrentWeek && root.highlightCurrentDayWeek
-				color: showHighlight ? PlasmaCore.ColorScope.highlightColor : PlasmaCore.ColorScope.textColor
+				color: showHighlight ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
 				opacity: showHighlight ? 0.75 : 0.4
 				text: modelData
 			}
@@ -371,7 +364,7 @@ Item {
 				width: daysCalendar.cellWidth
 				height: daysCalendar.cellHeight
 				font.pointSize: -1 // Ignore pixelSize warning
-				font.pixelSize: Math.max(theme.smallestFont.pixelSize, Math.min(daysCalendar.cellHeight / 3, daysCalendar.cellWidth * 5/8))
+				font.pixelSize: Math.max(Kirigami.Theme.smallFont.pixelSize, Math.min(daysCalendar.cellHeight / 3, daysCalendar.cellWidth * 5/8))
 				horizontalAlignment: Text.AlignHCenter
 				verticalAlignment: Text.AlignVCenter
 				elide: Text.ElideRight
@@ -379,7 +372,7 @@ Item {
 				readonly property int currentDayIndex: (calendarBackend.firstDayOfWeek + index) % 7
 				readonly property bool isCurrentDay: root.currentMonthContainsToday && root.today && root.today.getDay() === currentDayIndex
 				readonly property bool showHighlight: isCurrentDay && root.highlightCurrentDayWeek
-				color: showHighlight ? PlasmaCore.ColorScope.highlightColor : PlasmaCore.ColorScope.textColor
+				color: showHighlight ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
 				opacity: showHighlight ? 0.75 : 0.4
 				text: Qt.locale().dayName(currentDayIndex, Locale.ShortFormat)
 			}
@@ -423,13 +416,13 @@ Item {
 					}
 				}
 
-				Connections {
-					target: daysCalendar
-					function onActivateHighlightedItem() {
-						if (delegate.containsMouse) {
-							delegate.clicked(null)
+					Connections {
+						target: daysCalendar
+						function onActivateHighlightedItem() {
+							if (delegate.containsMouse) {
+								delegate.clicked(null)
+							}
 						}
-					}
 				}
 			}
 		}

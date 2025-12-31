@@ -1,7 +1,7 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
-import org.kde.plasma.core
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import org.kde.plasma.plasma5support as Plasma5Support
 import org.kde.plasma.plasmoid
 
 Item {
@@ -9,13 +9,16 @@ Item {
 	implicitHeight: label.implicitHeight
 
 	property string version: "?"
-	property string metadataFilepath: plasmoid.file("", "../metadata.desktop")
+	property string metadataFilepath: {
+		var path = Qt.resolvedUrl("../../metadata.json").toString()
+		return path.indexOf("file://") === 0 ? path.slice(7) : path
+	}
 
-	PlasmaCore.DataSource {
+	Plasma5Support.DataSource {
 		id: executable
 		engine: "executable"
 		connectedSources: []
-		onNewData: {
+		function onNewData(sourceName, data) {
 			var exitCode = data["exit code"]
 			var exitStatus = data["exit status"]
 			var stdout = data["stdout"]
@@ -31,7 +34,7 @@ Item {
 
 	Connections {
 		target: executable
-		function onExited() {
+		function onExited(exitCode, exitStatus, stdout, stderr) {
 			version = stdout.replace('\n', ' ').trim()
 		}
 	}
@@ -42,7 +45,7 @@ Item {
 	}
 
 	Component.onCompleted: {
-		var cmd = 'kreadconfig5 --file "' + metadataFilepath + '" --group "Desktop Entry" --key "X-KDE-PluginInfo-Version"'
+		var cmd = "python3 -c \"import json;print(json.load(open('" + metadataFilepath + "'))['KPlugin']['Version'])\""
 		executable.exec(cmd)
 	}
 

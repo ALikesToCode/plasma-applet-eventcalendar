@@ -1,13 +1,12 @@
-import org.kde.ksvg 1.0 as KSvg
-import QtQuick 2.0
-import QtQuick.Window 2.2
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Templates as T
+import QtQuick.Window
+import Qt5Compat.GraphicalEffects as QtGraphicalEffects // TODO Deprecated in Qt6
 
-import org.kde.plasma.core
-import org.kde.kirigami 2.15 as Kirigami
-
-import QtQuick.Templates 2.1 as T
-import QtQuick.Controls 2.1 as Controls
-import QtGraphicalEffects 1.0 // DropShadow
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.components as PlasmaComponents3
 
 // Based on:
 // https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/plasmacomponents3/ComboBox.qml
@@ -18,7 +17,7 @@ PlasmaComponents3.TextField {
 	id: timeSelector
 	readonly property Item control: timeSelector
 
-	property int defaultMinimumWidth: 80 * units.devicePixelRatio
+	property int defaultMinimumWidth: 80 * Screen.devicePixelRatio
 	readonly property int implicitContentWidth: contentWidth + leftPadding + rightPadding
 	implicitWidth: Math.max(defaultMinimumWidth, implicitContentWidth)
 
@@ -113,12 +112,12 @@ PlasmaComponents3.TextField {
 	property T.Popup popup: T.Popup {
 		x: control.mirrored ? control.width - width : 0
 		y: control.height
-		property int minWidth: 120 * units.devicePixelRatio
-		property int maxHeight: 150 * units.devicePixelRatio
+		property int minWidth: 120 * Screen.devicePixelRatio
+		property int maxHeight: 150 * Screen.devicePixelRatio
 		width: Math.max(control.width, minWidth)
 		implicitHeight: Math.min(contentItem.implicitHeight, maxHeight)
-		topMargin: 6 * units.devicePixelRatio
-		bottomMargin: 6 * units.devicePixelRatio
+		topMargin: 6 * Screen.devicePixelRatio
+		bottomMargin: 6 * Screen.devicePixelRatio
 
 		contentItem: ListView {
 			id: listView
@@ -132,7 +131,7 @@ PlasmaComponents3.TextField {
 			// QTBUG: https://bugreports.qt.io/browse/QTBUG-66446
 			LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
 			LayoutMirroring.childrenInherit: true
-			T.ScrollBar.vertical: Controls.ScrollBar { }
+			T.ScrollBar.vertical: QQC2.ScrollBar { }
 
 			model: control.popup.visible ? control.model : null
 			delegate: control.delegate
@@ -143,11 +142,11 @@ PlasmaComponents3.TextField {
 				margins: -1
 			}
 			radius: 2
-			color: theme.viewBackgroundColor
-			border.color: Qt.rgba(theme.textColor.r, theme.textColor.g, theme.textColor.b, 0.3)
+			color: Kirigami.Theme.viewBackgroundColor
+			border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.3)
 			layer.enabled: true
 
-			layer.effect: DropShadow {
+			layer.effect: QtGraphicalEffects.DropShadow {
 				transparentBorder: true
 				radius: 4
 				samples: 8

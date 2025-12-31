@@ -1,4 +1,4 @@
-import QtQuick 2.0
+import QtQuick
 
 import "../Shared.js" as Shared
 import "../lib/Requests.js" as Requests
@@ -71,7 +71,7 @@ CalendarManager {
 		fetchDebugEvents()
 	}
 
-	onCalendarParsing: {
+	onCalendarParsing: function(calendarId, data) {
 		parseEventList(debugCalendar, data.items)
 	}
 

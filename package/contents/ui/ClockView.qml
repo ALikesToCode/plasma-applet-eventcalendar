@@ -1,4 +1,3 @@
-import org.kde.ksvg 1.0 as KSvg
 /*
  * Copyright 2013 Heena Mahour <heena393@gmail.com>
  * Copyright 2013 Sebastian Kügler <sebas@kde.org>
@@ -19,16 +18,16 @@ import org.kde.ksvg 1.0 as KSvg
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.2
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core
-import org.kde.kirigami 2.15 as Kirigami
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.components as PlasmaComponents3
 
 Item {
 	id: clock
 
-	property int horizontalFixedLineWidth: 300 * units.devicePixelRatio
-	property int verticalFixedLineHeight: 24 * units.devicePixelRatio
+	property int horizontalFixedLineWidth: 300 * Screen.devicePixelRatio
+	property int verticalFixedLineHeight: 24 * Screen.devicePixelRatio
 
 	property int targetHeight: verticalFixedLineHeight
 

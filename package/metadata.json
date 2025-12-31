@@ -1,0 +1,54 @@
+{
+	"KPackageStructure": "Plasma/Applet",
+	"KPlugin": {
+		"Authors": [
+			{
+				"Email": "zrenfire@gmail.com",
+				"Name": "Chris Holland"
+			}
+		],
+		"Category": "Date and Time",
+		"Description": "Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.",
+		"Description[de]": "Miniprogramm für einen Kalender mit Ereignisansicht und Wetter, der Ereignisse mit Google Kalender synchronisiert.",
+		"Description[es]": "Plasmoid para calendario + agenda con información del clima. Sincroniza con Google Calendar.",
+		"Description[fi]": "Plasmoidi kalenteri + agenda säätietoineen synkronoitu Google Calendarin kanssa.",
+		"Description[he]": "יישומון לוח שנה וסדר יום שמסתנכרן עם Google Calendar ועם גישה ישירה לתחזית מזג האוויר.",
+		"Description[it]": "Plasmoide per un calendario+agenda con meteo che si sincronizza con Google Calendar.",
+		"Description[ko]": "Google 캘린더랑 동기화할 수 있는 달력, 일정 및 날씨 Plasmoid 위젯입니다.",
+		"Description[nl]": "Een plasmoid met kalender, agenda en weer die synchroniseert met Google Agenda.",
+		"Description[pt_BR]": "Plasmoide para um calendário e agenda com informações do clima que sincroniza com o Google Agenda.",
+		"Description[pt_PT]": "Plasmoid para um calendário+agenda com Meteorologia que sincroniza com o Calendário Google.",
+		"Description[ru]": "Календарь событий с погодой и синхронизацией с Google Calendar",
+		"Description[sl]": "Vtičnik za koledar z dnevnim redom in vremensko napovedjo, ki se usklajuje z Googlovim koledarjem.",
+		"Description[sv]": "Plasmoid för kalender och agenda med väder som synkroniseras med Google Kalender.",
+		"Icon": "view-calendar",
+		"Id": "org.kde.plasma.eventcalendar",
+		"License": "GPL",
+		"Name": "Event Calendar",
+		"Name[da]": "Begivenhedskalender",
+		"Name[de]": "Ereigniskalender",
+		"Name[el]": "Ημερολόγιο Συμβάντων",
+		"Name[es]": "Calendario de Eventos",
+		"Name[fi]": "Tapahtumakalenteri",
+		"Name[fr]": "Calendrier des événements",
+		"Name[he]": "לוח שנה עם אירועים",
+		"Name[it]": "Calendario Eventi",
+		"Name[ja]": "イベントカレンダー",
+		"Name[ko]": "이벤트 달력",
+		"Name[nl]": "Afsprakenboek",
+		"Name[pt_BR]": "Calendário de eventos",
+		"Name[pt_PT]": "Calendário de eventos",
+		"Name[ru]": "Календарь событий",
+		"Name[sl]": "Koledar z dnevnim redom",
+		"Name[tr]": "Etkinlik Takvimi",
+		"Name[uk]": "Календар подій",
+		"Version": "76",
+		"Website": "https://github.com/Zren/plasma-applet-eventcalendar"
+	},
+	"X-KDE-PluginInfo-KdeStoreId": "998901",
+	"X-Plasma-API-Minimum-Version": "6.0",
+	"X-Plasma-Provides": [
+		"org.kde.plasma.time",
+		"org.kde.plasma.date"
+	]
+}

@@ -1,13 +1,10 @@
-import org.kde.ksvg 1.0 as KSvg
-import QtQuick 2.0
-import QtQuick.Window 2.2
+import QtQuick
+import QtQuick.Templates as T
+import QtQuick.Window
+import Qt5Compat.GraphicalEffects as QtGraphicalEffects // TODO Deprecated in Qt6
 
-import org.kde.plasma.core
-import org.kde.kirigami 2.15 as Kirigami
-
-import QtQuick.Templates 2.1 as T
-import QtQuick.Controls 2.1 as Controls
-import QtGraphicalEffects 1.0 // DropShadow
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
 // Based on:
 // https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/plasmacomponents3/ComboBox.qml
@@ -18,7 +15,7 @@ PlasmaComponents3.TextField {
 	id: dateSelector
 	readonly property Item control: dateSelector
 
-	property int defaultMinimumWidth: 80 * units.devicePixelRatio
+	property int defaultMinimumWidth: 80 * Screen.devicePixelRatio
 	readonly property int implicitContentWidth: contentWidth + leftPadding + rightPadding
 	implicitWidth: Math.max(defaultMinimumWidth, implicitContentWidth)
 
@@ -68,15 +65,15 @@ PlasmaComponents3.TextField {
 		implicitWidth: contentItem.implicitWidth
 		implicitHeight: contentItem.implicitHeight
 
-		topMargin: 6 * units.devicePixelRatio
-		bottomMargin: 6 * units.devicePixelRatio
+		topMargin: 6 * Screen.devicePixelRatio
+		bottomMargin: 6 * Screen.devicePixelRatio
 
 		// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/calendar/qml/MonthView.qml
 		contentItem: MonthView {
 			id: dateSelectorMonthView
 
-			implicitWidth: 280 * units.devicePixelRatio
-			implicitHeight: 280 * units.devicePixelRatio
+			implicitWidth: 280 * Screen.devicePixelRatio
+			implicitHeight: 280 * Screen.devicePixelRatio
 
 			today: new Date()
 			currentDate: dateSelector.dateTime
@@ -99,11 +96,11 @@ PlasmaComponents3.TextField {
 				margins: -1
 			}
 			radius: 2
-			color: theme.viewBackgroundColor
-			border.color: Qt.rgba(theme.textColor.r, theme.textColor.g, theme.textColor.b, 0.3)
+			color: Kirigami.Theme.viewBackgroundColor
+			border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.3)
 			layer.enabled: true
 
-			layer.effect: DropShadow {
+			layer.effect: QtGraphicalEffects.DropShadow {
 				transparentBorder: true
 				radius: 4
 				samples: 8

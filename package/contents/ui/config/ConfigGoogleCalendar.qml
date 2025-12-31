@@ -1,9 +1,7 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Controls.Styles 1.1
-import QtQuick.Controls 2.0 as QQC2
-import QtQuick.Layouts 1.1
-import org.kde.kirigami 2.0 as Kirigami
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 
 import ".."
 import "../lib"
@@ -12,11 +10,30 @@ import "../lib/Requests.js" as Requests
 ConfigPage {
 	id: page
 
+	SystemPalette { id: syspal }
+
+	function markDirty() {
+		if (typeof kcm !== "undefined") {
+			kcm.needsSave = true
+		}
+	}
+
+	function save() {
+		if (typeof kcm !== "undefined") {
+			kcm.needsSave = false
+		}
+	}
+
 	function alphaColor(c, a) {
 		return Qt.rgba(c.r, c.g, c.b, a)
 	}
 	readonly property color readablePositiveTextColor: Qt.tint(Kirigami.Theme.textColor, alphaColor(Kirigami.Theme.positiveTextColor, 0.5))
 	readonly property color readableNegativeTextColor: Qt.tint(Kirigami.Theme.textColor, alphaColor(Kirigami.Theme.negativeTextColor, 0.5))
+
+	function localFilePath(url) {
+		var path = String(url)
+		return path.indexOf("file://") === 0 ? path.slice(7) : path
+	}
 
 	function sortByKey(key, a, b){
 		if (typeof a[key] === "string") {
@@ -33,9 +50,139 @@ ConfigPage {
 		}
 		return arr.concat().sort(predicate)
 	}
+	function stringListEquals(listA, listB) {
+		if (!Array.isArray(listA) || !Array.isArray(listB)) {
+			return false
+		}
+		if (listA.length !== listB.length) {
+			return false
+		}
+		for (var i = 0; i < listA.length; i++) {
+			if (listA[i] !== listB[i]) {
+				return false
+			}
+		}
+		return true
+	}
+
+	property int selectedAccountIndex: 0
+	function accountLabel(account, index) {
+		if (!account) {
+			return i18n("Google Account")
+		}
+		return account.label || i18n("Google Account %1", index + 1)
+	}
+	function rebuildAccountsModel() {
+		accountsModel.clear()
+		var accounts = googleLoginManager.accounts || []
+		var nextIndex = 0
+		for (var i = 0; i < accounts.length; i++) {
+			var account = accounts[i]
+			if (account && account.id === googleLoginManager.activeAccountId) {
+				nextIndex = i
+			}
+			accountsModel.append({
+				accountId: account.id,
+				label: accountLabel(account, i),
+			})
+		}
+		selectedAccountIndex = nextIndex
+		if (typeof accountSelector !== 'undefined') {
+			accountSelector.currentIndex = nextIndex
+		}
+	}
+
+	ListModel { id: accountsModel }
+	ExecUtil { id: callbackListener }
+
+	property bool autoLoginInProgress: false
+	readonly property bool localRedirect: googleLoginManager.redirectMode === "local"
+	readonly property bool showDebug: page.configBridge.read("debugging", false)
+
+	function extractJson(text) {
+		var start = text.indexOf('{')
+		var end = text.lastIndexOf('}')
+		if (start >= 0 && end > start) {
+			return text.slice(start, end + 1)
+		}
+		return ""
+	}
+
+	function startAutoLogin(accountId, openBrowser) {
+		if (autoLoginInProgress) {
+			return
+		}
+		if (openBrowser === undefined) {
+			openBrowser = true
+		}
+		autoLoginInProgress = true
+		googleLoginManager.prepareAuthorization()
+		googleLoginManager.maybeUseLegacyForLocal()
+		var authContext = googleLoginManager.currentAuthContext()
+		messageWidget.info(localRedirect
+			? i18n("Waiting for browser callback...")
+			: i18n("Waiting for the helper page to send the code..."))
+		var cmd = [
+			'python3',
+			localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py")),
+			'--client_id',
+			authContext.clientId,
+			'--listen_port',
+			'53682',
+			'--redirect_uri',
+			authContext.redirectUri,
+		]
+		if (authContext.clientSecret) {
+			cmd.push('--client_secret')
+			cmd.push(authContext.clientSecret)
+		}
+		debugOutput.text = "Attempting to run:\n" + JSON.stringify(cmd) + "\n\n"
+		if (authContext.pkceVerifier) {
+			cmd.push('--code_verifier')
+			cmd.push(authContext.pkceVerifier)
+		}
+		var cmdStr = JSON.stringify(cmd)
+		console.log('google_redirect.py command:', cmdStr)
+		// debugOutput.text = "Running:\n" + cmdStr + "\n\n"
+		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+			autoLoginInProgress = false
+			debugOutput.text += "Exit: " + exitCode + "\nStdout: " + stdout + "\nStderr: " + stderr + "\n"
+			if (exitCode !== 0) {
+				console.error('google_redirect.py failed:', exitCode, stderr)
+				messageWidget.err(i18n("Auto login failed. See logs for details."))
+				return
+			}
+			console.log('google_redirect.py stdout:', stdout)
+			var payload = extractJson(stdout || "")
+			if (!payload) {
+				messageWidget.err(i18n("Auto login failed: no token data received."))
+				return
+			}
+			var data = null
+			try {
+				data = JSON.parse(payload)
+			} catch (e) {
+				messageWidget.err(i18n("Auto login failed: invalid token data."))
+				return
+			}
+			if (data.error) {
+				messageWidget.err(i18n("Auto login failed: %1", data.error))
+				return
+			}
+			authorizationCodeInput.text = ""
+			googleLoginManager.updateAccessToken(data, accountId)
+		})
+		if (openBrowser) {
+			Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+		}
+	}
 
 	GoogleLoginManager {
 		id: googleLoginManager
+		configBridge: page.configBridge
+		redirectMode: page.cfg_googleRedirectMode || "local"
+		onAccountsChanged: rebuildAccountsModel()
+		onActiveAccountIdChanged: rebuildAccountsModel()
 
 		onCalendarListChanged: {
 			calendarsModel.clear()
@@ -48,7 +195,7 @@ ConfigPage {
 				calendarsModel.append({
 					calendarId: item.id, 
 					name: item.summary,
-					description: item.description,
+					description: item.description || "",
 					backgroundColor: item.backgroundColor,
 					foregroundColor: item.foregroundColor,
 					show: isShown,
@@ -80,49 +227,278 @@ ConfigPage {
 			tasklistsModel.tasklistsShownChanged()
 		}
 
-		onError: messageWidget.err(err)
+		onError: function(err) {
+			messageWidget.err(err)
+		}
 	}
 
 
 	HeaderText {
-		text: i18n("Login")
+		text: i18n("Accounts")
 	}
 	MessageWidget {
 		id: messageWidget
 	}
 	ColumnLayout {
 		visible: googleLoginManager.isLoggedIn
+		RowLayout {
+			Layout.fillWidth: true
+			Label {
+				text: i18n("Account")
+			}
+			ComboBox {
+				id: accountSelector
+				Layout.fillWidth: true
+				textRole: "label"
+				model: accountsModel
+				onActivated: {
+					var item = accountsModel.get(currentIndex)
+					if (item && item.accountId) {
+						googleLoginManager.setActiveAccountId(item.accountId)
+					}
+				}
+			}
+			Button {
+				text: i18n("Remove")
+				enabled: accountsModel.count > 0
+				onClicked: {
+					googleLoginManager.removeAccount(googleLoginManager.activeAccountId)
+					calendarsModel.clear()
+					tasklistsModel.clear()
+				}
+			}
+		}
 		Label {
 			Layout.fillWidth: true
-			text: i18n("Currently Synched.")
+			text: i18n("Currently Synced: %1", accountLabel(googleLoginManager.activeAccount, accountSelector.currentIndex))
 			color: readablePositiveTextColor
 			wrapMode: Text.Wrap
-		}
-		Button {
-			text: i18n("Logout")
-			onClicked: {
-				googleLoginManager.logout()
-				calendarsModel.clear()
-			}
 		}
 		MessageWidget {
 			visible: googleLoginManager.needsRelog
 			text: i18n("Widget has been updated. Please logout and login to Google Calendar again.")
 		}
 	}
+
+	HeaderText {
+		text: i18n("Client Credentials")
+	}
 	ColumnLayout {
-		visible: !googleLoginManager.isLoggedIn
+		Layout.fillWidth: true
+		property bool credentialsReady: false
+		Component.onCompleted: credentialsReady = true
+
+		MessageWidget {
+			messageType: MessageWidget.MessageType.Warning
+			closeButtonVisible: false
+			text: googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
+				? ""
+				: i18n("The built-in Google OAuth client is often blocked. Provide your own client ID (and secret if required) to enable Google sync.")
+		}
 		Label {
 			Layout.fillWidth: true
-			text: i18n("To sync with Google Calendar click the button to first authorize your account.")
+			text: i18n("Leave these empty to use the default credentials. Custom credentials require a Google Cloud OAuth client with the redirect URI set to %1.", googleLoginManager.redirectUri)
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 		}
+		ConfigCheckBox {
+			id: useDesktopClientToggle
+			configKey: "useDesktopClient"
+			visible: !googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
+			text: i18n("Try desktop built-in client (no secret)")
+			onCheckedChanged: {
+				if (!credentialsReady) {
+					return
+				}
+				googleLoginManager.refreshClientCredentials()
+			}
+		}
 		RowLayout {
+			Layout.fillWidth: true
+			Label {
+				text: i18n("Client ID")
+			}
+			ConfigString {
+				configKey: "customClientId"
+				Layout.fillWidth: true
+				placeholderText: i18n("Optional")
+				defaultValue: ""
+				onTextChanged: {
+					markDirty()
+					googleLoginManager.refreshClientCredentials()
+				}
+			}
+		}
+		RowLayout {
+			Layout.fillWidth: true
+			Label {
+				text: i18n("Client Secret")
+			}
+			ConfigString {
+				configKey: "customClientSecret"
+				Layout.fillWidth: true
+				placeholderText: i18n("Optional")
+				defaultValue: ""
+				echoMode: TextInput.Password
+				onTextChanged: {
+					markDirty()
+					googleLoginManager.refreshClientCredentials()
+				}
+			}
+		}
+	}
+
+	HeaderText {
+		text: i18n("Redirect Mode")
+	}
+	ColumnLayout {
+		Layout.fillWidth: true
+
+		ConfigRadioButtonGroup {
+			label: i18n("Callback:")
+			configKey: "googleRedirectMode"
+			model: [
+				{ value: "local", text: i18n("Localhost (auto capture)") },
+				{ value: "hosted", text: i18n("Helper page (GitHub Pages)") },
+			]
+		}
+		Label {
+			Layout.fillWidth: true
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			text: localRedirect
+				? i18n("Localhost keeps everything on your machine and supports auto capture.")
+				: i18n("Helper page works without a localhost redirect. It will try to send the code back to the widget; if that fails, copy the code manually.")
+		}
+		Label {
+			Layout.fillWidth: true
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			visible: !localRedirect
+			text: i18n("Hosted mode requires your OAuth client to allow %1 as a redirect URI.", googleLoginManager.redirectUri)
+		}
+	}
+
+	ColumnLayout {
+		Label {
+			Layout.fillWidth: true
+			text: googleLoginManager.isLoggedIn
+				? i18n("Add another Google account")
+				: i18n("To sync with Google Calendar")
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+		}
+		LinkText {
+			Layout.fillWidth: true
+			text: localRedirect
+				? i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to a localhost URL. Copy the full URL (or just the code) and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
+				: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to the helper page, which will try to send the code back automatically.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			onLinkActivated: function(link) {
+				googleLoginManager.prepareAuthorization()
+				googleLoginManager.maybeUseLegacyForLocal()
+				Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+			}
+
+			// Tooltip
+			// QQC2.ToolTip.visible: !!hoveredLink
+			// QQC2.ToolTip.text: googleLoginManager.authorizationCodeUrl
+
+			// ContextMenu
+			MouseArea {
+				anchors.fill: parent
+				acceptedButtons: Qt.RightButton
+				onClicked: function(mouse) {
+					if (mouse.button === Qt.RightButton) {
+						contextMenu.popup()
+					}
+				}
+				onPressAndHold: function(mouse) {
+					if (mouse.source === Qt.MouseEventNotSynthesized) {
+						contextMenu.popup()
+					}
+				}
+
+				Menu {
+					id: contextMenu
+				MenuItem {
+					text: i18n("Copy Link")
+					onTriggered: clipboardHelper.copyText(googleLoginManager.authorizationCodeUrl)
+				}
+				}
+
+				TextEdit {
+					id: clipboardHelper
+					visible: false
+					function copyText(text) {
+						clipboardHelper.text = text
+						clipboardHelper.selectAll()
+						clipboardHelper.copy()
+					}
+				}
+			}
+		}
+		LinkText {
+			Layout.fillWidth: true
+			text: localRedirect
+				? i18n("Helper page (optional): <a href=\"%1\">%1</a>", googleLoginManager.hostedRedirectUri)
+				: i18n("Helper page: <a href=\"%1\">%1</a>", googleLoginManager.redirectUri)
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+		}
+		Label {
+			Layout.fillWidth: true
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			text: i18n("If your browser shows a connection error, that's expected. Copy the URL from the address bar anyway and paste it below.")
+			visible: localRedirect
+		}
+		Label {
+			Layout.fillWidth: true
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			text: localRedirect
+				? i18n("Tip: Leave the field empty and click Add Account or Update Selected to auto-capture the callback.")
+				: i18n("Tip: Click Add Account with an empty field to start the listener. If the helper page cannot reach the widget, copy the code manually and paste it below.")
+			visible: true
+		}
+		RowLayout {
+			TextField {
+				id: authorizationCodeInput
+				Layout.fillWidth: true
+
+				placeholderText: i18n("Paste the authorization code or redirect URL here")
+				text: ""
+			}
 			Button {
-				text: i18n("Authorize")
+				text: googleLoginManager.isLoggedIn ? i18n("Add Account") : i18n("Submit")
+				enabled: !autoLoginInProgress || !localRedirect
 				onClicked: {
-					googleLoginManager.fetchAccessToken()
+					if (authorizationCodeInput.text) {
+						googleLoginManager.refreshClientCredentials()
+						googleLoginManager.fetchAccessToken({
+							authorizationCode: authorizationCodeInput.text,
+						})
+					} else {
+						startAutoLogin("")
+					}
+				}
+			}
+			Button {
+				visible: googleLoginManager.isLoggedIn
+				text: i18n("Update Selected")
+				enabled: !autoLoginInProgress || !localRedirect
+				onClicked: {
+					if (authorizationCodeInput.text) {
+						googleLoginManager.refreshClientCredentials()
+						googleLoginManager.fetchAccessToken({
+							authorizationCode: authorizationCodeInput.text,
+							accountId: googleLoginManager.activeAccountId,
+						})
+					} else {
+						startAutoLogin(googleLoginManager.activeAccountId)
+					}
 				}
 			}
 		}
@@ -138,7 +514,7 @@ ConfigPage {
 		}
 
 		Button {
-			iconName: "view-refresh"
+			icon.name: "view-refresh"
 			text: i18n("Refresh")
 			onClicked: googleLoginManager.updateCalendarList()
 		}
@@ -161,7 +537,10 @@ ConfigPage {
 						calendarIdList.push(item.calendarId)
 					}
 				}
-				googleLoginManager.calendarIdList = calendarIdList
+				if (!stringListEquals(calendarIdList, googleLoginManager.calendarIdList)) {
+					googleLoginManager.setCalendarIdList(calendarIdList)
+					markDirty()
+				}
 			}
 		}
 
@@ -170,33 +549,50 @@ ConfigPage {
 
 			Repeater {
 				model: calendarsModel
-				delegate: CheckBox {
-					text: model.name
+				delegate: CheckDelegate {
+					id: calendarRow
+					width: parent.width
+					implicitHeight: Kirigami.Units.gridUnit * 2.5
+					checkable: true
+					hoverEnabled: true
+					highlighted: hovered
+					padding: Kirigami.Units.smallSpacing
 					checked: model.show
-					style: CheckBoxStyle {
-						label: RowLayout {
-							Rectangle {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								color: model.backgroundColor
-							}
-							Label {
-								id: labelText
-								text: control.text
-							}
-							LockIcon {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								visible: model.isReadOnly
-							}
-						}
-						
-					}
-
-					onClicked: {
+					onToggled: {
 						calendarsModel.setProperty(index, 'show', checked)
 						calendarsModel.calendarsShownChanged()
 					}
+
+					contentItem: RowLayout {
+						width: calendarRow.availableWidth - calendarRow.indicator.width - calendarRow.spacing
+						height: calendarRow.availableHeight
+						spacing: Kirigami.Units.smallSpacing
+
+						Rectangle {
+							Layout.alignment: Qt.AlignVCenter
+							implicitWidth: Kirigami.Units.iconSizes.smallMedium
+							implicitHeight: Kirigami.Units.iconSizes.smallMedium
+							radius: 4
+							color: model.backgroundColor
+							border.width: 1
+							border.color: Qt.rgba(syspal.text.r, syspal.text.g, syspal.text.b, 0.4)
+						}
+
+						Label {
+							text: model.name
+							Layout.fillWidth: true
+							elide: Text.ElideRight
+						}
+
+						LockIcon {
+							Layout.alignment: Qt.AlignVCenter
+							implicitWidth: Kirigami.Units.iconSizes.smallMedium
+							implicitHeight: Kirigami.Units.iconSizes.smallMedium
+							visible: model.isReadOnly
+						}
+					}
+
+					Accessible.name: model.name
 				}
 			}
 		}
@@ -210,7 +606,7 @@ ConfigPage {
 			text: i18n("Tasks")
 
 			Image {
-				source: plasmoid.file("", "icons/Google_Tasks_2021.svg")
+				source: Qt.resolvedUrl("../../icons/google_tasks_96px.png")
 				smooth: true
 				anchors.leftMargin: parent.contentWidth + Kirigami.Units.smallSpacing
 				anchors.left: parent.left
@@ -221,7 +617,7 @@ ConfigPage {
 		}
 
 		Button {
-			iconName: "view-refresh"
+			icon.name: "view-refresh"
 			text: i18n("Refresh")
 			onClicked: googleLoginManager.updateTasklistList()
 		}
@@ -244,7 +640,10 @@ ConfigPage {
 						tasklistIdList.push(item.tasklistId)
 					}
 				}
-				googleLoginManager.tasklistIdList = tasklistIdList
+				if (!stringListEquals(tasklistIdList, googleLoginManager.tasklistIdList)) {
+					googleLoginManager.setTasklistIdList(tasklistIdList)
+					markDirty()
+				}
 			}
 		}
 
@@ -253,33 +652,50 @@ ConfigPage {
 
 			Repeater {
 				model: tasklistsModel
-				delegate: CheckBox {
-					text: model.name
+				delegate: CheckDelegate {
+					id: tasklistRow
+					width: parent.width
+					implicitHeight: Kirigami.Units.gridUnit * 2.5
+					checkable: true
+					hoverEnabled: true
+					highlighted: hovered
+					padding: Kirigami.Units.smallSpacing
 					checked: model.show
-					style: CheckBoxStyle {
-						label: RowLayout {
-							Rectangle {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								color: model.backgroundColor
-							}
-							Label {
-								id: labelText
-								text: control.text
-							}
-							LockIcon {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								visible: model.isReadOnly
-							}
-						}
-						
-					}
-
-					onClicked: {
+					onToggled: {
 						tasklistsModel.setProperty(index, 'show', checked)
 						tasklistsModel.tasklistsShownChanged()
 					}
+
+					contentItem: RowLayout {
+						width: tasklistRow.availableWidth - tasklistRow.indicator.width - tasklistRow.spacing
+						height: tasklistRow.availableHeight
+						spacing: Kirigami.Units.smallSpacing
+
+						Rectangle {
+							Layout.alignment: Qt.AlignVCenter
+							implicitWidth: Kirigami.Units.iconSizes.smallMedium
+							implicitHeight: Kirigami.Units.iconSizes.smallMedium
+							radius: 4
+							color: model.backgroundColor
+							border.width: 1
+							border.color: Qt.rgba(syspal.text.r, syspal.text.g, syspal.text.b, 0.4)
+						}
+
+						Label {
+							text: model.name
+							Layout.fillWidth: true
+							elide: Text.ElideRight
+						}
+
+						LockIcon {
+							Layout.alignment: Qt.AlignVCenter
+							implicitWidth: Kirigami.Units.iconSizes.smallMedium
+							implicitHeight: Kirigami.Units.iconSizes.smallMedium
+							visible: model.isReadOnly
+						}
+					}
+
+					Accessible.name: model.name
 				}
 			}
 		}
@@ -307,10 +723,80 @@ ConfigPage {
 		ConfigCheckBox {
 			configKey: 'googleHideGoalsDesc'
 			text: i18n("Hide \"This event was added from Goals in Google Calendar\" description")
+			onClicked: markDirty()
+		}
+	}
+
+	HeaderText {
+		text: "Debug Info (Temporary)"
+		visible: showDebug
+	}
+	ColumnLayout {
+		Layout.fillWidth: true
+		visible: showDebug
+		RowLayout {
+			Button {
+				text: "Test Echo"
+				onClicked: {
+					var cmd = ['echo', 'Hello World']
+					debugOutput.text = "Running: echo Hello World\n"
+					callbackListener.exec(cmd, function(c, code, status, out, err) {
+						debugOutput.text += "Result: " + out + " (Code: " + code + ")\n"
+					})
+				}
+			}
+			Button {
+				text: "Show Python Path"
+				onClicked: {
+					var path = localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py"))
+					debugOutput.text = "Script Path: " + path + "\n"
+					var cmd = ['python3', '--version']
+					callbackListener.exec(cmd, function(c, code, status, out, err) {
+						debugOutput.text += "Python Version: " + out + " " + err + "\n"
+					})
+				}
+			}
+			Button {
+				text: "Start Listener (Manual)"
+				onClicked: {
+					googleLoginManager.prepareAuthorization()
+					var authContext = googleLoginManager.currentAuthContext()
+					var cmd = [
+						'python3',
+						localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py")),
+						'--client_id',
+						authContext.clientId,
+						'--listen_port',
+						'53682',
+						'--redirect_uri',
+						authContext.redirectUri,
+					]
+					if (authContext.clientSecret) {
+						cmd.push('--client_secret')
+						cmd.push(authContext.clientSecret)
+					}
+					debugOutput.text = "Manually starting listener...\nCommand: " + JSON.stringify(cmd) + "\n"
+					callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+						debugOutput.text += "Listener Finished.\nExit: " + exitCode + "\nStdout: " + stdout + "\nStderr: " + stderr + "\n"
+					})
+				}
+			}
+		}
+		TextArea {
+			id: debugOutput
+			Layout.fillWidth: true
+			implicitHeight: 200
+			readOnly: true
+			text: "Debug logs will appear here..."
+			background: Rectangle {
+				color: syspal.base
+				border.color: syspal.mid
+			}
 		}
 	}
 
 	Component.onCompleted: {
+		rebuildAccountsModel()
 		if (googleLoginManager.isLoggedIn) {
 			googleLoginManager.calendarListChanged()
 			googleLoginManager.tasklistListChanged()

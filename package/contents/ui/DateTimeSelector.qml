@@ -1,9 +1,7 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.4
-import QtQuick.Layouts 1.1
-import QtQuick.Window 2.2
+import QtQuick
+import QtQuick.Layouts
 
-import org.kde.plasma.core
+import org.kde.kirigami as Kirigami
 
 GridLayout {
 	id: dateTimeSelector
@@ -14,7 +12,7 @@ GridLayout {
 	property alias timeFormat: timeSelector.timeFormat
 	property bool dateFirst: true
 	columns: 2
-	columnSpacing: units.smallSpacing
+	columnSpacing: Kirigami.Units.smallSpacing
 	readonly property int minimumWidth: dateSelector.implicitWidth + columnSpacing + timeSelector.implicitWidth
 
 	signal dateTimeShifted(date oldDateTime, int deltaDateTime, date newDateTime)

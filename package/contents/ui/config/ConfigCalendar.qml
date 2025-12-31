@@ -1,6 +1,6 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 import "../lib"
 
@@ -18,7 +18,7 @@ ConfigPage {
 			label: i18n("Click Date:")
 			RadioButton {
 				text: i18n("Scroll to event in Agenda")
-				exclusiveGroup: clickDateGroup.exclusiveGroup
+				ButtonGroup.group: clickDateGroup.exclusiveGroup
 				checked: true
 			}
 		}
@@ -89,9 +89,9 @@ ConfigPage {
 					}
 
 					// The firstDayOfWeek enum starts at -1 instead of 0
-					currentIndex = plasmoid.configuration.firstDayOfWeek + 1
+					currentIndex = page.configBridge.read("firstDayOfWeek", -1) + 1
 					currentIndexChanged.connect(function(){
-						plasmoid.configuration.firstDayOfWeek = currentIndex - 1
+						page.configBridge.write("firstDayOfWeek", currentIndex - 1)
 					})
 				}
 			}
@@ -122,7 +122,7 @@ ConfigPage {
 			label: i18n("Selected:")
 			RadioButton {
 				text: i18n("Solid Color (Highlight)")
-				exclusiveGroup: selectedStyleGroup.exclusiveGroup
+				ButtonGroup.group: selectedStyleGroup.exclusiveGroup
 				checked: true
 			}
 		}

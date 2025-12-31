@@ -1,13 +1,13 @@
 // Version 6
 
-import QtQuick 2.0
-import org.kde.plasma.core
+import QtQuick
+import org.kde.plasma.plasma5support as Plasma5Support
 
-PlasmaCore.DataSource {
+Plasma5Support.DataSource {
 	id: executable
 	engine: "executable"
 	connectedSources: []
-	onNewData: {
+	function onNewData(sourceName, data) {
 		var cmd = sourceName
 		var exitCode = data["exit code"]
 		var exitStatus = data["exit status"]

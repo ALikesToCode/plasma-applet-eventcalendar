@@ -1,6 +1,5 @@
-import org.kde.ksvg 1.0 as KSvg
-import QtQuick 2.4
-import org.kde.kirigami 2.15 as Kirigami
+import QtQuick
+import org.kde.plasma.components as PlasmaComponents3
 
 Item {
 	id: timeFormatSizeHelper
@@ -74,26 +73,16 @@ Item {
 
 	Connections {
 		target: clock
-		function onWidthChanged() {
-			timeFormatSizeHelper.updateMinWidth()
-		}
-		function onHeightChanged() {
-			timeFormatSizeHelper.updateMinWidth()
-		}
+		function onWidthChanged() { timeFormatSizeHelper.updateMinWidth() }
+		function onHeightChanged() { timeFormatSizeHelper.updateMinWidth() }
 	}
 	Connections {
 		target: timeLabel
-		function onHeightChanged() {
-			timeFormatSizeHelper.updateMinWidth()
-		}
-		function onTimeFormatChanged() {
-			timeFormatSizeHelper.updateMinWidth()
-		}
+		function onHeightChanged() { timeFormatSizeHelper.updateMinWidth() }
+		function onTimeFormatChanged() { timeFormatSizeHelper.updateMinWidth() }
 	}
 	Connections {
 		target: timeModel
-		function onDateChanged() {
-			timeFormatSizeHelper.updateMinWidth()
-		}
+		function onDateChanged() { timeFormatSizeHelper.updateMinWidth() }
 	}
 }

@@ -1,4 +1,4 @@
-import QtQuick 2.0
+import QtQuick
 
 import "Shared.js" as Shared
 
@@ -210,10 +210,10 @@ ListModel {
 					var taskIsOverdue = eventItem.dueEndTime < now
 					if (taskIsOverdue) {
 						eventItem.start = {
-							date: Shared.dateString(now),
+							date: Shared.localeDateString(now),
 						}
 						eventItem.end = {
-							date: Shared.dateString(now),
+							date: Shared.localeDateString(now),
 						}
 						eventItem.startDateTime = now
 						eventItem.endDateTime = now
@@ -248,24 +248,6 @@ ListModel {
 
 
 		var agendaItemList = []
-
-		/* Filter out reccurent events to show only the closest one */
-		if (!plasmoid.configuration.agendaBreakupReccurentEvents) {
-		const sortedEventsByReccurence = data.items.reduce((reccurentEvents,event) => {
-			if (reccurentEvents[event.summary] && reccurentEvents[event.summary].find(e => e.id !== event.id && e.summary === event.summary)) {
-				reccurentEvents[event.summary].push(event)
-			}
-			else { 
-				reccurentEvents[event.summary] = [];
-				reccurentEvents[event.summary].push(event); }
-			return reccurentEvents;
-		},{})
-
-		data.items = Object.values(sortedEventsByReccurence).map(events => events.filter(event => {
-			const today = new Date(new Date().setHours(0,0,0,0));
-			return event.endDateTime >= today;
-		} )[0] || events[0])
-		}
 
 		for (var i = 0; i < data.items.length; i++) {
 			var eventItem = data.items[i]

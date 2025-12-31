@@ -1,13 +1,13 @@
 // Version 2
 
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 ConfigComboBox {
 	id: configFontFamily
 
-	populated: false
+	isPopulated: false
 
 	// Based on: org.kde.plasma.digitalclock
 	onPopulate: {
@@ -19,6 +19,6 @@ ConfigComboBox {
 			arr.push({ text: fonts[i], value: fonts[i] })
 		}
 		model = arr
-		populated = true
+		isPopulated = true
 	}
 }

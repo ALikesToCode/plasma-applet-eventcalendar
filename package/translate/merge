@@ -6,9 +6,28 @@
 # https://invent.kde.org/sysadmin/l10n-scripty/-/blob/master/extract-messages.sh
 
 DIR=`cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd`
-plasmoidName=`kreadconfig5 --file="$DIR/../metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name"`
+metadataFile="$DIR/../metadata.json"
+read_metadata() {
+	python3 - "$metadataFile" "$1" <<'PY'
+import json, sys
+metadata_path = sys.argv[1]
+key_path = sys.argv[2].split(".")
+with open(metadata_path, "r", encoding="utf-8") as f:
+	data = json.load(f)
+for part in key_path:
+	if not isinstance(data, dict):
+		data = ""
+		break
+	data = data.get(part, "")
+if data is None:
+	data = ""
+print(data)
+PY
+}
+
+plasmoidName=$(read_metadata "KPlugin.Id")
 widgetName="${plasmoidName##*.}" # Strip namespace
-website=`kreadconfig5 --file="$DIR/../metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Website"`
+website=$(read_metadata "KPlugin.Website")
 bugAddress="$website"
 packageRoot=".." # Root of translatable sources
 projectName="plasma_applet_${plasmoidName}" # project name
@@ -50,23 +69,26 @@ fi
 echoGray "[translate/merge] Extracting messages"
 potArgs="--from-code=UTF-8 --width=200 --add-location=file"
 
-# Note: xgettext v0.20.1 (Kubuntu 20.04) and below will attempt to translate Icon,
-# so we need to specify Name, GenericName, Comment, and Keywords.
-# https://github.com/Zren/plasma-applet-lib/issues/1
-# https://savannah.gnu.org/support/?108887
-find "${packageRoot}" -name '*.desktop' | sort > "${DIR}/infiles.list"
-xgettext \
-	${potArgs} \
-	--files-from="${DIR}/infiles.list" \
-	--language=Desktop \
-	-k -kName -kGenericName -kComment -kKeywords \
-	-D "${packageRoot}" \
-	-D "${DIR}" \
-	-o "template.pot.new" \
-	|| \
-	{ echoRed "[translate/merge] error while calling xgettext. aborting."; exit 1; }
-
-sed -i 's/"Content-Type: text\/plain; charset=CHARSET\\n"/"Content-Type: text\/plain; charset=UTF-8\\n"/' "template.pot.new"
+desktopFiles=$(find "${packageRoot}" -name '*.desktop' | sort)
+joinArg=""
+if [ -n "$desktopFiles" ]; then
+	# Note: xgettext v0.20.1 (Kubuntu 20.04) and below will attempt to translate Icon,
+	# so we need to specify Name, GenericName, Comment, and Keywords.
+	# https://github.com/Zren/plasma-applet-lib/issues/1
+	# https://savannah.gnu.org/support/?108887
+	printf "%s\n" "$desktopFiles" > "${DIR}/infiles.list"
+	xgettext \
+		${potArgs} \
+		--files-from="${DIR}/infiles.list" \
+		--language=Desktop \
+		-k -kName -kGenericName -kComment -kKeywords \
+		-D "${packageRoot}" \
+		-D "${DIR}" \
+		-o "template.pot.new" \
+		|| \
+		{ echoRed "[translate/merge] error while calling xgettext. aborting."; exit 1; }
+	joinArg="--join-existing"
+fi
 
 # See Ki18n's extract-messages.sh for a full example:
 # https://invent.kde.org/sysadmin/l10n-scripty/-/blob/master/extract-messages.sh#L25
@@ -93,11 +115,12 @@ xgettext \
 	--msgid-bugs-address="${bugAddress}" \
 	-D "${packageRoot}" \
 	-D "${DIR}" \
-	--join-existing \
+	${joinArg} \
 	-o "template.pot.new" \
 	|| \
 	{ echoRed "[translate/merge] error while calling xgettext. aborting."; exit 1; }
 
+sed -i 's/"Content-Type: text\/plain; charset=CHARSET\\n"/"Content-Type: text\/plain; charset=UTF-8\\n"/' "template.pot.new"
 sed -i 's/# SOME DESCRIPTIVE TITLE./'"# Translation of ${widgetName} in LANGUAGE"'/' "template.pot.new"
 sed -i 's/# Copyright (C) YEAR THE PACKAGE'"'"'S COPYRIGHT HOLDER/'"# Copyright (C) $(date +%Y)"'/' "template.pot.new"
 
@@ -190,7 +213,8 @@ done
 echoGray "[translate/merge] Done merging messages"
 
 #---
-echoGray "[translate/merge] Updating .desktop file"
+if [ -f "$DIR/../metadata.desktop" ]; then
+	echoGray "[translate/merge] Updating .desktop file"
 
 # Generate LINGUAS for msgfmt
 if [ -f "$DIR/LINGUAS" ]; then
@@ -241,9 +265,12 @@ if [ ! -z "${translatedLines}" ]; then
 fi
 
 # Cleanup
-mv "$DIR/new.desktop" "$DIR/../metadata.desktop"
-rm "$DIR/template.desktop"
-rm "$DIR/LINGUAS"
+	mv "$DIR/new.desktop" "$DIR/../metadata.desktop"
+	rm "$DIR/template.desktop"
+	rm "$DIR/LINGUAS"
+else
+	echoGray "[translate/merge] metadata.desktop not found, skipping desktop translation merge"
+fi
 
 #---
 # Populate ReadMe.md

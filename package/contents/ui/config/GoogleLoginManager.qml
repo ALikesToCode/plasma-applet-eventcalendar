@@ -1,127 +1,387 @@
-import QtQuick 2.0
+import QtQuick
 
 import "../lib"
+import "../lib/Pkce.js" as Pkce
+import "../lib/ConfigUtils.js" as ConfigUtils
 import "../lib/Requests.js" as Requests
 
 Item {
 	id: session
-	ExecUtil { id: executable }
-	property int callbackListenPort: 8001
 
 	Logger {
 		id: logger
-		showDebug: plasmoid.configuration.debugging
+		showDebug: readConfig("debugging", false)
 	}
 
-	// Active Session
-	readonly property bool isLoggedIn: !!plasmoid.configuration.accessToken
+	GoogleAccountsStore {
+		id: accountsStore
+		configBridge: session.configBridge
+	}
+
+	property var accounts: []
+	property string activeAccountId: accountsStore.activeAccountId
+	property var activeAccount: null
+
+	readonly property bool isLoggedIn: accounts && accounts.length > 0
 	readonly property bool needsRelog: {
-		if (plasmoid.configuration.accessToken && plasmoid.configuration.latestClientId != plasmoid.configuration.sessionClientId) {
-			return true
-		} else if (!plasmoid.configuration.accessToken && plasmoid.configuration.access_token) {
-			return true
-		} else {
+		if (!activeAccount) {
 			return false
 		}
-	}
-
-	// Data
-	property var m_calendarList: ConfigSerializedString {
-		id: m_calendarList
-		configKey: 'calendarList'
-		defaultValue: []
-	}
-	property alias calendarList: m_calendarList.value
-
-	property var m_calendarIdList: ConfigSerializedString {
-		id: m_calendarIdList
-		configKey: 'calendarIdList'
-		defaultValue: []
-
-		function serialize() {
-			plasmoid.configuration[configKey] = value.join(',')
+		if (activeAccount.accessToken && activeAccount.sessionClientId != effectiveClientId) {
+			return true
 		}
-		function deserialize() {
-			value = configValue.split(',')
+		return false
+	}
+
+	property var calendarList: []
+	property var calendarIdList: []
+	property var tasklistList: []
+	property var tasklistIdList: []
+
+	property string localRedirectUri: "http://127.0.0.1:53682/"
+	property string hostedRedirectUri: "https://alikestocode.github.io/plasma-applet-eventcalendar/"
+	property string redirectMode: "local"
+	function normalizedRedirectMode(mode) {
+		return mode === "hosted" ? "hosted" : "local"
+	}
+	readonly property string redirectUri: normalizedRedirectMode(redirectMode) === "hosted"
+		? hostedRedirectUri
+		: localRedirectUri
+	property string legacyClientId: "391436299960-k0s16nm589meovhoblpcquqgbbrena17.apps.googleusercontent.com"
+	property string legacyClientSecret: "Gdr_7lKIQuGBD4Up3MOiw-7i"
+	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
+	property var configBridge: null
+	function normalizedClientValue(value) {
+		return value ? value.trim() : ""
+	}
+	property string effectiveClientId: ""
+	property string effectiveClientSecret: ""
+	property string pkceVerifier: ""
+	property string pkceChallenge: ""
+	property var pendingAuthContext: null
+
+	Connections {
+		target: accountsStore
+		function onAccountsChanged() {
+			session.accounts = accountsStore.accounts.slice(0)
+			session.refreshActiveAccount()
+		}
+		function onAccountUpdated(accountId) {
+			session.accounts = accountsStore.accounts.slice(0)
+			if (accountId === session.activeAccountId) {
+				session.refreshActiveAccount()
+			}
+		}
+		function onActiveAccountIdChanged() {
+			session.refreshActiveAccount()
 		}
 	}
-	property alias calendarIdList: m_calendarIdList.value
 
-	property var m_tasklistList: ConfigSerializedString {
-		id: m_tasklistList
-		configKey: 'tasklistList'
-		defaultValue: []
-	}
-	property alias tasklistList: m_tasklistList.value
-
-	property var m_tasklistIdList: ConfigSerializedString {
-		id: m_tasklistIdList
-		configKey: 'tasklistIdList'
-		defaultValue: []
-
-		function serialize() {
-			plasmoid.configuration[configKey] = value.join(',')
+	Component.onCompleted: {
+		if (!configBridge) {
+			configBridge = ConfigUtils.findBridge(session)
 		}
-		function deserialize() {
-			value = configValue.split(',')
+		session.accounts = accountsStore.accounts.slice(0)
+		migrateDefaultClientIfNeeded()
+		refreshActiveAccount()
+		refreshClientCredentials()
+		ensurePkce()
+	}
+
+	function readConfig(key, fallback) {
+		if (configBridge) {
+			var bridged = configBridge.read(key, fallback)
+			return (bridged === undefined || bridged === null) ? fallback : bridged
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var directValue = plasmoid.configuration[key]
+			return (directValue === undefined || directValue === null) ? fallback : directValue
+		}
+		return fallback
+	}
+
+	function writeConfig(key, value) {
+		if (configBridge) {
+			configBridge.write(key, value)
+			return
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			plasmoid.configuration[key] = value
+			if (typeof kcm !== "undefined") {
+				kcm.needsSave = true
+			}
 		}
 	}
-	property alias tasklistIdList: m_tasklistIdList.value
 
+	function refreshActiveAccount() {
+		activeAccount = accountsStore.getAccount(activeAccountId)
+		if (activeAccount) {
+			calendarList = activeAccount.calendarList || []
+			calendarIdList = activeAccount.calendarIdList || []
+			tasklistList = activeAccount.tasklistList || []
+			tasklistIdList = activeAccount.tasklistIdList || []
+		} else {
+			calendarList = []
+			calendarIdList = []
+			tasklistList = []
+			tasklistIdList = []
+		}
+	}
+
+	function refreshClientCredentials() {
+		migrateDefaultClientIfNeeded()
+		var useDesktopClient = readConfig("useDesktopClient", false)
+		var customId = normalizedClientValue(readConfig("customClientId", ""))
+		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
+		var latestId = readConfig("latestClientId", "")
+		var latestSecret = readConfig("latestClientSecret", "")
+		if (customId || customSecret) {
+			effectiveClientId = customId
+			effectiveClientSecret = customSecret
+		} else if (useDesktopClient) {
+			effectiveClientId = defaultClientId
+			effectiveClientSecret = ""
+		} else {
+			effectiveClientId = latestId
+			effectiveClientSecret = latestSecret
+		}
+	}
+
+	function migrateDefaultClientIfNeeded() {
+		var customId = normalizedClientValue(readConfig("customClientId", ""))
+		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
+		if (customId || customSecret) {
+			return
+		}
+		var useDesktopClient = readConfig("useDesktopClient", false)
+		var latestId = readConfig("latestClientId", "")
+		var latestSecret = readConfig("latestClientSecret", "")
+		if (!latestId) {
+			writeConfig("latestClientId", legacyClientId)
+			writeConfig("latestClientSecret", legacyClientSecret)
+			return
+		}
+		if (!useDesktopClient && latestId === defaultClientId) {
+			writeConfig("latestClientId", legacyClientId)
+			writeConfig("latestClientSecret", legacyClientSecret)
+			return
+		}
+		if (latestId === legacyClientId && !latestSecret) {
+			writeConfig("latestClientSecret", legacyClientSecret)
+		}
+	}
+
+	function ensurePkce() {
+		if (!pkceVerifier || !pkceChallenge) {
+			resetPkce()
+		}
+	}
+
+	function resetPkce() {
+		pkceVerifier = Pkce.generateVerifier()
+		pkceChallenge = Pkce.challengeFromVerifier(pkceVerifier)
+	}
+	function redirectUriForMode(mode) {
+		return normalizedRedirectMode(mode) === "hosted" ? hostedRedirectUri : localRedirectUri
+	}
+	function buildAuthContext(modeOverride) {
+		var mode = typeof modeOverride === "string" ? modeOverride : redirectMode
+		var usePkce = !effectiveClientSecret
+		return {
+			clientId: effectiveClientId,
+			clientSecret: effectiveClientSecret,
+			redirectUri: redirectUriForMode(mode),
+			pkceVerifier: usePkce ? pkceVerifier : "",
+			pkceChallenge: usePkce ? pkceChallenge : "",
+		}
+	}
+	function currentAuthContext() {
+		return pendingAuthContext || buildAuthContext()
+	}
+	function prepareAuthorization() {
+		refreshClientCredentials()
+		var mode = normalizedRedirectMode(redirectMode)
+		if (mode === "hosted" && !effectiveClientSecret) {
+			writeConfig("googleRedirectMode", "local")
+			error("Hosted mode requires a client secret. Switching to localhost.")
+			mode = "local"
+		}
+		if (!effectiveClientSecret) {
+			resetPkce()
+		} else {
+			pkceVerifier = ""
+			pkceChallenge = ""
+		}
+		pendingAuthContext = buildAuthContext(mode)
+	}
+	function switchToLegacyClient() {
+		writeConfig("latestClientId", legacyClientId)
+		writeConfig("latestClientSecret", legacyClientSecret)
+		refreshClientCredentials()
+		prepareAuthorization()
+	}
+	function maybeUseLegacyForLocal() {
+		var ctx = currentAuthContext()
+		if (normalizedRedirectMode(redirectMode) !== "local") {
+			return false
+		}
+		if (ctx.clientSecret) {
+			return false
+		}
+		if (ctx.clientId !== defaultClientId) {
+			return false
+		}
+		switchToLegacyClient()
+		return true
+	}
+	function clearAuthorizationContext() {
+		pendingAuthContext = null
+	}
+	function buildAuthorizationUrl(ctx) {
+		var url = 'https://accounts.google.com/o/oauth2/v2/auth'
+		url += '?scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks')
+		url += '&response_type=code'
+		url += '&redirect_uri=' + encodeURIComponent(ctx.redirectUri)
+		url += '&access_type=offline'
+		url += '&prompt=consent'
+		url += '&client_id=' + encodeURIComponent(ctx.clientId)
+		if (ctx.pkceChallenge) {
+			url += '&code_challenge=' + encodeURIComponent(ctx.pkceChallenge)
+			url += '&code_challenge_method=S256'
+		}
+		return url
+	}
 
 	//--- Signals
 	signal newAccessToken()
 	signal sessionReset()
 	signal error(string err)
 
+	//---
 	readonly property string authorizationCodeUrl: {
-		var url = 'https://accounts.google.com/o/oauth2/v2/auth'
-		url += '?scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks')
-		url += '&response_type=code'
-		url += '&redirect_uri=' + encodeURIComponent("http://127.0.0.1:" + callbackListenPort.toString() + "/")
-		url += '&client_id=' + encodeURIComponent(plasmoid.configuration.latestClientId)
-		return url
+		return buildAuthorizationUrl(currentAuthContext())
 	}
 
+	function setActiveAccountId(accountId) {
+		accountsStore.setActiveAccountId(accountId)
+	}
 
-	function fetchAccessToken() {
-		var cmd = [
-			'python3',
-			plasmoid.file("", "scripts/google_redirect.py"),
-			"--client_id", plasmoid.configuration.latestClientId,
-			"--client_secret", plasmoid.configuration.latestClientSecret,
-			"--listen_port", callbackListenPort.toString(),
-		]
+	function setCalendarIdList(list) {
+		if (activeAccountId) {
+			accountsStore.updateAccount(activeAccountId, { calendarIdList: list })
+		}
+	}
 
-		Qt.openUrlExternally(authorizationCodeUrl);
+	function setTasklistIdList(list) {
+		if (activeAccountId) {
+			accountsStore.updateAccount(activeAccountId, { tasklistIdList: list })
+		}
+	}
 
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
-			if (exitCode) {
-				logger.log('fetchAccessToken.stderr', stderr)
-				logger.log('fetchAccessToken.stdout', stdout)
+	function removeAccount(accountId) {
+		logout(accountId)
+	}
+
+	function extractAuthorizationCode(input) {
+		if (!input) {
+			return ""
+		}
+		var trimmed = input.trim()
+		var match = /[?&]code=([^&]+)/.exec(trimmed)
+		if (match && match[1]) {
+			return decodeURIComponent(match[1].replace(/\+/g, ' '))
+		}
+		return trimmed
+	}
+
+	function fetchAccessToken(args) {
+		var ctx = currentAuthContext()
+		var authCode = extractAuthorizationCode(args.authorizationCode)
+		if (!authCode) {
+			handleError('Invalid Google Authorization Code', null)
+			return
+		}
+		var url = 'https://oauth2.googleapis.com/token'
+		if (!ctx.pkceVerifier && !ctx.clientSecret) {
+			handleError('Missing PKCE verifier. Start login from the widget and try again.', null)
+			return
+		}
+		var payload = {
+			client_id: ctx.clientId,
+			code: authCode,
+			grant_type: 'authorization_code',
+			redirect_uri: ctx.redirectUri,
+		}
+		if (ctx.clientSecret) {
+			payload.client_secret = ctx.clientSecret
+		}
+		if (ctx.pkceVerifier) {
+			payload.code_verifier = ctx.pkceVerifier
+		}
+		Requests.post({
+			url: url,
+			data: payload,
+		}, function(err, data, xhr) {
+			logger.debug('/oauth2/v4/token Response', data)
+
+			var parsed = null
+			if (data) {
+				try {
+					parsed = JSON.parse(data)
+				} catch (e) {
+					parsed = null
+				}
+			}
+			if (err) {
+				handleError(err, parsed || data)
+				return
+			}
+			if (!parsed) {
+				handleError('Error parsing /oauth2/v4/token data as JSON', null)
+				return
+			}
+			if (parsed && parsed.error) {
+				var errorDesc = parsed.error_description || ""
+				var missingSecret = parsed.error === "invalid_request" && errorDesc.indexOf("client_secret") !== -1
+				if (missingSecret
+					&& !ctx.clientSecret
+					&& ctx.clientId === defaultClientId
+					&& normalizedRedirectMode(redirectMode) === "local"
+				) {
+					switchToLegacyClient()
+					error("Google requires a client secret for the built-in client. Switching to a fallback login. Please complete the login again.")
+					Qt.openUrlExternally(authorizationCodeUrl)
+					return
+				}
+				handleError(err, parsed)
 				return
 			}
 
-			try {
-				var data = JSON.parse(stdout)
-				updateAccessToken(data)
-			} catch (e) {
-				logger.log('fetchAccessToken.e', e)
-				handleError('Error parsing JSON', null)
-				return
-			}
-
+			// Ready
+			updateAccessToken(parsed, args.accountId)
 		})
 	}
 
-	function updateAccessToken(data) {
-		plasmoid.configuration.sessionClientId = plasmoid.configuration.latestClientId
-		plasmoid.configuration.sessionClientSecret = plasmoid.configuration.latestClientSecret
-		plasmoid.configuration.accessToken = data.access_token
-		plasmoid.configuration.accessTokenType = data.token_type
-		plasmoid.configuration.accessTokenExpiresAt = Date.now() + data.expires_in * 1000
-		plasmoid.configuration.refreshToken = data.refresh_token
+	function updateAccessToken(data, accountId) {
+		var account = accountId ? accountsStore.getAccount(accountId) : null
+		var targetId = accountId
+		if (!account) {
+			var created = accountsStore.addAccount({
+				label: '',
+			})
+			targetId = created.id
+		}
+		accountsStore.updateAccount(targetId, {
+			sessionClientId: effectiveClientId,
+			sessionClientSecret: effectiveClientSecret,
+			accessToken: data.access_token,
+			accessTokenType: data.token_type,
+			accessTokenExpiresAt: Date.now() + data.expires_in * 1000,
+			refreshToken: data.refresh_token || (account && account.refreshToken) || '',
+		})
+		accountsStore.setActiveAccountId(targetId)
 		newAccessToken()
+		clearAuthorizationContext()
 	}
 
 	onNewAccessToken: updateData()
@@ -133,16 +393,23 @@ Item {
 
 	function updateCalendarList() {
 		logger.debug('updateCalendarList')
-		logger.debug('accessToken', plasmoid.configuration.accessToken)
+		if (!activeAccount || !activeAccount.accessToken) {
+			return
+		}
 		fetchGCalCalendars({
-			accessToken: plasmoid.configuration.accessToken,
+			accessToken: activeAccount.accessToken,
 		}, function(err, data, xhr) {
 			// Check for errors
 			if (err || data.error) {
 				handleError(err, data)
 				return
 			}
-			m_calendarList.value = data.items
+			var label = deriveLabelFromCalendars(data.items)
+			var patch = { calendarList: data.items }
+			if (label && !activeAccount.label) {
+				patch.label = label
+			}
+			accountsStore.updateAccount(activeAccountId, patch)
 		})
 	}
 
@@ -165,16 +432,18 @@ Item {
 
 	function updateTasklistList() {
 		logger.debug('updateTasklistList')
-		logger.debug('accessToken', plasmoid.configuration.accessToken)
+		if (!activeAccount || !activeAccount.accessToken) {
+			return
+		}
 		fetchGoogleTasklistList({
-			accessToken: plasmoid.configuration.accessToken,
+			accessToken: activeAccount.accessToken,
 		}, function(err, data, xhr) {
 			// Check for errors
 			if (err || data.error) {
-				handleError(err, data)
+				logger.log('updateTasklistList error', err, data)
 				return
 			}
-			m_tasklistList.value = data.items
+			accountsStore.updateAccount(activeAccountId, { tasklistList: data.items })
 		})
 	}
 
@@ -195,23 +464,34 @@ Item {
 		})
 	}
 
-	function logout() {
-		plasmoid.configuration.sessionClientId = ''
-		plasmoid.configuration.sessionClientSecret = ''
-		plasmoid.configuration.accessToken = ''
-		plasmoid.configuration.accessTokenType = ''
-		plasmoid.configuration.accessTokenExpiresAt = 0
-		plasmoid.configuration.refreshToken = ''
+	function logout(accountId) {
+		var targetId = accountId || activeAccountId
+		if (!targetId) {
+			return
+		}
+		accountsStore.removeAccount(targetId)
 
-		// Delete relevant data
-		// TODO: only target google calendar data
-		// TODO: Make a signal?
-		plasmoid.configuration.agendaNewEventLastCalendarId = ''
-		calendarList = []
-		calendarIdList = []
-		tasklistList = []
-		tasklistIdList = []
+		var lastCalendarId = readConfig("agendaNewEventLastCalendarId", "")
+		if (lastCalendarId.indexOf(targetId + '::') === 0) {
+			writeConfig("agendaNewEventLastCalendarId", "")
+		}
 		sessionReset()
+	}
+
+	function deriveLabelFromCalendars(list) {
+		if (!Array.isArray(list)) {
+			return ''
+		}
+		for (var i = 0; i < list.length; i++) {
+			var item = list[i]
+			if (item && item.primary) {
+				return item.id || item.summary || ''
+			}
+		}
+		if (list.length > 0) {
+			return list[0].summary || list[0].id || ''
+		}
+		return ''
 	}
 
 	// https://developers.google.com/calendar/v3/errors
@@ -219,11 +499,14 @@ Item {
 		if (data && data.error && data.error_description) {
 			var errorMessage = '' + data.error + ' (' + data.error_description + ')'
 			session.error(errorMessage)
+			clearAuthorizationContext()
 		} else if (data && data.error && data.error.message && typeof data.error.code !== "undefined") {
 			var errorMessage = '' + data.error.message + ' (' + data.error.code + ')'
 			session.error(errorMessage)
+			clearAuthorizationContext()
 		} else if (err) {
 			session.error(err)
+			clearAuthorizationContext()
 		}
 	}
 }

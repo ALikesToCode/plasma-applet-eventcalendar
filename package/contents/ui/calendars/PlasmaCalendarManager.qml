@@ -1,7 +1,6 @@
-import QtQuick 2.0
-
-import org.kde.plasma.core
-import org.kde.plasma.calendar 2.0 as PlasmaCalendar
+import QtQuick
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.workspace.calendar as PlasmaCalendar
 
 import "../lib"
 import "../Shared.js" as Shared
@@ -13,7 +12,7 @@ CalendarManager {
 	calendarManagerId: "plasma"
 
 	property var executable: ExecUtil { id: executable }
-	property var calendarModel: Qt.createQmlObject("import org.kde.plasma.PimCalendars 1.0; PimCalendarsModel {}", plasmaCalendarManager)
+	property var calendarModel: Qt.createQmlObject("import org.kde.plasma.PimCalendars; PimCalendarsModel {}", plasmaCalendarManager)
 	function appendPimCalendars(calendarList) {
 		// https://github.com/KDE/kdepim-addons/blob/master/plugins/plasma/pimeventsplugin/PimEventsConfig.qml
 		// https://github.com/KDE/kdepim-addons/blob/master/plugins/plasma/pimeventsplugin/pimcalendarsmodel.cpp
@@ -72,8 +71,8 @@ CalendarManager {
 
 		// KHolidays
 		calendarList.push({
-			"calendarId": "plasma_Holidays",
-			"backgroundColor": "" + theme.highlightColor,
+			"id": "plasma_Holidays",
+			"backgroundColor": "" + Kirigami.Theme.highlightColor,
 			"accessRole": "reader",
 			"isTasklist": false,
 		})
@@ -128,26 +127,58 @@ CalendarManager {
 
 		Component.onCompleted: {
 			//daysModel.connect
-			daysModel.setPluginsManager(PlasmaCalendar.EventPluginsManager)
+			if (daysModel && PlasmaCalendar.EventPluginsManager && typeof daysModel.setPluginsManager === "function") {
+				try {
+					daysModel.setPluginsManager(PlasmaCalendar.EventPluginsManager)
+				} catch (e) {
+					logger.debug('daysModel.setPluginsManager failed', e)
+				}
+			}
 		}
 	}
 
-	readonly property string translatedHolidaysType: i18ndc("libplasma5", "Agenda listview section title", "Holidays")
-	readonly property string translatedEventsType: i18ndc("libplasma5", "Agenda listview section title", "Events")
-	readonly property string translatedTodoType: i18ndc("libplasma5", "Agenda listview section title", "Todo")
-	readonly property string translatedOtherType: i18ndc("libplasma5", "Means 'Other calendar items'", "Other")
+	readonly property var eventTypeLabels: ({
+		holidays: [
+			i18ndc("libplasma6", "Agenda listview section title", "Holidays"),
+			i18ndc("libplasma5", "Agenda listview section title", "Holidays"),
+			i18n("Holidays"),
+		],
+		events: [
+			i18ndc("libplasma6", "Agenda listview section title", "Events"),
+			i18ndc("libplasma5", "Agenda listview section title", "Events"),
+			i18n("Events"),
+		],
+		todo: [
+			i18ndc("libplasma6", "Agenda listview section title", "Todo"),
+			i18ndc("libplasma5", "Agenda listview section title", "Todo"),
+			i18n("Todo"),
+		],
+		other: [
+			i18ndc("libplasma6", "Means 'Other calendar items'", "Other"),
+			i18ndc("libplasma5", "Means 'Other calendar items'", "Other"),
+			i18n("Other"),
+		],
+	})
+	function isEventType(dayItem, labels) {
+		for (var i = 0; i < labels.length; i++) {
+			if (dayItem.eventType === labels[i]) {
+				return true
+			}
+		}
+		return false
+	}
 	function parseCalendarId(dayItem) {
 		// dayItem.eventType is translated, but is the only way to tell which plugin it belongs to without
 		// creating a seperate PlasmaCalendar.EventPluginsManager for each plugin (assuming it's not a singleton).
 		// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/calendar/eventdatadecorator.cpp#L60
-		// plasma-framework uses the "libplasma5" translation domain.
-		if (dayItem.eventType == translatedHolidaysType) {
+		// plasma-framework uses the "libplasma5"/"libplasma6" translation domains.
+		if (isEventType(dayItem, eventTypeLabels.holidays)) {
 			return calendarManagerId + "_Holidays"
-		} else if (dayItem.eventType == translatedEventsType) {
+		} else if (isEventType(dayItem, eventTypeLabels.events)) {
 			return calendarManagerId + "_Events"
-		} else if (dayItem.eventType == translatedTodoType) {
+		} else if (isEventType(dayItem, eventTypeLabels.todo)) {
 			return calendarManagerId + "_Todo"
-		} else if (dayItem.eventType == translatedOtherType) {
+		} else if (isEventType(dayItem, eventTypeLabels.other)) {
 			return calendarManagerId + "_Other"
 		} else {
 			return calendarManagerId + "_NotImplemented"
@@ -169,7 +200,7 @@ CalendarManager {
 			var endDateTime = new Date(Shared.isValidDate(dayItem.endDateTime) ? dayItem.endDateTime : day)
 			// logger.log('\t startDateTime', dayItem.startDateTime, startDateTime)
 			// logger.log('\t endDateTime', dayItem.endDateTime, endDateTime)
-
+			
 			if (dayItem.isAllDay) {
 				start.date = Shared.localeDateString(startDateTime) // 2018-01-31
 				// Google Calendar has the event start at midnight, and end at midnight the next day
@@ -186,7 +217,7 @@ CalendarManager {
 			var calendarId = parseCalendarId(dayItem)
 			var eventId = calendarId + "_" + startDateTime.getTime() + "_" + endDateTime.getTime()
 
-			var eventColor = dayItem.eventColor || theme.highlightColor
+			var eventColor = dayItem.eventColor || Kirigami.Theme.highlightColor
 			eventColor = "" + eventColor // Cast to string, as dayItem.eventColor is a QColor which JSON treats as an object
 
 			var event = {
@@ -210,7 +241,7 @@ CalendarManager {
 
 	function getEventsForDate(date) {
 		var dayEvents = calendarBackend.daysModel.eventsForDate(date)
-		return parseEventsForDate(dayEvents)
+		return parseEventsForDate(date, dayEvents)
 	}
 
 	function getEventsForDuration(dateMin, dateMax) {
@@ -224,7 +255,7 @@ CalendarManager {
 		calendarBackend.displayedDate = middleDay
 
 		var items = []
-
+		
 		// 2018-05-24T00:00:00.000Z
 		var dateMinUtcStr = Shared.localeDateString(dateMin) + 'T00:00:00.000Z'
 		var dateMinUtc = new Date(dateMinUtcStr)
@@ -311,7 +342,7 @@ CalendarManager {
 		}
 	}
 
-	onCalendarParsing: {
+	onCalendarParsing: function(calendarId, data) {
 		var calendar = getCalendar(calendarId)
 		parseEventList(calendar, data.items)
 	}

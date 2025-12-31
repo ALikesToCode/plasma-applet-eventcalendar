@@ -1,9 +1,6 @@
-import org.kde.ksvg 1.0 as KSvg
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core
-import org.kde.kirigami 2.15 as Kirigami
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.components as PlasmaComponents3
 
 import "Shared.js" as Shared
 
@@ -87,8 +84,8 @@ Loader {
 			//---- Testing
 			// Connections {
 			// 	target: durationSelector
-			// 	function onStartDateTimeChanged() { logger.logJSON('onStartDateTimeChanged', editEventItem.getChanges()) }
-			// 	function onEndDateTimeChanged() { logger.logJSON('onEndDateTimeChanged', editEventItem.getChanges()) }
+			// 	onStartDateTimeChanged: logger.logJSON('onStartDateTimeChanged', editEventItem.getChanges())
+			// 	onEndDateTimeChanged: logger.logJSON('onEndDateTimeChanged', editEventItem.getChanges())
 			// }
 
 			//----
@@ -229,7 +226,7 @@ Loader {
 					text: (event && event.description) || ""
 
 					Layout.fillWidth: true
-					Layout.preferredHeight: contentHeight + (20 * units.devicePixelRatio)
+					Layout.preferredHeight: contentHeight + (20 * Screen.devicePixelRatio)
 
 					Keys.onEscapePressed: editEventItem.cancel()
 
@@ -249,7 +246,7 @@ Loader {
 
 				RowLayout {
 					Layout.columnSpan: 2
-					spacing: 4 * units.devicePixelRatio
+					spacing: 4 * Screen.devicePixelRatio
 					Item {
 						Layout.fillWidth: true
 					}

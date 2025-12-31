@@ -1,9 +1,7 @@
-import org.kde.ksvg 1.0 as KSvg
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core
-import org.kde.kirigami 2.15 as Kirigami
+import QtQuick
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
 Loader {
 	id: newEventForm
@@ -12,7 +10,7 @@ Loader {
 
 	sourceComponent: Component {
 		RowLayout {
-			spacing: 4 * units.devicePixelRatio
+			spacing: 4 * Screen.devicePixelRatio
 
 			PlasmaComponents3.CheckBox {
 				Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
@@ -24,11 +22,11 @@ Loader {
 			Rectangle {
 				Layout.preferredWidth: appletConfig.eventIndicatorWidth
 				Layout.fillHeight: true
-				color: calendarSelector.selectedCalendar && calendarSelector.selectedCalendar.backgroundColor || theme.textColor
+				color: calendarSelector.selectedCalendar && calendarSelector.selectedCalendar.backgroundColor || Kirigami.Theme.textColor
 			}
 
 			ColumnLayout {
-				spacing: 10 * units.devicePixelRatio
+				spacing: 10 * Screen.devicePixelRatio
 
 				Component.onCompleted: {
 					newEventText.forceActiveFocus()

@@ -1,9 +1,7 @@
-import org.kde.ksvg 1.0 as KSvg
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core
-import org.kde.kirigami 2.15 as Kirigami
+import QtQuick
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
 import "lib"
 import "Shared.js" as Shared
@@ -15,18 +13,63 @@ MouseArea {
 	onClicked: focus = true
 
 	property int padding: 0 // Assigned in main.qml
-	property int spacing: 10 * units.devicePixelRatio
+	property int spacing: 10 * Screen.devicePixelRatio
 
-	property int topRowHeight: plasmoid.configuration.topRowHeight * units.devicePixelRatio
-	property int bottomRowHeight: plasmoid.configuration.bottomRowHeight * units.devicePixelRatio
-	property int singleColumnMonthViewHeight: plasmoid.configuration.monthHeightSingleColumn * units.devicePixelRatio
+	property real screenWidth: Screen.width > 0 ? Screen.width : plasmoid.screenGeometry.width
+	property real screenHeight: Screen.height > 0 ? Screen.height : plasmoid.screenGeometry.height
+	property real widthScale: Math.max(1, screenWidth / 1920)
+	property real heightScale: Math.max(1, screenHeight / 1080)
 
-	// DigitalClock LeftColumn minWidth: units.gridUnit * 22
-	// DigitalClock RightColumn minWidth: units.gridUnit * 14
+	property int topRowHeight: Math.round(plasmoid.configuration.topRowHeight * Screen.devicePixelRatio * heightScale)
+	property int bottomRowHeight: Math.round(plasmoid.configuration.bottomRowHeight * Screen.devicePixelRatio * heightScale)
+	property int singleColumnMonthViewHeight: Math.round(plasmoid.configuration.monthHeightSingleColumn * Screen.devicePixelRatio * heightScale)
+
+	// DigitalClock LeftColumn minWidth: Kirigami.Units.gridUnit * 22
+	// DigitalClock RightColumn minWidth: Kirigami.Units.gridUnit * 14
 	// 14/(22+14) * 400 = 156
 	// rightColumnWidth=156 looks nice but is very thin for listing events + date + weather.
-	property int leftColumnWidth: plasmoid.configuration.leftColumnWidth * units.devicePixelRatio // Meteogram + MonthView
-	property int rightColumnWidth: plasmoid.configuration.rightColumnWidth * units.devicePixelRatio // TimerView + AgendaView
+	property int leftColumnWidth: Math.round(plasmoid.configuration.leftColumnWidth * Screen.devicePixelRatio * widthScale) // Meteogram + MonthView
+	property int rightColumnWidth: Math.round(plasmoid.configuration.rightColumnWidth * Screen.devicePixelRatio * widthScale) // TimerView + AgendaView
+
+	property int singleColumnWidth: {
+		if (showAgenda && showCalendar) {
+			return Math.max(leftColumnWidth, rightColumnWidth)
+		} else if (showCalendar) {
+			return leftColumnWidth
+		} else if (showAgenda) {
+			return rightColumnWidth
+		}
+
+		var width = 0
+		if (showMeteogram) {
+			width = Math.max(width, leftColumnWidth)
+		}
+		if (showTimer) {
+			width = Math.max(width, rightColumnWidth)
+		}
+		return width
+	}
+
+	property int singleColumnHeight: {
+		var rows = []
+		if (showMeteogram) {
+			rows.push(topRowHeight)
+		}
+		if (showTimer) {
+			rows.push(topRowHeight)
+		}
+		if (showCalendar || showAgenda) {
+			rows.push(bottomRowHeight)
+		}
+		var h = 0
+		for (var i = 0; i < rows.length; i++) {
+			h += rows[i]
+		}
+		if (rows.length > 1) {
+			h += spacing * (rows.length - 1)
+		}
+		return h
+	}
 
 	property bool singleColumn: !showAgenda || !showCalendar
 	property bool singleColumnFullHeight: !plasmoid.configuration.twoColumns && showAgenda && showCalendar
@@ -34,32 +77,25 @@ MouseArea {
 
 	Layout.minimumWidth: {
 		if (twoColumns) {
-			return units.gridUnit * 28
+			return Kirigami.Units.gridUnit * 28
 		} else {
-			return units.gridUnit * 14
+			return Kirigami.Units.gridUnit * 14
 		}
 	}
 	Layout.preferredWidth: {
 		if (twoColumns) {
 			return (leftColumnWidth + spacing + rightColumnWidth) + padding * 2
 		} else {
-			return leftColumnWidth + padding * 2
+			return singleColumnWidth + padding * 2
 		}
 	}
 
-	Layout.minimumHeight: units.gridUnit * 14
+	Layout.minimumHeight: Kirigami.Units.gridUnit * 14
 	Layout.preferredHeight: {
 		if (singleColumnFullHeight) {
 			return plasmoid.screenGeometry.height
 		} else if (singleColumn) {
-			var h = bottomRowHeight // showAgenda || showCalendar
-			if (showMeteogram) {
-				h += spacing + topRowHeight
-			}
-			if (showTimer) {
-				h += spacing + topRowHeight
-			}
-			return h + padding * 2
+			return singleColumnHeight + padding * 2
 		} else { // twoColumns
 			var h = bottomRowHeight // showAgenda || showCalendar
 			if (showMeteogram || showTimer) {
@@ -85,7 +121,7 @@ MouseArea {
 
 	Connections {
 		target: monthView
-		function onDateSelected() {
+		function onDateSelected(date) {
 			// logger.debug('onDateSelected', selectedDate)
 			scrollToSelection()
 		}
@@ -124,8 +160,8 @@ MouseArea {
 			PropertyChanges { target: popup
 				// Use the same size as the digitalclock popup
 				// since we don't need more space to fit more agenda items.
-				Layout.preferredWidth: 378 * units.devicePixelRatio
-				Layout.preferredHeight: 378 * units.devicePixelRatio
+				Layout.preferredWidth: 378 * Screen.devicePixelRatio * popup.widthScale
+				Layout.preferredHeight: 378 * Screen.devicePixelRatio * popup.heightScale
 			}
 			PropertyChanges { target: monthView
 				Layout.preferredWidth: -1
@@ -257,13 +293,13 @@ MouseArea {
 			property int hoursPerDataPoint: WeatherApi.getDataPointDuration(plasmoid.configuration)
 			rainUnits: WeatherApi.getRainUnits(plasmoid.configuration)
 
-			Rectangle {
-				id: meteogramMessageBox
-				anchors.fill: parent
-				anchors.margins: units.smallSpacing
-				color: "transparent"
-				border.color: theme.buttonBackgroundColor
-				border.width: 1
+				Rectangle {
+					id: meteogramMessageBox
+					anchors.fill: parent
+					anchors.margins: Kirigami.Units.smallSpacing
+					color: "transparent"
+					border.color: Kirigami.Theme.buttonBackgroundColor ? Kirigami.Theme.buttonBackgroundColor : Kirigami.Theme.backgroundColor
+					border.width: 1
 
 				readonly property string message: {
 					if (!WeatherApi.weatherIsSetup(plasmoid.configuration)) {
@@ -352,10 +388,10 @@ MouseArea {
 				}
 			}
 
-			onDayDoubleClicked: {
-				var date = new Date(dayData.yearNumber, dayData.monthNumber-1, dayData.dayNumber)
-				// logger.debug('Popup.monthView.onDoubleClicked', date)
-				var doubleClickOption = plasmoid.configuration.monthDayDoubleClick
+				onDayDoubleClicked: function(dayData) {
+					var date = new Date(dayData.yearNumber, dayData.monthNumber-1, dayData.dayNumber)
+					// logger.debug('Popup.monthView.onDoubleClicked', date)
+					var doubleClickOption = plasmoid.configuration.monthDayDoubleClick
 
 				switch (doubleClickOption) {
 					case 'GoogleCalWeb':
@@ -395,7 +431,7 @@ MouseArea {
 				anchors.left: parent.left
 				anchors.bottom: parent.bottom
 				anchors.right: refreshButton.left
-				anchors.margins: PlasmaCore.Units.smallSpacing
+				anchors.margins: Kirigami.Units.smallSpacing
 				text: logic.currentErrorMessage
 			}
 

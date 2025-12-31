@@ -1,8 +1,10 @@
 // Version 5
 
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+import "ConfigUtils.js" as ConfigUtils
 
 /*
 ** Example:
@@ -17,7 +19,7 @@ ConfigComboBox {
 }
 ConfigComboBox {
 	configKey: "appDescription"
-	populated: false
+	isPopulated: false
 	onPopulate: {
 		model = [
 			{ value: "a", text: i18n("A") },
@@ -33,7 +35,21 @@ RowLayout {
 	property string configKey: ''
 	readonly property var currentItem: comboBox.model[comboBox.currentIndex]
 	readonly property string value: currentItem ? currentItem[valueRole] : ""
-	readonly property string configValue: configKey ? plasmoid.configuration[configKey] : ""
+	property var configBridge: null
+	readonly property string configValue: {
+		if (!configKey) {
+			return ""
+		}
+		if (configBridge) {
+			var bridged = configBridge.read(configKey, "")
+			return (bridged === undefined || bridged === null) ? "" : String(bridged)
+		}
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var directValue = plasmoid.configuration[configKey]
+			return (directValue === undefined || directValue === null) ? "" : String(directValue)
+		}
+		return ""
+	}
 	onConfigValueChanged: {
 		if (!comboBox.focus && value != configValue) {
 			selectValue(configValue)
@@ -48,9 +64,10 @@ RowLayout {
 	property alias after: labelAfter.text
 
 	signal populate()
-	property bool populated: true
+	property bool isPopulated: true
 
 	Component.onCompleted: {
+		configBridge = ConfigUtils.findBridge(configComboBox)
 		populate()
 		selectValue(configValue)
 	}
@@ -64,7 +81,7 @@ RowLayout {
 	ComboBox {
 		id: comboBox
 		textRole: "text" // Doesn't autodeduce from model if we manually populate it
-		property string valueRole: "value"
+		valueRole: "value"
 
 		model: []
 
@@ -73,8 +90,15 @@ RowLayout {
 				var item = model[currentIndex]
 				if (typeof item !== "undefined") {
 					var val = item[valueRole]
-					if (configKey && (typeof val !== "undefined") && populated) {
-						plasmoid.configuration[configKey] = val
+					if (configKey && (typeof val !== "undefined") && isPopulated) {
+						if (configBridge) {
+							configBridge.write(configKey, val)
+						} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+							plasmoid.configuration[configKey] = val
+							if (typeof kcm !== "undefined") {
+								kcm.needsSave = true
+							}
+						}
 					}
 				}
 			}

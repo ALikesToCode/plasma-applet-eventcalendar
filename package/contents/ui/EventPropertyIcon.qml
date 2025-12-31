@@ -1,15 +1,15 @@
-import QtQuick 2.0
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core
+import QtQuick
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 
 ColumnLayout {
 	id: eventDialogIcon
 	Layout.fillHeight: true
 
 	property alias source: iconItem.source
-	property int size: units.iconSizes.smallMedium
+	property int size: Kirigami.Units.iconSizes.smallMedium
 
-	PlasmaCore.IconItem {
+	Kirigami.Icon {
 		id: iconItem
 		Layout.alignment: Qt.AlignVCenter
 

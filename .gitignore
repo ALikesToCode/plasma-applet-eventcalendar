@@ -4,3 +4,4 @@
 *.mo
 /dist
 /package/metadata.json
+docs-self-notes/

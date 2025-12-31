@@ -1,68 +1,93 @@
-#!/bin/bash
+#!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then
+    exec /usr/bin/env bash "$0" "$@"
+fi
 
-# Function to check if jq is installed and install it if it's not
-ensure_jq_installed() {
-    if ! command -v jq &> /dev/null; then
-        echo "jq could not be found, attempting to install..."
+set -euo pipefail
 
-        # Attempt to identify the package manager
-        if command -v apt-get &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y jq
-        elif command -v yum &> /dev/null; then
-            sudo yum install -y jq
-        elif command -v dnf &> /dev/null; then
-            sudo dnf install -y jq
-        elif command -v pacman &> /dev/null; then
-            sudo pacman -Sy jq
-        elif command -v zypper &> /dev/null; then
-            sudo zypper install -y jq
-        else
-            echo "Unsupported package manager. Please install jq manually."
-            exit 1
-        fi
-    fi
+# Set up logging
+LOG_FILE="/tmp/plasma-widget-uninstall.log"
+exec 1> >(tee -a "$LOG_FILE")
+exec 2> >(tee -a "$LOG_FILE" >&2)
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# Ensure jq is installed
-ensure_jq_installed
-
-# Paths for both potential metadata files
-metadataDesktopFile="$PWD/package/metadata.desktop"
-metadataJsonFile="$PWD/package/metadata.json"
-
-# Function to remove package using kpackagetool5
-remove_package() {
-    local packageType="$1"
-    echo "Removing package of type: $packageType"
-    if kpackagetool5 -t "$packageType" -r package; then
-        echo "Package removal successful."
-    else
-        echo "Error: Package removal failed."
-        exit 1
+cleanup() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log "ERROR: Script failed with exit code $exit_code"
     fi
+    exit $exit_code
 }
 
-# Check for and use metadata.json if available (Plasma 6), otherwise fall back to metadata.desktop (Plasma 5)
-if [ -f "$metadataJsonFile" ]; then
-    echo "Plasma 6 metadata.json detected."
-    # Extract service type from JSON. jq is a command-line JSON processor
-    packageServiceType=$(jq -r '.KPlugin.ServiceTypes // empty' "$metadataJsonFile")
-    if [ -z "$packageServiceType" ]; then
-        echo "Error: Unable to read the package service type from metadata.json."
-        exit 1
-    fi
-    remove_package "$packageServiceType"
-elif [ -f "$metadataDesktopFile" ]; then
-    echo "Plasma 5 metadata.desktop detected."
-    # Extract service type from .desktop file
-    packageServiceType=$(kreadconfig5 --file="$metadataDesktopFile" --group="Desktop Entry" --key="X-KDE-ServiceTypes")
-    if [ -z "$packageServiceType" ]; then
-        echo "Error: Unable to read the package service type from metadata.desktop."
-        exit 1
-    fi
-    remove_package "$packageServiceType"
-else
-    echo "Error: No compatible metadata file found in the package directory."
+trap cleanup EXIT
+
+# Configuration
+METADATA_FILE="$PWD/package/metadata.json"
+BACKUP_DIR="$HOME/.local/share/plasma-widget-backups/$(date +%Y%m%d_%H%M%S)"
+
+# Verify metadata file exists
+if [ ! -f "$METADATA_FILE" ]; then
+    log "ERROR: metadata.json file not found in the package directory."
     exit 1
 fi
 
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+cp -r "./package" "$BACKUP_DIR/"
+log "Backup created at: $BACKUP_DIR"
+
+# Install jq if needed
+if ! command -v jq &> /dev/null; then
+    log "Installing jq..."
+    if [ -f /etc/debian_version ]; then
+        sudo apt-get install -y jq
+    elif [ -f /etc/arch-release ]; then
+        sudo pacman -S jq
+    elif [ -f /etc/fedora-release ]; then
+        sudo dnf install -y jq
+    fi
+fi
+
+# Read package information
+packageName=$(jq -r '.KPlugin.Id' "$METADATA_FILE")
+
+if [ -z "$packageName" ]; then
+    log "ERROR: Unable to read the package name from metadata.json."
+    exit 1
+fi
+
+QDBUS_BIN=$(command -v qdbus || command -v qdbus6) || {
+    echo "qdbus not found" >&2
+    exit 1
+}
+
+# Remove package
+INSTALL_DIR="$HOME/.local/share/plasma/plasmoids/$packageName"
+if [ -d "$INSTALL_DIR" ]; then
+    log "Removing package: $packageName"
+    rm -rf "$INSTALL_DIR"
+    
+    # Remove plasmoid instances
+    log "Removing plasmoid instances..."
+    "$QDBUS_BIN" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        var allDesktops = desktops();
+        for (var i = 0; i < allDesktops.length; i++) {
+            var d = allDesktops[i];
+            var widgets = d.widgets();
+            for (var j = 0; j < widgets.length; j++) {
+                var w = widgets[j];
+                if (w.type == 'org.kde.plasma.eventcalendar') {
+                    w.remove();
+                }
+            }
+        }
+    "
+    
+    log "Package removal successful."
+else
+    log "Package not found: $packageName"
+    exit 1
+fi

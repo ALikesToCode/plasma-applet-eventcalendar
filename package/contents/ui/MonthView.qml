@@ -16,12 +16,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-import QtQuick 2.2
-import QtQuick.Controls 2.0 as QQC2
-import QtQuick.Layouts 1.1
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Layouts
 
-import org.kde.plasma.calendar 2.0
-import org.kde.plasma.core
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.workspace.calendar as PlasmaCalendar
+import org.kde.plasma.core as PlasmaCore
 
 PinchArea {
 	id: root
@@ -216,7 +217,7 @@ PinchArea {
 
 
 	// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/calendar/calendar.cpp
-	Calendar {
+	PlasmaCalendar.Calendar {
 		id: calendarBackend
 
 		days: 7
@@ -316,13 +317,13 @@ PinchArea {
 
 		pushEnter: Transition {
 			NumberAnimation {
-				duration: units.longDuration
+				duration: Kirigami.Units.longDuration
 				property: "opacity"
 				from: 0
 				to: 1
 			}
 			NumberAnimation {
-				duration: units.longDuration
+				duration: Kirigami.Units.longDuration
 				property: "transformScale"
 				from: 1.5
 				to: 1
@@ -330,7 +331,7 @@ PinchArea {
 		}
 		pushExit: Transition {
 			NumberAnimation {
-				duration: units.longDuration
+				duration: Kirigami.Units.longDuration
 				property: "opacity"
 				from: 1
 				to: 0
@@ -339,7 +340,7 @@ PinchArea {
 
 		popEnter: Transition {
 			NumberAnimation {
-				duration: units.longDuration
+				duration: Kirigami.Units.longDuration
 				property: "opacity"
 				from: 0
 				to: 1
@@ -348,13 +349,13 @@ PinchArea {
 		popExit: Transition {
 			id: popExit
 			NumberAnimation {
-				duration: units.longDuration
+				duration: Kirigami.Units.longDuration
 				property: "opacity"
 				from: 1
 				to: 0
 			}
 			NumberAnimation {
-				duration: units.longDuration
+				duration: Kirigami.Units.longDuration
 				property: "transformScale"
 				// so no matter how much you scaled, it would still fly towards you
 				to: popExit.ViewTransition.item.transformScale * 1.5
@@ -396,7 +397,7 @@ PinchArea {
 			// gridModel: calendarBackend.daysModel
 			gridModel: daysModel
 
-			dateMatchingPrecision: Calendar.MatchYearMonthAndDay
+			dateMatchingPrecision: PlasmaCalendar.Calendar.MatchYearMonthAndDay
 
 			previousLabel: i18nd("libplasma5", "Previous Month")
 			nextLabel: i18nd("libplasma5", "Next Month")
@@ -406,17 +407,17 @@ PinchArea {
 			onHeaderClicked: {
 				stack.push(yearOverview)
 			}
-			onActivated: {
-				var rowNumber = Math.floor(index / columns)
-				week = 1 + calendarBackend.weeksModel[rowNumber]
-				root.date = date
-				var dt = new Date(date.yearNumber, date.monthNumber - 1, date.dayNumber)
-				root.setSelectedDate(dt)
-				root.dateClicked(dt)
-			}
-			onDoubleClicked: {
-				root.dayDoubleClicked(date)
-			}
+				onActivated: function(index, date, item) {
+					var rowNumber = Math.floor(index / columns)
+					week = 1 + calendarBackend.weeksModel[rowNumber]
+					root.date = date
+					var dt = new Date(date.yearNumber, date.monthNumber - 1, date.dayNumber)
+					root.setSelectedDate(dt)
+					root.dateClicked(dt)
+				}
+				onDoubleClicked: function(index, date, item) {
+					root.dayDoubleClicked(date)
+				}
 		}
 	}
 
@@ -428,7 +429,7 @@ PinchArea {
 			columns: 3
 			rows: 4
 
-			dateMatchingPrecision: Calendar.MatchYearAndMonth
+			dateMatchingPrecision: PlasmaCalendar.Calendar.MatchYearAndMonth
 
 			gridModel: monthModel
 
@@ -441,7 +442,7 @@ PinchArea {
 				updateDecadeOverview()
 				stack.push(decadeOverview)
 			}
-			onActivated: {
+			onActivated: function(index, date, item) {
 				calendarBackend.goToMonth(date.monthNumber)
 				stack.pop()
 			}
@@ -461,7 +462,7 @@ PinchArea {
 			columns: 3
 			rows: 4
 
-			dateMatchingPrecision: Calendar.MatchYear
+			dateMatchingPrecision: PlasmaCalendar.Calendar.MatchYear
 
 			gridModel: yearModel
 
@@ -470,7 +471,7 @@ PinchArea {
 
 			onPrevious: calendarBackend.previousDecade()
 			onNext: calendarBackend.nextDecade()
-			onActivated: {
+			onActivated: function(index, date, item) {
 				calendarBackend.goToYear(date.yearNumber)
 				stack.pop()
 			}

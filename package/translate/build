@@ -6,8 +6,27 @@
 # Eg: contents/locale/fr_CA/LC_MESSAGES/plasma_applet_org.kde.plasma.eventcalendar.mo
 
 DIR=`cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd`
-plasmoidName=`kreadconfig5 --file="$DIR/../metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name"`
-website=`kreadconfig5 --file="$DIR/../metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Website"`
+metadataFile="$DIR/../metadata.json"
+read_metadata() {
+	python3 - "$metadataFile" "$1" <<'PY'
+import json, sys
+metadata_path = sys.argv[1]
+key_path = sys.argv[2].split(".")
+with open(metadata_path, "r", encoding="utf-8") as f:
+	data = json.load(f)
+for part in key_path:
+	if not isinstance(data, dict):
+		data = ""
+		break
+	data = data.get(part, "")
+if data is None:
+	data = ""
+print(data)
+PY
+}
+
+plasmoidName=$(read_metadata "KPlugin.Id")
+website=$(read_metadata "KPlugin.Website")
 bugAddress="$website"
 packageRoot="${DIR}/.." # Root of translatable sources
 projectName="plasma_applet_${plasmoidName}" # project name

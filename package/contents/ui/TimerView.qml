@@ -1,11 +1,10 @@
-import org.kde.ksvg 1.0 as KSvg
-import QtQuick 2.0
-import QtQuick.Controls 2.2 as QQC2
-import QtQuick.Layouts 1.1
-import org.kde.kirigami 2.0 as Kirigami
-import org.kde.plasma.core
-import org.kde.kirigami 2.15 as Kirigami
-import org.kde.kirigami 2.15 as Kirigami
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.components as PlasmaComponents3
+import org.kde.plasma.extras as PlasmaExtras
 
 import "LocaleFuncs.js" as LocaleFuncs
 
@@ -35,7 +34,7 @@ Item {
 
 		RowLayout {
 			id: topRow
-			spacing: 10 * units.devicePixelRatio
+			spacing: 10 * Screen.devicePixelRatio
 			property int contentsWidth: timerLabel.width + topRow.spacing + toggleButtonColumn.Layout.preferredWidth
 			property bool contentsFit: timerButtonView.width >= contentsWidth
 
@@ -51,8 +50,8 @@ Item {
 						return 'chronometer-start'
 					}
 				}
-				icon.width: units.iconSizes.large
-				icon.height: units.iconSizes.large
+				icon.width: Kirigami.Units.iconSizes.large
+				icon.height: Kirigami.Units.iconSizes.large
 				font.pointSize: -1
 				font.pixelSize: appletConfig.timerClockFontHeight
 				Layout.alignment: Qt.AlignVCenter
@@ -107,7 +106,7 @@ Item {
 					}
 				}
 			}
-
+			
 			ColumnLayout {
 				id: toggleButtonColumn
 				Layout.alignment: Qt.AlignBottom
@@ -119,7 +118,7 @@ Item {
 					text: "Test"
 					visible: false
 				}
-
+				
 				PlasmaComponents3.ToolButton {
 					id: timerRepeatsButton
 					readonly property bool isChecked: plasmoid.configuration.timerRepeats // New property to avoid checked=pressed theming.
@@ -154,12 +153,12 @@ Item {
 					}
 				}
 			}
-
+			
 		}
 
 		RowLayout {
 			id: bottomRow
-			spacing: Math.floor(2 * units.devicePixelRatio)
+			spacing: Math.floor(2 * Screen.devicePixelRatio)
 
 			// onWidthChanged: console.log('row.width', width)
 
@@ -221,14 +220,14 @@ Item {
 
 	// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/plasmacomponents/qmenu.cpp
 	// Example: https://github.com/KDE/plasma-desktop/blob/master/applets/taskmanager/package/contents/ui/ContextMenu.qml
-	PlasmaComponents.ContextMenu {
+	PlasmaExtras.Menu {
 		id: contextMenu
 
 		function newSeperator() {
-			return Qt.createQmlObject("import org.kde.kirigami 2.15 as Kirigami
+			return Qt.createQmlObject("import org.kde.plasma.components as PlasmaComponents; PlasmaExtras.Menu { separator: true }", contextMenu)
 		}
 		function newMenuItem() {
-			return Qt.createQmlObject("import org.kde.kirigami 2.15 as Kirigami
+			return Qt.createQmlObject("import org.kde.plasma.components as PlasmaComponents; PlasmaExtras.Menu {}", contextMenu)
 		}
 
 		function loadDynamicActions() {

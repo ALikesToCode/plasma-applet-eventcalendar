@@ -1,11 +1,11 @@
-import QtQuick 2.1
-import org.kde.plasma.configuration 2.0
-import org.kde.plasma.calendar 2.0 as PlasmaCalendar
+import QtQuick
+import org.kde.plasma.configuration
 
 import "../ui/calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 
 ConfigModel {
 	id: configModel
+	property var eventPluginsManager: null
 
 	ConfigCategory {
 		name: i18n("General")
@@ -50,7 +50,7 @@ ConfigModel {
 	}
 	ConfigCategory {
 		name: i18n("Google Calendar")
-		icon: plasmoid.file("", "icons/Google_Calendar_2020.svg")
+		icon: Qt.resolvedUrl("../icons/google_calendar_96px.png")
 		source: "config/ConfigGoogleCalendar.qml"
 	}
 	ConfigCategory {
@@ -65,8 +65,19 @@ ConfigModel {
 		visible: plasmoid.configuration.debugging
 	}
 
+	Component.onCompleted: {
+		try {
+			eventPluginsManager = Qt.createQmlObject(
+				"import org.kde.plasma.workspace.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
+				configModel
+			)
+		} catch (e) {
+			console.warn("[eventcalendar] PlasmaCalendar.EventPluginsManager unavailable:", e)
+		}
+	}
+
 	property Instantiator __eventPlugins: Instantiator {
-		model: PlasmaCalendar.EventPluginsManager.model
+		model: eventPluginsManager ? eventPluginsManager.model : null
 		delegate: ConfigCategory {
 			name: model.display
 			icon: model.decoration
@@ -75,7 +86,11 @@ ConfigModel {
 			visible: plasmoid.configuration.enabledCalendarPlugins.indexOf(pluginFilename) > -1
 		}
 
-		onObjectAdded: configModel.appendCategory(object)
-		onObjectRemoved: configModel.removeCategory(object)
+		onObjectAdded: function(index, object) {
+			configModel.appendCategory(object)
+		}
+		onObjectRemoved: function(index, object) {
+			configModel.removeCategory(object)
+		}
 	}
 }

@@ -1,8 +1,7 @@
-import org.kde.ksvg 1.0 as KSvg
-import QtQuick 2.0
-import org.kde.kirigami 2.15 as Kirigami
+import QtQuick
+import org.kde.plasma.components as PlasmaComponents
 
-PlasmaComponents.ContextMenu {
+PlasmaComponents.Menu {
 	id: contextMenu
 
 	signal populate(var contextMenu)
@@ -12,35 +11,49 @@ PlasmaComponents.ContextMenu {
 	property var menuItemComponent: Component {
 		MenuItem {}
 	}
+	property var menuSeparatorComponent: Component {
+		PlasmaComponents.MenuSeparator {}
+	}
 
 	function newSeperator(parentMenu) {
-		return newMenuItem(parentMenu, {
-			separator: true,
-		})
+		return menuSeparatorComponent.createObject(null)
 	}
 
 	function newMenuItem(parentMenu, properties) {
-		// return menuItemComponent.createObject(parentMenu || contextMenu, properties || {}) // Warns: 'Created graphical object was not placed in the graphics scene'
-		return menuItemComponent.createObject(parent, properties || {}) // So attach it to the parent of the ContextMenu (probably bad).
+		return menuItemComponent.createObject(null, properties || {})
 	}
 
 	function newSubMenu(parentMenu, properties) {
-		var subMenuItem = newMenuItem(parentMenu || contextMenu, properties)
-		var subMenu = Qt.createComponent("ContextMenu.qml").createObject(parentMenu || contextMenu)
-		subMenuItem.subMenu = subMenu
-		subMenu.visualParent = subMenuItem.action
-		return subMenuItem
+		var targetMenu = parentMenu || contextMenu
+		var subMenu = Qt.createComponent("ContextMenu.qml").createObject(targetMenu)
+		targetMenu.addMenu(subMenu)
+		return subMenu
+	}
+
+	function addMenuItem(item) {
+		if (item) {
+			addItem(item)
+		}
+	}
+
+	function clearMenuItems() {
+		for (var i = contentData.length - 1; i >= 0; i--) {
+			if (contentData[i]) {
+				contentData[i].destroy()
+			}
+		}
 	}
 
 	function loadMenu() {
-		contextMenu.clearMenuItems()
+		clearMenuItems()
 		populate(contextMenu)
 	}
 
 	function show(x, y) {
 		loadMenu()
-		if (content.length > 0) {
-			open(x, y)
+		if (contentData.length > 0) {
+			var position = parent ? parent.mapToItem(null, x, y) : Qt.point(x, y)
+			popup(position.x, position.y)
 		}
 	}
 }

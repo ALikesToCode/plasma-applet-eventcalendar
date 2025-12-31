@@ -1,4 +1,5 @@
-import QtQuick 2.0
+import QtQuick
+import org.kde.kirigami as Kirigami
 
 Item {
 	id: highlightBarBadge
@@ -9,6 +10,6 @@ Item {
 		anchors.bottom: parent.bottom
 		height: parent.height / 8
 		opacity: 0.6
-		color: theme.highlightColor
+		color: Kirigami.Theme.highlightColor
 	}
 }

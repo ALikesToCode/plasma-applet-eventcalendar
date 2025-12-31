@@ -9,6 +9,26 @@ packageExt="plasmoid"
 
 # Misc
 startDir=$PWD
+metadataFile="$PWD/package/metadata.json"
+
+read_metadata() {
+	local key="$1"
+	python3 - "$metadataFile" "$key" <<'PY'
+import json, sys
+metadata_path = sys.argv[1]
+key_path = sys.argv[2].split(".")
+with open(metadata_path, "r", encoding="utf-8") as f:
+	data = json.load(f)
+for part in key_path:
+	if not isinstance(data, dict):
+		data = ""
+		break
+	data = data.get(part, "")
+if data is None:
+	data = ""
+print(data)
+PY
+}
 
 # Function Definitions
 
@@ -71,10 +91,12 @@ handle_translations() {
 
 ## Convert metadata.desktop to metadata.json
 convert_metadata() {
-        if command -v desktoptojson &> /dev/null ; then
-                desktoptojson --serviceType="plasma-applet.desktop" -i "$PWD/package/metadata.desktop" -o "$PWD/package/metadata.json"
-                check_command_success "$?" "desktoptojson conversion failed"
-                sed -i '{s/ \{4\}/\t/g}' "$PWD/package/metadata.json"
+        if [ -f "$PWD/package/metadata.desktop" ] && command -v desktoptojson &> /dev/null ; then
+                if desktoptojson --serviceType="plasma-applet.desktop" -i "$PWD/package/metadata.desktop" -o "$PWD/package/metadata.json"; then
+                        sed -i '{s/ \{4\}/\t/g}' "$PWD/package/metadata.json"
+                else
+                        echoRed "[warn] desktoptojson conversion failed, keeping existing metadata.json"
+                fi
         fi
 }
 
@@ -88,9 +110,14 @@ package_plasmoid() {
                 exit 1
         fi
 
-        local packageNamespace=$(kreadconfig5 --file="$PWD/package/metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name")
+        local packageNamespace=$(read_metadata "KPlugin.Id")
         local packageName="${packageNamespace##*.}" # Strip namespace (Eg: "org.kde.plasma.")
-        local packageVersion=$(kreadconfig5 --file="$PWD/package/metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Version")
+        local packageVersion=$(read_metadata "KPlugin.Version")
+
+        if [ -z "$packageNamespace" ] || [ -z "$packageVersion" ]; then
+                echoRed "[error] Failed to read KPlugin.Id or KPlugin.Version from metadata.json"
+                exit 1
+        fi
 
         local filename="${packageName}-v${packageVersion}${filenameTag}.${packageExt}"
         rm -f ${packageName}-v*.${packageExt} # Cleanup

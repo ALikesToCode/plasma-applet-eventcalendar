@@ -1,7 +1,6 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
-import org.kde.plasma.extras 2.0 as PlasmaExtras
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 import ".."
 import "../lib"
@@ -25,7 +24,7 @@ ConfigPage {
 
 	ConfigSection {
 		RowLayout {
-			visible: plasmoid.configuration.debugging && weatherService.value === 'OpenWeatherMap'
+			visible: page.configBridge.read("debugging", false) && weatherService.value === 'OpenWeatherMap'
 			Label {
 				text: i18n("API App Id:")
 			}

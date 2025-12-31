@@ -1,5 +1,5 @@
-import QtQuick 2.0
-import org.kde.plasma.core
+import QtQuick
+import org.kde.plasma.core as PlasmaCore
 
 import "LocaleFuncs.js" as LocaleFuncs
 import "./calendars"
@@ -227,8 +227,6 @@ CalendarManager {
 
 	Connections {
 		target: timeModel
-		function onMinuteChanged() {
-		 upcomingEvents.tick()
-		}
+		function onMinuteChanged() { upcomingEvents.tick() }
 	}
 }

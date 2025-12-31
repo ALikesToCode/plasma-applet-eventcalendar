@@ -1,16 +1,33 @@
-import QtQuick 2.0
+import QtQuick
 
 import "../lib/Requests.js" as Requests
 
 QtObject {
 	id: googleApiSession
 
-	readonly property string accessToken: plasmoid.configuration.accessToken
+	property var accountsStore
+	property string accountId: ""
+
+	readonly property string accessToken: {
+		var account = getAccount()
+		return account ? account.accessToken : ""
+	}
+
+	function getAccount() {
+		if (!accountsStore || !accountId) {
+			return null
+		}
+		return accountsStore.getAccount(accountId)
+	}
 
 	//--- Refresh Credentials
 	function checkAccessToken(callback) {
 		logger.debug('checkAccessToken')
-		if (plasmoid.configuration.accessTokenExpiresAt < Date.now() + 5000) {
+		var account = getAccount()
+		if (!account || !account.accessToken) {
+			return callback('No access token.')
+		}
+		if (account.accessTokenExpiresAt < Date.now() + 5000) {
 			updateAccessToken(callback)
 		} else {
 			callback(null)
@@ -21,17 +38,34 @@ QtObject {
 		// logger.debug('accessTokenExpiresAt', plasmoid.configuration.accessTokenExpiresAt)
 		// logger.debug('                 now', Date.now())
 		// logger.debug('refreshToken', plasmoid.configuration.refreshToken)
-		if (plasmoid.configuration.refreshToken) {
+		var account = getAccount()
+		if (account && account.refreshToken) {
 			logger.debug('updateAccessToken')
 			fetchNewAccessToken(function(err, data, xhr) {
-				if (err || (!err && data && data.error)) {
+				if (err) {
 					logger.log('Error when using refreshToken:', err, data)
 					return callback(err)
 				}
-				logger.debug('onAccessToken', data)
-				data = JSON.parse(data)
 
-				googleApiSession.applyAccessToken(data)
+				var parsed = null
+				try {
+					parsed = JSON.parse(data)
+				} catch (e) {
+					logger.log('Error parsing refresh response:', e, data)
+					return callback('Invalid refresh response.')
+				}
+
+				if (parsed && parsed.error) {
+					logger.log('Error when using refreshToken:', parsed)
+					return callback(parsed.error_description || parsed.error)
+				}
+				if (!parsed || !parsed.access_token) {
+					logger.log('Missing access token in refresh response:', parsed)
+					return callback('Missing access token.')
+				}
+
+				logger.debug('onAccessToken', parsed)
+				googleApiSession.applyAccessToken(parsed)
 
 				callback(null)
 			})
@@ -47,21 +81,27 @@ QtObject {
 	onTransactionError: logger.log(msg)
 
 	function applyAccessToken(data) {
-		plasmoid.configuration.accessToken = data.access_token
-		plasmoid.configuration.accessTokenType = data.token_type
-		plasmoid.configuration.accessTokenExpiresAt = Date.now() + data.expires_in * 1000
+		if (!accountsStore || !accountId) {
+			return
+		}
+		accountsStore.updateAccount(accountId, {
+			accessToken: data.access_token,
+			accessTokenType: data.token_type,
+			accessTokenExpiresAt: Date.now() + data.expires_in * 1000,
+		})
 		newAccessToken()
 	}
 
 	function fetchNewAccessToken(callback) {
 		logger.debug('fetchNewAccessToken')
-		var url = 'https://www.googleapis.com/oauth2/v4/token'
+		var account = getAccount()
+		var url = 'https://oauth2.googleapis.com/token'
 		Requests.post({
 			url: url,
 			data: {
-				client_id: plasmoid.configuration.sessionClientId,
-				client_secret: plasmoid.configuration.sessionClientSecret,
-				refresh_token: plasmoid.configuration.refreshToken,
+				client_id: account ? account.sessionClientId : "",
+				client_secret: account ? account.sessionClientSecret : "",
+				refresh_token: account ? account.refreshToken : "",
 				grant_type: 'refresh_token',
 			},
 		}, callback)
@@ -81,7 +121,7 @@ QtObject {
 	}
 	// https://stackoverflow.com/questions/28507619/how-to-create-delay-function-in-qml
 	function delay(delayTime, callback) {
-		var timer = Qt.createQmlObject("import QtQuick 2.0; Timer {}", googleCalendarManager)
+		var timer = Qt.createQmlObject("import QtQuick; Timer {}", googleCalendarManager)
 		timer.interval = delayTime
 		timer.repeat = false
 		timer.triggered.connect(callback)

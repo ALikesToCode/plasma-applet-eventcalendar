@@ -1,9 +1,8 @@
-import org.kde.ksvg 1.0 as KSvg
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core
-import org.kde.kirigami 2.15 as Kirigami
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
 import "LocaleFuncs.js" as LocaleFuncs
 import "Shared.js" as Shared
@@ -40,13 +39,20 @@ LinkRect {
 
 	readonly property string eventTimestamp: {
 		if (model.due) {
+			var dueDateTime = model.dueDateTime
+			if (!Shared.isValidDate(dueDateTime)) {
+				dueDateTime = new Date(dueDateTime)
+			}
+			if (!Shared.isValidDate(dueDateTime)) {
+				return ''
+			}
 			if (model.due.indexOf('T00:00:00.000Z') !== -1) {
 				// Due at end of day
 				var shortDateFormat = i18nc("short month+date format", "MMM d")
-				return Qt.formatDateTime(model.dueDateTime, shortDateFormat)
+				return Qt.formatDateTime(dueDateTime, shortDateFormat)
 			} else {
 				// Due at specific time
-				return LocaleFuncs.formatEventDateTime(model.dueDateTime, {
+				return LocaleFuncs.formatEventDateTime(dueDateTime, {
 					clock24h: appletConfig.clock24h,
 				})
 			}
@@ -61,7 +67,7 @@ LinkRect {
 		id: contents
 		anchors.left: parent.left
 		anchors.right: parent.right
-		spacing: 4 * units.devicePixelRatio
+		spacing: 4 * Screen.devicePixelRatio
 
 		PlasmaComponents3.CheckBox {
 			id: taskCheckBox
@@ -87,7 +93,7 @@ LinkRect {
 			PlasmaComponents3.Label {
 				id: taskTitle
 				text: model.title
-				color: PlasmaCore.ColorScope.textColor
+				color: Kirigami.Theme.textColor
 				font.pointSize: -1
 				font.pixelSize: appletConfig.agendaFontSize
 				visible: !editTaskForm.visible
@@ -103,9 +109,9 @@ LinkRect {
 				id: taskDue
 				readonly property bool showProperty: !!model.due
 				visible: showProperty && !editTaskForm.visible
-				spacing: units.smallSpacing
+				spacing: Kirigami.Units.smallSpacing
 
-				PlasmaCore.IconItem {
+				Kirigami.Icon {
 					source: "view-task"
 					Layout.preferredHeight: taskDueLabel.implicitHeight
 					Layout.preferredWidth: taskDueLabel.implicitHeight
@@ -113,7 +119,7 @@ LinkRect {
 				PlasmaComponents3.Label {
 					id: taskDueLabel
 					text: eventTimestamp
-					color: taskIsOverdue ? isOverdueColor : PlasmaCore.ColorScope.textColor
+					color: taskIsOverdue ? isOverdueColor : Kirigami.Theme.textColor
 					opacity: taskIsOverdue ? 1 : 0.75
 					font.pointSize: -1
 					font.pixelSize: appletConfig.agendaFontSize
@@ -124,7 +130,7 @@ LinkRect {
 			Item {
 				id: taskNoteSpacing
 				visible: taskNotes.visible
-				implicitHeight: 4 * units.devicePixelRatio
+				implicitHeight: 4 * Screen.devicePixelRatio
 			}
 
 			PlasmaComponents3.Label {
@@ -132,16 +138,18 @@ LinkRect {
 				readonly property bool showProperty: plasmoid.configuration.agendaShowEventDescription && text
 				visible: showProperty && !editTaskForm.visible
 				text: Shared.renderText(model.notes)
-				color: PlasmaCore.ColorScope.textColor
+				color: Kirigami.Theme.textColor
 				opacity: 0.75
 				font.pointSize: -1
 				font.pixelSize: appletConfig.agendaFontSize
 				Layout.fillWidth: true
 				wrapMode: Text.Wrap // See warning at taskTitle.wrapMode
 
-				linkColor: PlasmaCore.ColorScope.highlightColor
-				onLinkActivated: Qt.openUrlExternally(link)
-				MouseArea {
+					linkColor: Kirigami.Theme.highlightColor
+					onLinkActivated: function(link) {
+						Qt.openUrlExternally(link)
+					}
+					MouseArea {
 					anchors.fill: parent
 					acceptedButtons: Qt.NoButton // we don't want to eat clicks on the Text
 					cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -151,7 +159,7 @@ LinkRect {
 			Item {
 				id: taskEditorSpacing
 				visible: editTaskForm.visible
-				implicitHeight: 4 * units.devicePixelRatio
+				implicitHeight: 4 * Screen.devicePixelRatio
 			}
 
 			EditTaskForm {
@@ -169,7 +177,7 @@ LinkRect {
 		// 	onClicked: Qt.openUrlExternally(model.htmlLink)
 		// }
 	}
-
+	
 	onLeftClicked: {
 		var task = tasks.get(taskItemIndex)
 		logger.logJSON("task", task)
@@ -185,7 +193,7 @@ LinkRect {
 
 		menuItem = contextMenu.newMenuItem()
 		menuItem.text = i18n("Edit")
-		menuItem.icon = "edit-rename"
+		menuItem.icon.name = "edit-rename"
 		menuItem.enabled = task.canEdit
 		menuItem.clicked.connect(function() {
 			editTaskForm.active = !editTaskForm.active
@@ -193,24 +201,23 @@ LinkRect {
 		})
 		contextMenu.addMenuItem(menuItem)
 
-		var deleteMenuItem = contextMenu.newSubMenu()
-		deleteMenuItem.text = i18n("Delete Event")
-		deleteMenuItem.icon = "delete"
-		menuItem = contextMenu.newMenuItem(deleteMenuItem)
+		var deleteMenu = contextMenu.newSubMenu()
+		deleteMenu.title = i18n("Delete Event")
+		deleteMenu.icon.name = "delete"
+		menuItem = deleteMenu.newMenuItem()
 		menuItem.text = i18n("Confirm Deletion")
-		menuItem.icon = "delete"
+		menuItem.icon.name = "delete"
 		menuItem.enabled = task.canEdit
 		menuItem.clicked.connect(function() {
 			logger.debug('eventModel.deleteTask', task.calendarId, task.id)
 			eventModel.deleteEvent(task.calendarId, task.id)
 		})
-		// deleteMenuItem.enabled = task.canEdit
-		deleteMenuItem.subMenu.addMenuItem(menuItem)
-		contextMenu.addMenuItem(deleteMenuItem)
+		// deleteMenu.enabled = task.canEdit
+		deleteMenu.addMenuItem(menuItem)
 
 		menuItem = contextMenu.newMenuItem()
 		menuItem.text = i18n("Edit in browser")
-		menuItem.icon = "internet-web-browser"
+		menuItem.icon.name = "internet-web-browser"
 		menuItem.enabled = !!task.htmlLink
 		menuItem.clicked.connect(function() {
 			Qt.openUrlExternally(task.htmlLink)

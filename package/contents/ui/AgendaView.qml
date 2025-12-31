@@ -1,7 +1,7 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 
 import "Shared.js" as Shared
 import "LocaleFuncs.js" as LocaleFuncs
@@ -9,12 +9,12 @@ import "LocaleFuncs.js" as LocaleFuncs
 Item {
 	id: agendaView
 
-	readonly property int scrollbarWidth: width - agendaScrollView.contentWidth
+	readonly property int scrollbarWidth: width - (agendaScrollView.contentItem ? agendaScrollView.contentItem.contentWidth : width)
 
 	property color inProgressColor: appletConfig.agendaInProgressColor
 	property int inProgressFontWeight: Font.Bold
 
-	property color isOverdueColor: PlasmaCore.ColorScope.negativeTextColor
+	property color isOverdueColor: Kirigami.Theme.negativeTextColor
 	property int isOverdueFontWeight: Font.Bold
 
 	signal newEventFormOpened(var agendaItem, var calendarSelector)
@@ -22,7 +22,7 @@ Item {
 
 	Connections {
 		target: eventModel
-		function onEventCreated() {
+		function onEventCreated(data) {
 			notificationManager.notify({
 				appName: i18n("Event Calendar"),
 				appIcon: "resource-calendar-insert",
@@ -34,7 +34,7 @@ Item {
 				})
 			})
 		}
-		function onEventDeleted() {
+		function onEventDeleted(data) {
 			logger.logJSON('AgendaView.onEventDeleted', data)
 			notificationManager.notify({
 				appName: i18n("Event Calendar"),
@@ -49,15 +49,14 @@ Item {
 		}
 	}
 
-	ScrollView {
+	QQC2.ScrollView {
 		id: agendaScrollView
 		anchors.fill: parent
 		// clip: true
-		readonly property int contentWidth: contentItem ? contentItem.width : width
-		readonly property int contentHeight: contentItem ? contentItem.height : 0 // Warning: Binding loop
-		readonly property int viewportWidth: viewport ? viewport.width : width
-		readonly property int viewportHeight: viewport ? viewport.height : height
-		readonly property int scrollY: flickableItem ? flickableItem.contentY : 0
+		readonly property int viewportWidth: contentItem ? contentItem.width : width
+		readonly property int viewportHeight: contentItem ? contentItem.height : height
+		readonly property int scrollY: contentItem ? contentItem.contentY : 0
+		readonly property int contentHeightValue: contentItem ? contentItem.contentHeight : 0
 
 		// onScrollYChanged: console.log('scrollY', scrollY)
 
@@ -80,18 +79,18 @@ Item {
 					// 		scrollToIndexTimer.updatePosition()
 					// 	}
 					// }
-
+					
 					// Component.onCompleted: console.log(Date.now(), 'AgendaListItem.onCompleted', index)
 					// Component.onDestruction: console.log(Date.now(), 'AgendaListItem.onDestruction', index)
 				}
 
-				onItemAdded: {
+				function onItemAdded(index, item) {
 					// console.log(Date.now(), 'agendaRepeater.itemAdded', index)
 					if (index === root.agendaModel.count-1) {
 						populated = true
 					}
 				}
-				onItemRemoved: {
+				function onItemRemoved(index, item) {
 					// console.log(Date.now(), 'agendaRepeater.onItemRemoved', index)
 					populated = false
 				}
@@ -136,12 +135,14 @@ Item {
 				}
 				return offsetY
 			} else { // index >= agendaRepeater.count
-				return agendaScrollView.contentHeight
+				return agendaScrollView.contentHeightValue
 			}
 		}
 
 		function scrollToY(offsetY) {
-			flickableItem.contentY = Math.min(offsetY, contentHeight-viewportHeight)
+			if (contentItem) {
+				contentItem.contentY = Math.min(offsetY, contentHeightValue - viewportHeight)
+			}
 		}
 
 		function positionViewAtBeginning() {
@@ -169,7 +170,7 @@ Item {
 		}
 
 		function positionViewAtEnd() {
-			scrollToY(contentHeight)
+			scrollToY(contentHeightValue)
 		}
 	}
 

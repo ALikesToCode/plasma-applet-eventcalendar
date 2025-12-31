@@ -1,14 +1,13 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
-
-import org.kde.plasma.calendar 2.0 as PlasmaCalendar
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 import "../lib"
 import "../calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 
 ConfigPage {
 	id: page
+	property var eventPluginsManager: null
 
 	HeaderText {
 		text: i18n("Event Calendar Plugins")
@@ -19,7 +18,7 @@ ConfigPage {
 			text: i18n("ICalendar (.ics)")
 			checked: true
 			enabled: false
-			visible: plasmoid.configuration.debugging
+			visible: page.configBridge.read("debugging", false)
 		}
 		CheckBox {
 			text: i18n("Google Calendar")
@@ -35,10 +34,16 @@ ConfigPage {
 
 	// From digitalclock's configCalendar.qml
 	signal configurationChanged()
+	MessageWidget {
+		visible: !eventPluginsManager
+		messageType: MessageWidget.MessageType.Warning
+		closeButtonVisible: false
+		text: i18n("Plasma calendar plugins are unavailable. Install the Plasma calendar module to manage these plugins.")
+	}
 	ConfigSection {
 		Repeater {
 			id: calendarPluginsRepeater
-			model: PlasmaCalendar.EventPluginsManager.model
+			model: eventPluginsManager ? eventPluginsManager.model : null
 			delegate: CheckBox {
 				text: model.display
 				checked: model.checked
@@ -51,10 +56,22 @@ ConfigPage {
 		}
 	}
 	function saveConfig() {
-		plasmoid.configuration.enabledCalendarPlugins = PlasmaCalendarUtils.pluginPathToFilenameList(PlasmaCalendar.EventPluginsManager.enabledPlugins)
+		if (!eventPluginsManager) {
+			return
+		}
+		page.configBridge.write("enabledCalendarPlugins", PlasmaCalendarUtils.pluginPathToFilenameList(eventPluginsManager.enabledPlugins))
 	}
 	Component.onCompleted: {
-		PlasmaCalendarUtils.populateEnabledPluginsByFilename(PlasmaCalendar.EventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
+		try {
+			eventPluginsManager = Qt.createQmlObject(
+				"import org.kde.plasma.workspace.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
+				page
+			)
+		} catch (e) {
+			console.warn("[eventcalendar] PlasmaCalendar.EventPluginsManager unavailable:", e)
+			return
+		}
+		PlasmaCalendarUtils.populateEnabledPluginsByFilename(eventPluginsManager, page.configBridge.read("enabledCalendarPlugins", []))
 	}
 
 	HeaderText {
