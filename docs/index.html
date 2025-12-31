@@ -77,9 +77,32 @@
       gap: 28px;
     }
 
-    header {
+    header.hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .hero-copy {
       display: grid;
       gap: 12px;
+    }
+
+    .hero-media {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hero-logo {
+      width: min(230px, 45vw);
+      height: auto;
+      border-radius: 22px;
+      padding: 12px;
+      background: rgba(255, 250, 240, 0.8);
+      border: 1px solid rgba(29, 27, 24, 0.12);
+      box-shadow: 0 20px 40px rgba(29, 27, 24, 0.2);
     }
 
     .eyebrow {
@@ -253,15 +276,29 @@
         animation: none;
       }
     }
+
+    @media (max-width: 760px) {
+      header.hero {
+        grid-template-columns: 1fr;
+      }
+      .hero-media {
+        justify-content: flex-start;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="canvas">
     <main>
-      <header>
-        <div class="eyebrow">Event Calendar OAuth Helper</div>
-        <h1>Extract your Google authorization code.</h1>
-        <p>Paste the redirect URL from your browser and copy the code into the KDE Event Calendar widget.</p>
+      <header class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">Event Calendar OAuth Helper</div>
+          <h1>Extract your Google authorization code.</h1>
+          <p>Paste the redirect URL from your browser and copy the code into the KDE Event Calendar widget.</p>
+        </div>
+        <div class="hero-media">
+          <img class="hero-logo" src="kde_plasma_calendar.png" alt="KDE Plasma Event Calendar logo">
+        </div>
       </header>
 
       <section class="grid">
