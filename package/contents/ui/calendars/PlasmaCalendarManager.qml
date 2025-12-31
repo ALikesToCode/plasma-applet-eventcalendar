@@ -127,7 +127,13 @@ CalendarManager {
 
 		Component.onCompleted: {
 			//daysModel.connect
-			daysModel.setPluginsManager(PlasmaCalendar.EventPluginsManager)
+			if (daysModel && PlasmaCalendar.EventPluginsManager && typeof daysModel.setPluginsManager === "function") {
+				try {
+					daysModel.setPluginsManager(PlasmaCalendar.EventPluginsManager)
+				} catch (e) {
+					logger.debug('daysModel.setPluginsManager failed', e)
+				}
+			}
 		}
 	}
 

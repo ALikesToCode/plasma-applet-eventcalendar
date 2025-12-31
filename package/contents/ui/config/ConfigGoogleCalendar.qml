@@ -97,6 +97,7 @@ ConfigPage {
 
 	property bool autoLoginInProgress: false
 	readonly property bool localRedirect: googleLoginManager.redirectMode === "local"
+	readonly property bool showDebug: page.configBridge.read("debugging", false)
 
 	function extractJson(text) {
 		var start = text.indexOf('{')
@@ -107,9 +108,12 @@ ConfigPage {
 		return ""
 	}
 
-	function startAutoLogin(accountId) {
+	function startAutoLogin(accountId, openBrowser) {
 		if (autoLoginInProgress) {
 			return
+		}
+		if (openBrowser === undefined) {
+			openBrowser = true
 		}
 		autoLoginInProgress = true
 		googleLoginManager.prepareAuthorization()
@@ -137,7 +141,6 @@ ConfigPage {
 			cmd.push('--code_verifier')
 			cmd.push(authContext.pkceVerifier)
 		}
-// 		Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
 		var cmdStr = JSON.stringify(cmd)
 		console.log('google_redirect.py command:', cmdStr)
 		// debugOutput.text = "Running:\n" + cmdStr + "\n\n"
@@ -169,6 +172,9 @@ ConfigPage {
 			authorizationCodeInput.text = ""
 			googleLoginManager.updateAccessToken(data, accountId)
 		})
+		if (openBrowser) {
+			Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+		}
 	}
 
 	GoogleLoginManager {
@@ -723,10 +729,11 @@ ConfigPage {
 
 	HeaderText {
 		text: "Debug Info (Temporary)"
-		visible: true
+		visible: showDebug
 	}
 	ColumnLayout {
 		Layout.fillWidth: true
+		visible: showDebug
 		RowLayout {
 			Button {
 				text: "Test Echo"

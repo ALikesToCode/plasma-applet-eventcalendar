@@ -39,13 +39,20 @@ LinkRect {
 
 	readonly property string eventTimestamp: {
 		if (model.due) {
+			var dueDateTime = model.dueDateTime
+			if (!Shared.isValidDate(dueDateTime)) {
+				dueDateTime = new Date(dueDateTime)
+			}
+			if (!Shared.isValidDate(dueDateTime)) {
+				return ''
+			}
 			if (model.due.indexOf('T00:00:00.000Z') !== -1) {
 				// Due at end of day
 				var shortDateFormat = i18nc("short month+date format", "MMM d")
-				return Qt.formatDateTime(model.dueDateTime, shortDateFormat)
+				return Qt.formatDateTime(dueDateTime, shortDateFormat)
 			} else {
 				// Due at specific time
-				return LocaleFuncs.formatEventDateTime(model.dueDateTime, {
+				return LocaleFuncs.formatEventDateTime(dueDateTime, {
 					clock24h: appletConfig.clock24h,
 				})
 			}
@@ -138,9 +145,11 @@ LinkRect {
 				Layout.fillWidth: true
 				wrapMode: Text.Wrap // See warning at taskTitle.wrapMode
 
-				linkColor: Kirigami.Theme.highlightColor
-				onLinkActivated: Qt.openUrlExternally(link)
-				MouseArea {
+					linkColor: Kirigami.Theme.highlightColor
+					onLinkActivated: function(link) {
+						Qt.openUrlExternally(link)
+					}
+					MouseArea {
 					anchors.fill: parent
 					acceptedButtons: Qt.NoButton // we don't want to eat clicks on the Text
 					cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor

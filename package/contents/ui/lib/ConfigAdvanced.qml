@@ -118,14 +118,14 @@ ConfigPage {
 			}
 		}
 
-			Component {
-				id: stringControl
-				TextArea {
-					text: modelValue
-					// readOnly: true
-					implicitHeight: contentHeight + font.pixelSize
-					wrapMode: TextEdit.Wrap
-					Component.onCompleted: {
+				Component {
+					id: stringControl
+					TextArea {
+						text: (modelValue === undefined || modelValue === null) ? "" : String(modelValue)
+						// readOnly: true
+						implicitHeight: contentHeight + font.pixelSize
+						wrapMode: TextEdit.Wrap
+						Component.onCompleted: {
 						textChanged.connect(function() {
 							page.updateConfigValue(modelKey, text)
 						})

@@ -17,36 +17,18 @@ QtObject {
 
 	signal accountUpdated(string accountId)
 
-	Binding {
-		target: store
-		property: "accountsConfigValue"
-		value: readConfig(accountsKey, "")
-		when: !configBridge
-	}
-
-	Binding {
-		target: store
-		property: "activeAccountId"
-		value: readConfig(activeAccountKey, "")
-		when: !configBridge
-	}
-
 	Component.onCompleted: {
 		if (!configBridge) {
 			configBridge = ConfigUtils.findBridge(store)
 		}
-		if (configBridge) {
-			syncFromConfig()
-		}
+		syncFromConfig()
 		loadAccounts()
 		migrateLegacyAccountIfNeeded()
 	}
 
 	onConfigBridgeChanged: {
-		if (configBridge) {
-			syncFromConfig()
-			loadAccounts()
-		}
+		syncFromConfig()
+		loadAccounts()
 	}
 
 	onAccountsConfigValueChanged: loadAccounts()
@@ -57,8 +39,14 @@ QtObject {
 	}
 
 	function syncFromConfig() {
-		accountsConfigValue = readConfig(accountsKey, "")
-		activeAccountId = readConfig(activeAccountKey, "")
+		var nextAccountsValue = readConfig(accountsKey, "")
+		if (accountsConfigValue !== nextAccountsValue) {
+			accountsConfigValue = nextAccountsValue
+		}
+		var nextActiveId = readConfig(activeAccountKey, "")
+		if (activeAccountId !== nextActiveId) {
+			activeAccountId = nextActiveId
+		}
 	}
 
 	function loadAccounts() {

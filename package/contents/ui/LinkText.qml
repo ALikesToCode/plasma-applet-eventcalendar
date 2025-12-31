@@ -5,7 +5,9 @@ import org.kde.plasma.core as PlasmaCore
 
 Label {
 	linkColor: Kirigami.Theme.highlightColor
-	onLinkActivated: Qt.openUrlExternally(link)
+	onLinkActivated: function(link) {
+		Qt.openUrlExternally(link)
+	}
 	MouseArea {
 		anchors.fill: parent
 		acceptedButtons: Qt.NoButton // we don't want to eat clicks on the Text
