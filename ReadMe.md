@@ -61,6 +61,7 @@ sh ./uninstall
    - Localhost (default): click Add Account with an empty field to auto-capture, or paste the localhost URL (or just the `code=` value).
    - Helper page: click Add Account with an empty field so the helper can send the code automatically. If it cannot, copy the code manually.
 4. Helper page: https://alikestocode.github.io/plasma-applet-eventcalendar/
+   Note: The built-in client uses PKCE and does not require a bundled secret. If Google blocks it, supply your own client ID/secret.
 5. Click Submit (or Add Account).
 6. Choose which calendars and tasks to sync. Use Refresh if the list does not load.
 7. Click Apply to save your settings.

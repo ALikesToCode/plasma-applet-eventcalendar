@@ -1,6 +1,7 @@
 import QtQuick
 
 import "../lib"
+import "../lib/Pkce.js" as Pkce
 import "../lib/ConfigUtils.js" as ConfigUtils
 import "../lib/Requests.js" as Requests
 
@@ -52,6 +53,8 @@ Item {
 	}
 	property string effectiveClientId: ""
 	property string effectiveClientSecret: ""
+	property string pkceVerifier: ""
+	property string pkceChallenge: ""
 
 	Connections {
 		target: accountsStore
@@ -77,6 +80,7 @@ Item {
 		session.accounts = accountsStore.accounts.slice(0)
 		refreshActiveAccount()
 		refreshClientCredentials()
+		ensurePkce()
 	}
 
 	function readConfig(key, fallback) {
@@ -128,6 +132,17 @@ Item {
 		effectiveClientSecret = customSecret || latestSecret
 	}
 
+	function ensurePkce() {
+		if (!pkceVerifier || !pkceChallenge) {
+			resetPkce()
+		}
+	}
+
+	function resetPkce() {
+		pkceVerifier = Pkce.generateVerifier()
+		pkceChallenge = Pkce.challengeFromVerifier(pkceVerifier)
+	}
+
 	//--- Signals
 	signal newAccessToken()
 	signal sessionReset()
@@ -142,6 +157,10 @@ Item {
 		url += '&access_type=offline'
 		url += '&prompt=consent'
 		url += '&client_id=' + encodeURIComponent(effectiveClientId)
+		if (pkceChallenge) {
+			url += '&code_challenge=' + encodeURIComponent(pkceChallenge)
+			url += '&code_challenge_method=S256'
+		}
 		return url
 	}
 
@@ -184,15 +203,21 @@ Item {
 			return
 		}
 		var url = 'https://oauth2.googleapis.com/token'
+		var payload = {
+			client_id: effectiveClientId,
+			code: authCode,
+			grant_type: 'authorization_code',
+			redirect_uri: redirectUri,
+		}
+		if (effectiveClientSecret) {
+			payload.client_secret = effectiveClientSecret
+		}
+		if (pkceVerifier) {
+			payload.code_verifier = pkceVerifier
+		}
 		Requests.post({
 			url: url,
-			data: {
-				client_id: effectiveClientId,
-				client_secret: effectiveClientSecret,
-				code: authCode,
-				grant_type: 'authorization_code',
-				redirect_uri: redirectUri,
-			},
+			data: payload,
 		}, function(err, data, xhr) {
 			logger.debug('/oauth2/v4/token Response', data)
 

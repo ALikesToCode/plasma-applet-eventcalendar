@@ -359,7 +359,7 @@
 			<default>391436299960-k0s16nm589meovhoblpcquqgbbrena17.apps.googleusercontent.com</default>
 		</entry>
 		<entry name="latestClientSecret" type="string">
-			<default>Gdr_7lKIQuGBD4Up3MOiw-7i</default>
+			<default></default>
 		</entry>
 		<entry name="customClientId" type="string">
 			<default></default>

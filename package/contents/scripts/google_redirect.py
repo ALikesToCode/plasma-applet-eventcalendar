@@ -10,7 +10,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
-client_id = client_secret = listen_port = redirect_uri = None
+client_id = client_secret = listen_port = redirect_uri = code_verifier = None
 exit_code = 0
 
 
@@ -20,10 +20,13 @@ def exchange_code_for_token(code):
     token_params = {
         "code": code,
         "client_id": client_id,
-        "client_secret": client_secret,
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
     }
+    if client_secret:
+        token_params["client_secret"] = client_secret
+    if code_verifier:
+        token_params["code_verifier"] = code_verifier
     data = urllib.parse.urlencode(token_params).encode("utf-8")
     req = urllib.request.Request("https://oauth2.googleapis.com/token", data)
     response = urllib.request.urlopen(req)
@@ -132,14 +135,16 @@ class OAuthRedirectHandler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--client_id", required=True)
-    parser.add_argument("--client_secret", required=True)
+    parser.add_argument("--client_secret", default="")
     parser.add_argument("--listen_port", required=True, type=int)
     parser.add_argument("--redirect_uri", default="")
+    parser.add_argument("--code_verifier", default="")
     args = parser.parse_args()
     client_id = args.client_id
     client_secret = args.client_secret
     listen_port = args.listen_port
     redirect_uri = args.redirect_uri or "http://127.0.0.1:{}/".format(listen_port)
+    code_verifier = args.code_verifier
 
     server_address = ("", listen_port)
     httpd = HTTPServer(server_address, OAuthRedirectHandler)

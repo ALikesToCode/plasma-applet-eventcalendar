@@ -111,6 +111,7 @@ ConfigPage {
 		if (autoLoginInProgress) {
 			return
 		}
+		googleLoginManager.resetPkce()
 		autoLoginInProgress = true
 		googleLoginManager.refreshClientCredentials()
 		messageWidget.info(localRedirect
@@ -121,13 +122,19 @@ ConfigPage {
 			localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py")),
 			'--client_id',
 			googleLoginManager.effectiveClientId,
-			'--client_secret',
-			googleLoginManager.effectiveClientSecret,
 			'--listen_port',
 			'53682',
 			'--redirect_uri',
 			googleLoginManager.redirectUri,
 		]
+		if (googleLoginManager.effectiveClientSecret) {
+			cmd.push('--client_secret')
+			cmd.push(googleLoginManager.effectiveClientSecret)
+		}
+		if (googleLoginManager.pkceVerifier) {
+			cmd.push('--code_verifier')
+			cmd.push(googleLoginManager.pkceVerifier)
+		}
 		Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
 		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			autoLoginInProgress = false
@@ -270,7 +277,7 @@ ConfigPage {
 			closeButtonVisible: false
 			text: googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
 				? ""
-				: i18n("The built-in Google OAuth client is often blocked. Provide your own client ID and secret to enable Google sync.")
+				: i18n("The built-in Google OAuth client is often blocked. Provide your own client ID (and secret if required) to enable Google sync.")
 		}
 		Label {
 			Layout.fillWidth: true
@@ -360,6 +367,10 @@ ConfigPage {
 				: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to the helper page, which will try to send the code back automatically.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
+			onLinkActivated: function(link) {
+				googleLoginManager.resetPkce()
+				Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+			}
 
 			// Tooltip
 			// QQC2.ToolTip.visible: !!hoveredLink
@@ -382,10 +393,13 @@ ConfigPage {
 
 				Menu {
 					id: contextMenu
-					MenuItem {
-						text: i18n("Copy Link")
-						onTriggered: clipboardHelper.copyText(googleLoginManager.authorizationCodeUrl)
+				MenuItem {
+					text: i18n("Copy Link")
+					onTriggered: {
+						googleLoginManager.resetPkce()
+						clipboardHelper.copyText(googleLoginManager.authorizationCodeUrl)
 					}
+				}
 				}
 
 				TextEdit {
