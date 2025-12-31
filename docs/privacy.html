@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event Calendar Privacy Policy</title>
+  <meta name="description" content="Privacy policy for the KDE Event Calendar widget and OAuth helper page.">
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600&display=swap");
+
+    :root {
+      --bg-1: #f4efe3;
+      --bg-2: #f8c877;
+      --bg-3: #f05a3d;
+      --ink: #1d1b18;
+      --muted: #5c564e;
+      --card: #fffaf0;
+      --accent: #1d6f62;
+      --shadow: 0 18px 50px rgba(29, 27, 24, 0.15);
+      --radius: 18px;
+      --body: "Space Grotesk", sans-serif;
+      --display: "Fraunces", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--body);
+      color: var(--ink);
+      background: linear-gradient(140deg, var(--bg-1) 0%, #f7e6c5 35%, #fbe2d7 100%);
+      min-height: 100vh;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+      display: grid;
+      gap: 20px;
+    }
+
+    header {
+      display: grid;
+      gap: 10px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    h1, h2 {
+      font-family: var(--display);
+      margin: 0;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(29, 27, 24, 0.08);
+      display: grid;
+      gap: 12px;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">Event Calendar</div>
+      <h1>Privacy Policy</h1>
+      <p>Last updated: 2025-01-01</p>
+    </header>
+
+    <section class="card">
+      <h2>Downloads</h2>
+      <p>
+        By downloading the widget from the KDE panel directly, you are downloading from the KDE Store which has a privacy policy at
+        <a href="https://store.kde.org/privacy">https://store.kde.org/privacy</a>.
+        By downloading the widget from Arch Linux's AUR, you are downloading from GitHub which has their own privacy policy.
+      </p>
+      <p>
+        The widget developer has access to the number of downloads for each release of the widget. The developer does not have access to where each download originates.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Google</h2>
+      <p>
+        By default the widget will not connect to the Google Calendar API. You need to click a link in the widget's config that will open up a login form in your web browser.
+        Once you have logged in, it will give you a login code to paste into the widget. The widget will then fetch your calendar, event, and task data from the Google Calendar
+        and Google Tasks API. This data will be displayed in your KDE Plasma panel. The widget will periodically synchronize this data in order to keep it up to date.
+        The user can also manually synchronize the data. The widget will store a cached list of your events/calendars/tasks locally on your computer so it can fallback to the
+        cached copy when your PC is offline. The widget will also store a login/refresh token in your widget config
+        <code>~/.config/plasma-org.kde.plasma.desktop-appletsrc</code> so you do not need to login every time you restart KDE Plasma.
+      </p>
+      <p>
+        The developer has access to Google API's application metrics for this widget. This allows the developer to see the total number of correct API responses, or errors,
+        broken down by action. The totals are not broken down by user. Each action has a sum of requests by all users. This is useful for knowing how close to the Google API
+        quota the widget is, and if there are any spikes in errors. The errors are displayed as HTTP Error codes and do not expose any personal data to the developer.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>OpenWeatherMap</h2>
+      <p>
+        By default the widget will not connect to OpenWeatherMap.org. You need to manually select your city in the widget's config. Once you have selected a city,
+        you will then fetch the current weather forecast every hour. OpenWeatherMap will be able to know the city you requested as well as your IP address.
+        You may wish to read OpenWeatherMap's privacy policy as well.
+      </p>
+    </section>
+
+    <footer>
+      <a href="index.html">Home</a> | <a href="terms.html">Terms of Service</a>
+    </footer>
+  </main>
+</body>
+</html>
