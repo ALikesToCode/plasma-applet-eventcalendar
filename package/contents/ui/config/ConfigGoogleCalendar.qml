@@ -749,6 +749,31 @@ ConfigPage {
 					})
 				}
 			}
+			Button {
+				text: "Start Listener (Manual)"
+				onClicked: {
+					googleLoginManager.prepareAuthorization()
+					var authContext = googleLoginManager.currentAuthContext()
+					var cmd = [
+						'python3',
+						localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py")),
+						'--client_id',
+						authContext.clientId,
+						'--listen_port',
+						'53682',
+						'--redirect_uri',
+						authContext.redirectUri,
+					]
+					if (authContext.clientSecret) {
+						cmd.push('--client_secret')
+						cmd.push(authContext.clientSecret)
+					}
+					debugOutput.text = "Manually starting listener...\nCommand: " + JSON.stringify(cmd) + "\n"
+					callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+						debugOutput.text += "Listener Finished.\nExit: " + exitCode + "\nStdout: " + stdout + "\nStderr: " + stderr + "\n"
+					})
+				}
+			}
 		}
 		TextArea {
 			id: debugOutput

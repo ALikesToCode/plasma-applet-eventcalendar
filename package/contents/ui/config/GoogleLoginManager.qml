@@ -186,12 +186,13 @@ Item {
 	}
 	function buildAuthContext(modeOverride) {
 		var mode = typeof modeOverride === "string" ? modeOverride : redirectMode
+		var usePkce = !effectiveClientSecret
 		return {
 			clientId: effectiveClientId,
 			clientSecret: effectiveClientSecret,
 			redirectUri: redirectUriForMode(mode),
-			pkceVerifier: pkceVerifier,
-			pkceChallenge: pkceChallenge,
+			pkceVerifier: usePkce ? pkceVerifier : "",
+			pkceChallenge: usePkce ? pkceChallenge : "",
 		}
 	}
 	function currentAuthContext() {
@@ -205,7 +206,12 @@ Item {
 			error("Hosted mode requires a client secret. Switching to localhost.")
 			mode = "local"
 		}
-		resetPkce()
+		if (!effectiveClientSecret) {
+			resetPkce()
+		} else {
+			pkceVerifier = ""
+			pkceChallenge = ""
+		}
 		pendingAuthContext = buildAuthContext(mode)
 	}
 	function switchToLegacyClient() {
