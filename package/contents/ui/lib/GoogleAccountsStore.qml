@@ -2,8 +2,9 @@ import QtQuick
 
 import "ConfigUtils.js" as ConfigUtils
 
-QtObject {
+Item {
 	id: store
+	visible: false
 
 	property string accountsKey: "googleAccounts"
 	property string activeAccountKey: "googleActiveAccountId"
