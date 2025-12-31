@@ -164,6 +164,9 @@ Dialog {
 		cityListModel.clear()
 
 		Requests.request(provinceUrl, function(err, data) {
+			if (!chooseCityDialog) {
+				return
+			}
 			if (err) {
 				console.log("[eventcalendar]", "loadCityList.err", err, data)
 				chooseCityDialog.loadingCityList = false

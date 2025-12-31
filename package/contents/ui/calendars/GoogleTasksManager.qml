@@ -1,6 +1,7 @@
 import QtQuick
 import org.kde.kirigami as Kirigami
 
+import "../ErrorType.js" as ErrorType
 import "../Shared.js" as Shared
 import "../lib/Async.js" as Async
 import "../lib/Requests.js" as Requests
@@ -82,6 +83,60 @@ CalendarManager {
 		}
 	}
 
+	//--- Errors
+	function showHttpError(httpCode, msg, suggestion, errorType) {
+		var errorMessage = i18n("HTTP Error %1: %2", httpCode, msg)
+		if (suggestion) {
+			errorMessage += '\n' + suggestion
+		}
+		googleTasksManager.error(errorMessage, errorType)
+	}
+	function handleError(err, data, xhr) {
+		var httpCode = xhr.status
+		if (httpCode === 0) {
+			var msg = i18n("Could not connect")
+			var suggestion = i18n("Will try again soon.")
+			showHttpError(httpCode, msg, suggestion, ErrorType.NetworkError)
+			return
+		}
+
+		// https://developers.google.com/tasks/reference/rest/errors
+		if (err.error && err.error.errors && err.error.errors.length >= 1) {
+			httpCode = err.error.code
+			var err0 = err.error.errors[0]
+
+			if (httpCode === 401 && err0.reason == 'authError') {
+				var suggestion = i18n("Widget has been updated. Please logout and login to Google Calendar again.")
+				showHttpError(httpCode, err0.message, suggestion, ErrorType.ClientError)
+			} else if (httpCode === 403 && err0.domain == 'usageLimits') {
+				var suggestion = i18n("Too many web requests. Will try again soon.")
+				showHttpError(httpCode, err0.message, suggestion, ErrorType.ClientError)
+			} else {
+				var suggestion = i18n("Will try again soon.")
+				showHttpError(httpCode, err0.message, suggestion, ErrorType.UnknownError)
+			}
+			return
+		}
+	}
+	function handleAuthError(err, markDone) {
+		if (markDone) {
+			googleTasksManager.asyncRequestsDone += 1
+		}
+		var message = i18n("Google authentication failed: %1", err)
+		googleTasksManager.error(message, ErrorType.ClientError)
+	}
+	function withAccessToken(action, onError) {
+		session.checkAccessToken(function(err) {
+			if (err) {
+				if (onError) {
+					onError(err)
+				}
+				return
+			}
+			action()
+		})
+	}
+
 	//--- Utils
 	function cloneRawTask(task) {
 		var validProperties = [
@@ -139,7 +194,9 @@ CalendarManager {
 				fetchGoogleAccountTasks_done(data)
 			}
 		})
-		session.checkAccessToken(func)
+		withAccessToken(func, function(err) {
+			handleAuthError(err, true)
+		})
 	}
 	function fetchGoogleAccountTasks_run(tasklistIdList, callback) {
 		logger.debug('fetchGoogleAccountTasks_run', tasklistIdList)
@@ -375,7 +432,9 @@ CalendarManager {
 					createEvent_done(calendarId, data)
 				}
 			})
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "create an event" without an access token set')
 		}
@@ -448,7 +507,9 @@ CalendarManager {
 					deleteEvent_done(calendarId, eventId, data)
 				}
 			})
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "delete an event" without an access token set')
 		}
@@ -524,7 +585,9 @@ CalendarManager {
 					setEventProperties_done(calendarId, eventId, event, data)
 				}
 			})
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "set an event property" without an access token set')
 		}

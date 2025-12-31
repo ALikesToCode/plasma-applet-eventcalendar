@@ -114,6 +114,24 @@ CalendarManager {
 			return
 		}
 	}
+	function handleAuthError(err, markDone) {
+		if (markDone) {
+			googleCalendarManager.asyncRequestsDone += 1
+		}
+		var message = i18n("Google authentication failed: %1", err)
+		googleCalendarManager.error(message, ErrorType.ClientError)
+	}
+	function withAccessToken(action, onError) {
+		session.checkAccessToken(function(err) {
+			if (err) {
+				if (onError) {
+					onError(err)
+				}
+				return
+			}
+			action()
+		})
+	}
 
 
 	//--- Utils
@@ -141,7 +159,9 @@ CalendarManager {
 				fetchGoogleAccountEvents_done(data)
 			}
 		})
-		session.checkAccessToken(func)
+		withAccessToken(func, function(err) {
+			handleAuthError(err, true)
+		})
 	}
 	function fetchGoogleAccountEvents_run(calendarIdList, callback) {
 		logger.debug('fetchGoogleAccountEvents_run', calendarIdList)
@@ -265,7 +285,9 @@ CalendarManager {
 		logger.debug('fetchGoogleCalendarEvent', calendarId, eventId)
 		if (session.accessToken) {
 			var func = fetchGoogleCalendarEvent_run.bind(this, calendarId, eventId, callback)
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "fetch an event" without an access token set')
 		}
@@ -376,7 +398,9 @@ function fetchGoogleCalendarEvent_run(calendarId, eventId, callback) {
 					createEvent_done(calendarId, data)
 				}
 			})
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "create an event" without an access token set')
 		}
@@ -461,7 +485,9 @@ function fetchGoogleCalendarEvent_run(calendarId, eventId, callback) {
 					updateGoogleCalendarEvent_done(calendarId, eventId, event, data)
 				}
 			})
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "set an event property" without an access token set')
 		}
@@ -584,7 +610,9 @@ function fetchGoogleCalendarEvent_run(calendarId, eventId, callback) {
 					deleteEvent_done(calendarId, eventId, data)
 				}
 			})
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "delete an event" without an access token set')
 		}

@@ -170,7 +170,6 @@ Item {
 
 	//---
 	readonly property string authorizationCodeUrl: {
-		ensurePkce()
 		var url = 'https://accounts.google.com/o/oauth2/v2/auth'
 		url += '?scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks')
 		url += '&response_type=code'
