@@ -126,17 +126,6 @@ Rectangle {
 	opacity: visible ? 1.0 : 0
 	implicitHeight: visible ? messageWidget.expandedHeight : 0
 
-	Component.onCompleted: {
-		// Remove bindings
-		visible = visible
-		opacity = opacity
-		if (visible) {
-			implicitHeight = Qt.binding(function(){ return messageWidget.expandedHeight })
-		} else {
-			implicitHeight = 0
-		}
-	}
-
 	Behavior on visible {
 		id: visibleAnimation
 
