@@ -51,8 +51,8 @@ select_target_branch() {
     local plasma_major="$1"
     local default_branch="master"
 
-    if [ "$plasma_major" = "6" ]; then
-        echo "plasma-6"
+    if [ "$plasma_major" = "5" ]; then
+        echo "plasma-5"
         return 0
     fi
 
@@ -228,6 +228,20 @@ install_requirements() {
     done
 }
 
+read_metadata_desktop_value() {
+    local file="$1"
+    local key="$2"
+
+    if command -v kreadconfig5 >/dev/null 2>&1; then
+        kreadconfig5 --file="$file" --group="Desktop Entry" --key="$key"
+        return 0
+    fi
+
+    local raw
+    raw=$(grep -m1 "^${key}=" "$file" | cut -d= -f2-)
+    echo "${raw:-}"
+}
+
 PLASMA_MAJOR="$(detect_plasma_major || true)"
 if [ -z "$PLASMA_MAJOR" ]; then
     log "WARNING: Unable to detect Plasma version; defaulting to Plasma 6."
@@ -257,7 +271,6 @@ fi
 
 # Parse arguments
 restartPlasmashell=false
-METADATA_FILE="$PWD/package/metadata.json"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -266,28 +279,38 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Verify metadata file exists
-if [ ! -f "$METADATA_FILE" ]; then
-    log "ERROR: metadata.json file not found"
-    exit 1
-fi
-
-# Install jq if needed
-if ! command -v jq &> /dev/null; then
-    log "Installing jq..."
-    install_packages "jq"
-    check_command_success "$?" "Failed to install jq"
-fi
+METADATA_DESKTOP="$PWD/package/metadata.desktop"
+METADATA_JSON="$PWD/package/metadata.json"
 
 # Read package information
-packageNamespace=$(jq -r '.KPlugin.Id' "$METADATA_FILE")
+packageNamespace=""
+packageServiceType="Plasma/Applet"
 
-if [ -z "$packageNamespace" ]; then
-    log "ERROR: Failed to read package information from metadata.json"
+if [ -f "$METADATA_JSON" ]; then
+    if ! command -v jq &> /dev/null; then
+        log "Installing jq..."
+        install_packages "jq"
+        check_command_success "$?" "Failed to install jq"
+    fi
+
+    packageNamespace=$(jq -r '.KPlugin.Id' "$METADATA_JSON")
+elif [ -f "$METADATA_DESKTOP" ]; then
+    packageNamespace=$(read_metadata_desktop_value "$METADATA_DESKTOP" "X-KDE-PluginInfo-Name")
+    packageServiceType=$(read_metadata_desktop_value "$METADATA_DESKTOP" "X-KDE-ServiceTypes")
+    if [ -z "$packageServiceType" ]; then
+        packageServiceType="Plasma/Applet"
+    fi
+else
+    log "ERROR: No compatible metadata file found in the package directory."
     exit 1
 fi
 
-# Check if package is already installed
+if [ -z "$packageNamespace" ] || [ "$packageNamespace" = "null" ]; then
+    log "ERROR: Failed to read package information from metadata."
+    exit 1
+fi
+
+# Check if package type is available
 if ! "$KPACKAGE_TOOL" --list-types | grep -q "Plasma/Applet"; then
     log "ERROR: Plasma/Applet package type not available"
     exit 1
@@ -312,7 +335,7 @@ QDBUS_BIN=$(command -v qdbus || command -v qdbus6) || {
 
 # Reload plasmoid configuration
 if $restartPlasmashell; then
-    log "Reloading plasmoid..."
+    log "Reloading plasmoid configuration..."
     "$QDBUS_BIN" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
         var allDesktops = desktops();
         for (var i = 0; i < allDesktops.length; i++) {
