@@ -170,6 +170,7 @@ Item {
 
 	//---
 	readonly property string authorizationCodeUrl: {
+		ensurePkce()
 		var url = 'https://accounts.google.com/o/oauth2/v2/auth'
 		url += '?scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks')
 		url += '&response_type=code'
@@ -223,6 +224,10 @@ Item {
 			return
 		}
 		var url = 'https://oauth2.googleapis.com/token'
+		if (!pkceVerifier && !effectiveClientSecret) {
+			handleError('Missing PKCE verifier. Start login from the widget and try again.', null)
+			return
+		}
 		var payload = {
 			client_id: effectiveClientId,
 			code: authCode,
@@ -241,24 +246,29 @@ Item {
 		}, function(err, data, xhr) {
 			logger.debug('/oauth2/v4/token Response', data)
 
-			// Check for errors
+			var parsed = null
+			if (data) {
+				try {
+					parsed = JSON.parse(data)
+				} catch (e) {
+					parsed = null
+				}
+			}
 			if (err) {
-				handleError(err, null)
+				handleError(err, parsed || data)
 				return
 			}
-			try {
-				data = JSON.parse(data)
-			} catch (e) {
+			if (!parsed) {
 				handleError('Error parsing /oauth2/v4/token data as JSON', null)
 				return
 			}
-			if (data && data.error) {
-				handleError(err, data)
+			if (parsed && parsed.error) {
+				handleError(err, parsed)
 				return
 			}
 
 			// Ready
-			updateAccessToken(data, args.accountId)
+			updateAccessToken(parsed, args.accountId)
 		})
 	}
 

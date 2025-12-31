@@ -368,7 +368,6 @@ ConfigPage {
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 			onLinkActivated: function(link) {
-				googleLoginManager.resetPkce()
 				Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
 			}
 
@@ -395,10 +394,7 @@ ConfigPage {
 					id: contextMenu
 				MenuItem {
 					text: i18n("Copy Link")
-					onTriggered: {
-						googleLoginManager.resetPkce()
-						clipboardHelper.copyText(googleLoginManager.authorizationCodeUrl)
-					}
+					onTriggered: clipboardHelper.copyText(googleLoginManager.authorizationCodeUrl)
 				}
 				}
 
