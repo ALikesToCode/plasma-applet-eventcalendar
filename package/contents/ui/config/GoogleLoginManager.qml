@@ -47,6 +47,8 @@ Item {
 	readonly property string redirectUri: normalizedRedirectMode(redirectMode) === "hosted"
 		? hostedRedirectUri
 		: localRedirectUri
+	property string legacyClientId: "391436299960-k0s16nm589meovhoblpcquqgbbrena17.apps.googleusercontent.com"
+	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
 	property var configBridge: null
 	function normalizedClientValue(value) {
 		return value ? value.trim() : ""
@@ -78,6 +80,7 @@ Item {
 			configBridge = ConfigUtils.findBridge(session)
 		}
 		session.accounts = accountsStore.accounts.slice(0)
+		migrateDefaultClientIfNeeded()
 		refreshActiveAccount()
 		refreshClientCredentials()
 		ensurePkce()
@@ -124,12 +127,29 @@ Item {
 	}
 
 	function refreshClientCredentials() {
+		migrateDefaultClientIfNeeded()
 		var customId = normalizedClientValue(readConfig("customClientId", ""))
 		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
 		var latestId = readConfig("latestClientId", "")
 		var latestSecret = readConfig("latestClientSecret", "")
 		effectiveClientId = customId || latestId
 		effectiveClientSecret = customSecret || latestSecret
+	}
+
+	function migrateDefaultClientIfNeeded() {
+		var customId = normalizedClientValue(readConfig("customClientId", ""))
+		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
+		if (customId || customSecret) {
+			return
+		}
+		var latestId = readConfig("latestClientId", "")
+		if (!latestId || latestId === legacyClientId) {
+			writeConfig("latestClientId", defaultClientId)
+		}
+		var latestSecret = readConfig("latestClientSecret", "")
+		if (latestSecret) {
+			writeConfig("latestClientSecret", "")
+		}
 	}
 
 	function ensurePkce() {
