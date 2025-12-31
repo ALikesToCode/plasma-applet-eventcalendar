@@ -1,295 +1,19 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Event Calendar OAuth Helper</title>
-  <meta name="description" content="Extract the Google OAuth code from the redirect URL for the KDE Event Calendar widget.">
+  <meta name="description"
+    content="Extract the Google OAuth code from the redirect URL for the KDE Event Calendar widget.">
   <link rel="canonical" href="https://alikestocode.github.io/plasma-applet-eventcalendar/index.html">
   <link rel="home" href="https://alikestocode.github.io/plasma-applet-eventcalendar/index.html">
   <meta property="og:url" content="https://alikestocode.github.io/plasma-applet-eventcalendar/index.html">
-  <style>
-    @import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap");
-
-    :root {
-      --bg-1: #f4efe3;
-      --bg-2: #f8c877;
-      --bg-3: #f05a3d;
-      --ink: #1d1b18;
-      --muted: #5c564e;
-      --card: #fffaf0;
-      --accent: #1d6f62;
-      --accent-2: #d4533a;
-      --mono: "JetBrains Mono", monospace;
-      --body: "Space Grotesk", sans-serif;
-      --display: "Fraunces", serif;
-      --shadow: 0 18px 50px rgba(29, 27, 24, 0.15);
-      --radius: 18px;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: var(--body);
-      color: var(--ink);
-      background: linear-gradient(140deg, var(--bg-1) 0%, #f7e6c5 35%, #fbe2d7 100%);
-      min-height: 100vh;
-    }
-
-    .canvas {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .canvas::before,
-    .canvas::after {
-      content: "";
-      position: absolute;
-      border-radius: 999px;
-      filter: blur(0px);
-      opacity: 0.25;
-      z-index: 0;
-    }
-
-    .canvas::before {
-      width: 440px;
-      height: 440px;
-      background: radial-gradient(circle at 30% 30%, var(--bg-2), transparent 65%);
-      top: -160px;
-      left: -120px;
-    }
-
-    .canvas::after {
-      width: 520px;
-      height: 520px;
-      background: radial-gradient(circle at 70% 30%, var(--bg-3), transparent 65%);
-      bottom: -260px;
-      right: -180px;
-    }
-
-    main {
-      position: relative;
-      z-index: 1;
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 48px 20px 64px;
-      display: grid;
-      gap: 28px;
-    }
-
-    header.hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 24px;
-      align-items: center;
-    }
-
-    .hero-copy {
-      display: grid;
-      gap: 12px;
-    }
-
-    .hero-media {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .hero-logo {
-      width: min(230px, 45vw);
-      height: auto;
-      border-radius: 22px;
-      padding: 12px;
-      background: rgba(255, 250, 240, 0.8);
-      border: 1px solid rgba(29, 27, 24, 0.12);
-      box-shadow: 0 20px 40px rgba(29, 27, 24, 0.2);
-    }
-
-    .eyebrow {
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-
-    h1 {
-      font-family: var(--display);
-      font-size: clamp(32px, 5vw, 56px);
-      margin: 0;
-    }
-
-    header p {
-      font-size: 16px;
-      margin: 0;
-      color: var(--muted);
-    }
-
-    .grid {
-      display: grid;
-      gap: 20px;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    }
-
-    .card {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 22px;
-      box-shadow: var(--shadow);
-      border: 1px solid rgba(29, 27, 24, 0.08);
-      animation: rise 0.6s ease both;
-    }
-
-    .card:nth-child(2) {
-      animation-delay: 0.08s;
-    }
-
-    .card:nth-child(3) {
-      animation-delay: 0.16s;
-    }
-
-    .card h2 {
-      font-family: var(--display);
-      margin: 0 0 12px;
-      font-size: 20px;
-    }
-
-    .steps ol {
-      margin: 0;
-      padding-left: 20px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .helper {
-      display: grid;
-      gap: 14px;
-    }
-
-    label {
-      font-weight: 600;
-      font-size: 14px;
-    }
-
-    textarea,
-    input[type="text"] {
-      width: 100%;
-      font-family: var(--mono);
-      font-size: 13px;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(29, 27, 24, 0.2);
-      background: #fff;
-      color: var(--ink);
-    }
-
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    button {
-      border: 0;
-      border-radius: 999px;
-      padding: 10px 18px;
-      font-weight: 600;
-      background: var(--accent);
-      color: #fff;
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    button.secondary {
-      background: #e9e1d3;
-      color: var(--ink);
-    }
-
-    button:active {
-      transform: translateY(1px);
-    }
-
-    .status {
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .status strong {
-      color: var(--ink);
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: rgba(29, 111, 98, 0.12);
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    details {
-      border-top: 1px dashed rgba(29, 27, 24, 0.2);
-      padding-top: 12px;
-    }
-
-    details summary {
-      cursor: pointer;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-
-    details ul {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    footer {
-      text-align: center;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    @keyframes rise {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .card {
-        animation: none;
-      }
-    }
-
-    @media (max-width: 760px) {
-      header.hero {
-        grid-template-columns: 1fr;
-      }
-      .hero-media {
-        justify-content: flex-start;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/main.js" defer></script>
 </head>
+
 <body>
   <div class="canvas">
     <main>
@@ -319,7 +43,9 @@
 
         <div class="card helper">
           <h2>Paste redirect URL</h2>
-          <label for="redirectUrl">Redirect URL (example: https://alikestocode.github.io/plasma-applet-eventcalendar/?code=... or http://127.0.0.1:53682/?code=...)</label>
+          <label for="redirectUrl">Redirect URL (example:
+            https://alikestocode.github.io/plasma-applet-eventcalendar/?code=... or
+            http://127.0.0.1:53682/?code=...)</label>
           <textarea id="redirectUrl" placeholder="Paste the full URL from your browser address bar"></textarea>
           <div class="row">
             <button id="extractBtn">Extract code</button>
@@ -337,7 +63,8 @@
         <div class="card">
           <h2>Notes</h2>
           <p class="status">
-            This page runs locally in your browser and does not send your URL anywhere, except an optional post to your own localhost widget listener.
+            This page runs locally in your browser and does not send your URL anywhere, except an optional post to your
+            own localhost widget listener.
           </p>
           <p class="status">
             For auto-send, click Add Account with an empty field in the widget before logging in.
@@ -358,32 +85,45 @@
         <div class="card">
           <h2>Privacy</h2>
           <p class="status">
-            By downloading the widget from the KDE panel directly, you are downloading from the KDE Store which has a privacy policy at
+            By downloading the widget from the KDE panel directly, you are downloading from the KDE Store which has a
+            privacy policy at
             <a href="https://store.kde.org/privacy">https://store.kde.org/privacy</a>.
-            By downloading the widget from Arch Linux's AUR, you are downloading from GitHub which has their own privacy policy.
+            By downloading the widget from Arch Linux's AUR, you are downloading from GitHub which has their own privacy
+            policy.
           </p>
           <p class="status">
-            The widget developer has access to the number of downloads for each release of the widget. The developer does not have access to where each download originates.
+            The widget developer has access to the number of downloads for each release of the widget. The developer
+            does not have access to where each download originates.
           </p>
           <h2>Google</h2>
           <p class="status">
-            By default the widget will not connect to the Google Calendar API. You need to click a link in the widget's config that will open up a login form in your web browser.
-            Once you have logged in, it will give you a "login code" to paste into the widget. The widget will then fetch your calendar, event, and task data from the Google Calendar
-            and Google Tasks API. This data will be displayed in your KDE Plasma panel. The widget will periodically synchronize this data in order to keep it up to date.
-            The user can also manually synchronize the data. The widget will store a cached list of your events/calendars/tasks locally on your computer so it can fallback to the
+            By default the widget will not connect to the Google Calendar API. You need to click a link in the widget's
+            config that will open up a login form in your web browser.
+            Once you have logged in, it will give you a "login code" to paste into the widget. The widget will then
+            fetch your calendar, event, and task data from the Google Calendar
+            and Google Tasks API. This data will be displayed in your KDE Plasma panel. The widget will periodically
+            synchronize this data in order to keep it up to date.
+            The user can also manually synchronize the data. The widget will store a cached list of your
+            events/calendars/tasks locally on your computer so it can fallback to the
             cached copy when your PC is offline. The widget will also store a login/refresh token in your widget config
-            <code>~/.config/plasma-org.kde.plasma.desktop-appletsrc</code> so you do not need to login every time you restart KDE Plasma. You may wish to read Google's privacy policy if you have not already.
+            <code>~/.config/plasma-org.kde.plasma.desktop-appletsrc</code> so you do not need to login every time you
+            restart KDE Plasma. You may wish to read Google's privacy policy if you have not already.
           </p>
           <p class="status">
-            The developer has access to Google API's application metrics for this widget. This allows the developer to see the total number of correct API responses, or errors,
-            broken down by action. Some example actions are "fetch all calendars", "fetch all events", "create event", "delete event". The totals are not broken down by user.
-            Each action has a sum of requests by all users. This is useful for knowing how close to the Google API quota the widget is, and if there are any spikes in errors.
+            The developer has access to Google API's application metrics for this widget. This allows the developer to
+            see the total number of correct API responses, or errors,
+            broken down by action. Some example actions are "fetch all calendars", "fetch all events", "create event",
+            "delete event". The totals are not broken down by user.
+            Each action has a sum of requests by all users. This is useful for knowing how close to the Google API quota
+            the widget is, and if there are any spikes in errors.
             The errors are displayed as HTTP Error codes and do not expose any personal data to the developer.
           </p>
           <h2>OpenWeatherMap</h2>
           <p class="status">
-            By default the widget will not connect to OpenWeatherMap.org. You need to manually select your city in the widget's config. Once you have selected a city,
-            you will then fetch the current weather forecast every hour. OpenWeatherMap will be able to know the city you requested as well as your IP address.
+            By default the widget will not connect to OpenWeatherMap.org. You need to manually select your city in the
+            widget's config. Once you have selected a city,
+            you will then fetch the current weather forecast every hour. OpenWeatherMap will be able to know the city
+            you requested as well as your IP address.
             You may wish to read OpenWeatherMap's privacy policy as well.
           </p>
         </div>
@@ -392,115 +132,12 @@
       <footer>
         Event Calendar helper page. Safe to share. No data is collected.
         <br>
-        <a href="https://alikestocode.github.io/plasma-applet-eventcalendar/privacy.html">Privacy Policy</a> |
-        <a href="https://alikestocode.github.io/plasma-applet-eventcalendar/terms.html">Terms of Service</a> |
-        <a href="https://alikestocode.github.io/plasma-applet-eventcalendar/index.html">Home</a>
+        <a href="privacy.html">Privacy Policy</a> |
+        <a href="terms.html">Terms of Service</a> |
+        <a href="index.html">Home</a>
       </footer>
     </main>
   </div>
-
-  <script>
-    const urlInput = document.getElementById("redirectUrl");
-    const codeOutput = document.getElementById("authCode");
-    const status = document.getElementById("status");
-    const extractBtn = document.getElementById("extractBtn");
-    const copyBtn = document.getElementById("copyBtn");
-    const clearBtn = document.getElementById("clearBtn");
-    const sendBtn = document.getElementById("sendBtn");
-    const localEndpoint = "http://127.0.0.1:53682/";
-
-    function extractCode(value) {
-      if (!value) {
-        return "";
-      }
-      const trimmed = value.trim();
-      const match = /[?&]code=([^&]+)/.exec(trimmed);
-      if (match && match[1]) {
-        return decodeURIComponent(match[1].replace(/\+/g, " "));
-      }
-      try {
-        const parsed = new URL(trimmed);
-        const code = parsed.searchParams.get("code");
-        if (code) {
-          return code;
-        }
-      } catch (err) {
-        // Not a URL, treat as raw code
-      }
-      return trimmed;
-    }
-
-    function updateFromInput() {
-      const code = extractCode(urlInput.value);
-      codeOutput.value = code;
-      if (code) {
-        status.innerHTML = "Code extracted. Copy it into the widget or send it automatically.";
-      } else {
-        status.textContent = "Waiting for input.";
-      }
-    }
-
-    extractBtn.addEventListener("click", updateFromInput);
-    urlInput.addEventListener("input", updateFromInput);
-
-    clearBtn.addEventListener("click", () => {
-      urlInput.value = "";
-      codeOutput.value = "";
-      status.textContent = "Waiting for input.";
-    });
-
-    async function sendToWidget(code) {
-      if (!code) {
-        status.textContent = "No code to send yet.";
-        return;
-      }
-      status.textContent = "Sending code to the widget...";
-      try {
-        const response = await fetch(localEndpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ code }),
-          mode: "cors",
-        });
-        if (!response.ok) {
-          throw new Error("Local listener returned an error.");
-        }
-        status.textContent = "Sent to widget. You can return to the settings window.";
-      } catch (err) {
-        status.textContent = "Could not reach the widget. Copy the code manually.";
-      }
-    }
-
-    copyBtn.addEventListener("click", async () => {
-      if (!codeOutput.value) {
-        status.textContent = "No code to copy yet.";
-        return;
-      }
-      try {
-        await navigator.clipboard.writeText(codeOutput.value);
-        status.textContent = "Copied. Paste into the widget.";
-      } catch (err) {
-        codeOutput.select();
-        document.execCommand("copy");
-        status.textContent = "Copied. Paste into the widget.";
-      }
-    });
-
-    sendBtn.addEventListener("click", () => {
-      sendToWidget(codeOutput.value);
-    });
-
-    (function initFromPage() {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
-      if (code) {
-        urlInput.value = window.location.href;
-        updateFromInput();
-        sendToWidget(code);
-      }
-    })();
-  </script>
 </body>
+
 </html>
