@@ -10,6 +10,10 @@ This is an updated version that I modified for my own needs, with fix for Google
 
 Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.
 
+## Contributing
+
+See `CONTRIBUTING.md` for guidelines and `MAINTENANCE.md` for project status.
+
 ## Screenshots
 
 ![](https://i.imgur.com/qdJ71sb.jpg)
