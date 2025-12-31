@@ -96,10 +96,7 @@ ConfigPage {
 	ExecUtil { id: callbackListener }
 
 	property bool autoLoginInProgress: false
-	function isLocalRedirect(uri) {
-		return uri.indexOf("http://127.0.0.1") === 0 || uri.indexOf("http://localhost") === 0
-	}
-	readonly property bool localRedirect: isLocalRedirect(googleLoginManager.redirectUri)
+	readonly property bool localRedirect: googleLoginManager.redirectMode === "local"
 
 	function extractJson(text) {
 		var start = text.indexOf('{')
@@ -114,13 +111,11 @@ ConfigPage {
 		if (autoLoginInProgress) {
 			return
 		}
-		if (!localRedirect) {
-			messageWidget.err(i18n("Auto login requires a localhost redirect. Paste the code from %1 instead.", googleLoginManager.redirectUri))
-			return
-		}
 		autoLoginInProgress = true
 		googleLoginManager.refreshClientCredentials()
-		messageWidget.info(i18n("Waiting for browser callback..."))
+		messageWidget.info(localRedirect
+			? i18n("Waiting for browser callback...")
+			: i18n("Waiting for the helper page to send the code..."))
 		var cmd = [
 			'python3',
 			localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py")),
@@ -130,6 +125,8 @@ ConfigPage {
 			googleLoginManager.effectiveClientSecret,
 			'--listen_port',
 			'53682',
+			'--redirect_uri',
+			googleLoginManager.redirectUri,
 		]
 		Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
 		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
@@ -162,6 +159,7 @@ ConfigPage {
 	GoogleLoginManager {
 		id: googleLoginManager
 		configBridge: page.configBridge
+		redirectMode: page.cfg_googleRedirectMode || "local"
 		onAccountsChanged: rebuildAccountsModel()
 		onActiveAccountIdChanged: rebuildAccountsModel()
 
@@ -315,6 +313,37 @@ ConfigPage {
 		}
 	}
 
+	HeaderText {
+		text: i18n("Redirect Mode")
+	}
+	ColumnLayout {
+		Layout.fillWidth: true
+
+		ConfigRadioButtonGroup {
+			label: i18n("Callback:")
+			configKey: "googleRedirectMode"
+			model: [
+				{ value: "local", text: i18n("Localhost (auto capture)") },
+				{ value: "hosted", text: i18n("Helper page (GitHub Pages)") },
+			]
+		}
+		Label {
+			Layout.fillWidth: true
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			text: localRedirect
+				? i18n("Localhost keeps everything on your machine and supports auto capture.")
+				: i18n("Helper page works without a localhost redirect. It will try to send the code back to the widget; if that fails, copy the code manually.")
+		}
+		Label {
+			Layout.fillWidth: true
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+			visible: !localRedirect
+			text: i18n("Hosted mode requires your OAuth client to allow %1 as a redirect URI.", googleLoginManager.redirectUri)
+		}
+	}
+
 	ColumnLayout {
 		Label {
 			Layout.fillWidth: true
@@ -328,7 +357,7 @@ ConfigPage {
 			Layout.fillWidth: true
 			text: localRedirect
 				? i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to a localhost URL. Copy the full URL (or just the code) and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
-				: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to the helper page. Copy the code (or full URL) and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
+				: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to the helper page, which will try to send the code back automatically.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 
@@ -372,8 +401,9 @@ ConfigPage {
 		}
 		LinkText {
 			Layout.fillWidth: true
-			visible: !localRedirect
-			text: i18n("Helper page: <a href=\"%1\">%1</a>", googleLoginManager.redirectUri)
+			text: localRedirect
+				? i18n("Helper page (optional): <a href=\"%1\">%1</a>", googleLoginManager.hostedRedirectUri)
+				: i18n("Helper page: <a href=\"%1\">%1</a>", googleLoginManager.redirectUri)
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 		}
@@ -388,15 +418,10 @@ ConfigPage {
 			Layout.fillWidth: true
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
-			text: i18n("Tip: Leave the field empty and click Add Account or Update Selected to auto-capture the callback.")
-			visible: localRedirect
-		}
-		Label {
-			Layout.fillWidth: true
-			color: readableNegativeTextColor
-			wrapMode: Text.Wrap
-			text: i18n("Tip: After the redirect, copy the code from the helper page and paste it below.")
-			visible: !localRedirect
+			text: localRedirect
+				? i18n("Tip: Leave the field empty and click Add Account or Update Selected to auto-capture the callback.")
+				: i18n("Tip: Click Add Account with an empty field to start the listener. If the helper page cannot reach the widget, copy the code manually and paste it below.")
+			visible: true
 		}
 		RowLayout {
 			TextField {
@@ -408,7 +433,7 @@ ConfigPage {
 			}
 			Button {
 				text: googleLoginManager.isLoggedIn ? i18n("Add Account") : i18n("Submit")
-				enabled: !autoLoginInProgress
+				enabled: !autoLoginInProgress || !localRedirect
 				onClicked: {
 					if (authorizationCodeInput.text) {
 						googleLoginManager.refreshClientCredentials()
@@ -423,7 +448,7 @@ ConfigPage {
 			Button {
 				visible: googleLoginManager.isLoggedIn
 				text: i18n("Update Selected")
-				enabled: !autoLoginInProgress
+				enabled: !autoLoginInProgress || !localRedirect
 				onClicked: {
 					if (authorizationCodeInput.text) {
 						googleLoginManager.refreshClientCredentials()

@@ -270,8 +270,8 @@
           <h2>What to do</h2>
           <ol>
             <li>Open the login link in the widget and sign in to Google.</li>
-            <li>After consent, Google redirects you to this helper page.</li>
-            <li>If the code does not appear, paste the full URL here.</li>
+            <li>After consent, Google redirects you either here or to localhost.</li>
+            <li>If you land on localhost, copy the full URL and paste it here.</li>
             <li>Paste the code back into the widget and click Submit.</li>
             <li>Select calendars and click Apply.</li>
           </ol>
@@ -279,7 +279,7 @@
 
         <div class="card helper">
           <h2>Paste redirect URL</h2>
-          <label for="redirectUrl">Redirect URL (example: https://alikestocode.github.io/plasma-applet-eventcalendar/?code=...)</label>
+          <label for="redirectUrl">Redirect URL (example: https://alikestocode.github.io/plasma-applet-eventcalendar/?code=... or http://127.0.0.1:53682/?code=...)</label>
           <textarea id="redirectUrl" placeholder="Paste the full URL from your browser address bar"></textarea>
           <div class="row">
             <button id="extractBtn">Extract code</button>
@@ -289,6 +289,7 @@
           <input id="authCode" type="text" readonly placeholder="Code appears here">
           <div class="row">
             <button id="copyBtn">Copy code</button>
+            <button class="secondary" id="sendBtn">Send to widget</button>
             <span class="status" id="status">Waiting for input.</span>
           </div>
         </div>
@@ -296,15 +297,19 @@
         <div class="card">
           <h2>Notes</h2>
           <p class="status">
-            This page runs locally in your browser and does not send your URL anywhere.
+            This page runs locally in your browser and does not send your URL anywhere, except an optional post to your own localhost widget listener.
+          </p>
+          <p class="status">
+            For auto-send, click Add Account with an empty field in the widget before logging in.
           </p>
           <details>
             <summary>Troubleshooting HTTP 400</summary>
             <ul>
               <li>Make sure you pasted the exact URL from the browser address bar.</li>
               <li>If Google blocks the built-in client, use a custom OAuth client.</li>
-              <li>Custom client redirect URI must be <strong>https://alikestocode.github.io/plasma-applet-eventcalendar/</strong>.</li>
+              <li>Custom client redirect URI must match your redirect mode (localhost or helper page).</li>
               <li>If you still use a localhost redirect, paste that URL here too.</li>
+              <li>If sending to the widget fails, copy the code manually.</li>
               <li>After Submit, select calendars and click Apply.</li>
             </ul>
           </details>
@@ -324,6 +329,8 @@
     const extractBtn = document.getElementById("extractBtn");
     const copyBtn = document.getElementById("copyBtn");
     const clearBtn = document.getElementById("clearBtn");
+    const sendBtn = document.getElementById("sendBtn");
+    const localEndpoint = "http://127.0.0.1:53682/";
 
     function extractCode(value) {
       if (!value) {
@@ -350,7 +357,7 @@
       const code = extractCode(urlInput.value);
       codeOutput.value = code;
       if (code) {
-        status.innerHTML = "Code extracted. Copy it into the widget.";
+        status.innerHTML = "Code extracted. Copy it into the widget or send it automatically.";
       } else {
         status.textContent = "Waiting for input.";
       }
@@ -364,6 +371,30 @@
       codeOutput.value = "";
       status.textContent = "Waiting for input.";
     });
+
+    async function sendToWidget(code) {
+      if (!code) {
+        status.textContent = "No code to send yet.";
+        return;
+      }
+      status.textContent = "Sending code to the widget...";
+      try {
+        const response = await fetch(localEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ code }),
+          mode: "cors",
+        });
+        if (!response.ok) {
+          throw new Error("Local listener returned an error.");
+        }
+        status.textContent = "Sent to widget. You can return to the settings window.";
+      } catch (err) {
+        status.textContent = "Could not reach the widget. Copy the code manually.";
+      }
+    }
 
     copyBtn.addEventListener("click", async () => {
       if (!codeOutput.value) {
@@ -380,12 +411,17 @@
       }
     });
 
+    sendBtn.addEventListener("click", () => {
+      sendToWidget(codeOutput.value);
+    });
+
     (function initFromPage() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       if (code) {
         urlInput.value = window.location.href;
         updateFromInput();
+        sendToWidget(code);
       }
     })();
   </script>

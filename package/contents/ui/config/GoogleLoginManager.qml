@@ -37,7 +37,15 @@ Item {
 	property var tasklistList: []
 	property var tasklistIdList: []
 
-	property string redirectUri: "https://alikestocode.github.io/plasma-applet-eventcalendar/"
+	property string localRedirectUri: "http://127.0.0.1:53682/"
+	property string hostedRedirectUri: "https://alikestocode.github.io/plasma-applet-eventcalendar/"
+	property string redirectMode: "local"
+	function normalizedRedirectMode(mode) {
+		return mode === "hosted" ? "hosted" : "local"
+	}
+	readonly property string redirectUri: normalizedRedirectMode(redirectMode) === "hosted"
+		? hostedRedirectUri
+		: localRedirectUri
 	property var configBridge: null
 	function normalizedClientValue(value) {
 		return value ? value.trim() : ""

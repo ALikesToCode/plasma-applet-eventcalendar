@@ -352,6 +352,9 @@
 		<entry name="googleActiveAccountId" type="string">
 			<default></default>
 		</entry>
+		<entry name="googleRedirectMode" type="string">
+			<default>local</default>
+		</entry>
 		<entry name="latestClientId" type="string">
 			<default>391436299960-k0s16nm589meovhoblpcquqgbbrena17.apps.googleusercontent.com</default>
 		</entry>

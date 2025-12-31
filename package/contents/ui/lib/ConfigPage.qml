@@ -213,6 +213,8 @@ KCM.SimpleKCM {
 	property var cfg_googleAccountsDefault
 	property var cfg_googleActiveAccountId
 	property var cfg_googleActiveAccountIdDefault
+	property var cfg_googleRedirectMode
+	property var cfg_googleRedirectModeDefault
 	property var cfg_latestClientId
 	property var cfg_latestClientIdDefault
 	property var cfg_latestClientSecret
