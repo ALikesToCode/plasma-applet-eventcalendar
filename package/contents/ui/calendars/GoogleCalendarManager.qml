@@ -40,14 +40,7 @@ CalendarManager {
 			}
 			return list
 		}
-		var defaultList = ["primary"]
-		if (accountsStore && accountId) {
-			accountsStore.updateAccount(accountId, {
-				calendarIdList: defaultList,
-				calendarSelectionInitialized: true,
-			})
-		}
-		return defaultList
+		return []
 	}
 
 	function scopedCalendarId(rawId) {
