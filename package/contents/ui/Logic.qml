@@ -48,7 +48,7 @@ Item {
 	}
 	Timer {
 		id: updateEventsTimer
-		interval: 200
+		interval: 1000
 		onTriggered: logic.deferredUpdateEvents()
 	}
 	function deferredUpdateEvents() {

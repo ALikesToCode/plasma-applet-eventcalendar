@@ -11,6 +11,8 @@ ListModel {
 
 	property bool populating: false
 	// onPopulatingChanged: console.log(Date.now(), 'agendaModel.populating', populating)
+	property int parseGeneration: 0
+	property int parseChunkSize: 50
 
 	property bool showDailyWeather: false
 
@@ -198,10 +200,12 @@ ListModel {
 			agendaModel.populating = false
 			return
 		}
+		var generation = ++agendaModel.parseGeneration
+		var items = data.items
 
 		if (plasmoid.configuration.agendaPlaceOverdueTasksOnToday) {
-			for (var i = 0; i < data.items.length; i++) {
-				var eventItem = data.items[i]
+			for (var i = 0; i < items.length; i++) {
+				var eventItem = items[i]
 				if (eventItem.kind == 'tasks#task'
 					&& eventItem.due
 					&& !eventItem.isCompleted
@@ -223,7 +227,7 @@ ListModel {
 		}
 
 		// Sort by start time if event, or position if tasks
-		data.items.sort(function(a,b) {
+		items.sort(function(a,b) {
 			var aIsTask = a.kind === 'tasks#task'
 			var bIsTask = b.kind === 'tasks#task'
 			if (!aIsTask && bIsTask) {
@@ -244,119 +248,141 @@ ListModel {
 				return a.startDateTime - b.startDateTime
 			}
 		})
-		sortSubTasks(data.items)
+		sortSubTasks(items)
 
 
 		var agendaItemList = []
+		var itemIndex = 0
 
-		for (var i = 0; i < data.items.length; i++) {
-			var eventItem = data.items[i]
-			if (plasmoid.configuration.agendaBreakupMultiDayEvents) {
-				// for Max(start, visibleMin) .. Min(end, visibleMax)
-				var lowerLimitDate = (agendaModel.clipEventsOutsideLimits && eventItem.startDateTime < agendaModel.visibleDateMin
-					? agendaModel.visibleDateMin
-					: eventItem.startDateTime
-				)
-				var upperLimitDate = eventItem.endDateTime
-				if (eventItem.end.date) {
-					// All Day event "ends" day before.
-					upperLimitDate = new Date(eventItem.endDateTime)
-					upperLimitDate.setDate(upperLimitDate.getDate() - 1)
+		function finalizeAgendaItems() {
+			if (generation !== agendaModel.parseGeneration) {
+				return
+			}
+
+			var today = new Date(timeModel.currentTime)
+			var nextNumDaysEndExclusive = new Date(today.getFullYear(), today.getMonth(), today.getDate() + showNextNumDays + 1)
+			var currentMonthMin = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+			var currentMonthMaxExclusive = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 1)
+			var currentMonthContainsToday = currentMonthMin <= today && today < currentMonthMaxExclusive
+
+			if (clipEventsFromOtherMonths) {
+				// Remove calendar from different months
+				for (var i = 0; i < agendaItemList.length; i++) {
+					var agendaItem = agendaItemList[i]
+					if (agendaItem.date < currentMonthMin || currentMonthMaxExclusive <= agendaItem.date && nextNumDaysEndExclusive < agendaItem.date) {
+						// console.log('removed agendaItem:', agendaItem.date)
+						agendaItemList.splice(i, 1)
+						i--
+					}
 				}
-				if (agendaModel.clipEventsOutsideLimits && upperLimitDate > agendaModel.visibleDateMax) {
-					upperLimitDate = agendaModel.visibleDateMax
+			}
+
+			if (showAllDaysInMonth) {
+				for (var day = new Date(currentMonthMin); day < currentMonthMaxExclusive; day.setDate(day.getDate() + 1)) {
+					addAgendaItemIfMissing(agendaItemList, day)
 				}
-				for (var eventItemDate = new Date(lowerLimitDate); eventItemDate <= upperLimitDate; eventItemDate.setDate(eventItemDate.getDate() + 1)) {
-					insertEventAtDate(agendaItemList, eventItemDate, eventItem)
+			}
+
+			if (currentMonthContainsToday && showNextNumDays > 0) {
+				var todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+				for (var day = todayMidnight; day < nextNumDaysEndExclusive; day.setDate(day.getDate() + 1)) {
+					addAgendaItemIfMissing(agendaItemList, day)
 				}
-			} else {
-				var now = new Date(timeModel.currentTime)
-				var inProgress = eventItem.startDateTime <= now && now <= eventItem.endDateTime
-				if (inProgress) {
-					var today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-					insertEventAtDate(agendaItemList, today, eventItem)
+			}
+			
+			if (clipPastEvents) {
+				// Remove calendar events before today.
+				var minDate = today
+				if (!clipPastEventsToday) {
+					minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+				}
+				for (var i = 0; i < agendaItemList.length; i++) {
+					var agendaItem = agendaItemList[i]
+					if (agendaItem.date < minDate) {
+						// console.log('removed agendaItem:', agendaItem.date)
+						agendaItemList.splice(i, 1)
+						i--
+					}
+				}
+			}
+
+			// Make sure the agendaItemList is sorted.
+			// When we have a in-progress multiday event on the current date,
+			// and agendaBreakupMultiDayEvents is false, the current date agendaItem is
+			// out of order since the agendaItem is inserted earlier.
+			agendaItemList.sort(function(a,b) { return a.date - b.date })
+
+
+			var minCount = Math.min(agendaItemList.length, agendaModel.count)
+			var maxCount = Math.max(agendaItemList.length, agendaModel.count)
+			// console.log('agendaModel', 'replaced items', minCount)
+			for (var i = 0; i < minCount; i++) {
+				agendaModel.set(i, agendaItemList[i]) // Replace the existing values
+			}
+			if (agendaItemList.length > agendaModel.count) {
+				// console.log('agendaModel', 'append items', minCount, maxCount, maxCount-minCount)
+				for (var i = minCount; i < agendaItemList.length; i++) {
+					agendaModel.append(agendaItemList[i]) // Add the missing delegates
+				}
+			} else if (agendaItemList.length < agendaModel.count) {
+				// console.log('agendaModel', 'removed items', minCount, maxCount, maxCount-minCount)
+				agendaModel.remove(minCount, maxCount-minCount) // Remove the extra delegates
+				// for (var i = 0; i < agendaItemList.length; i++) {
+				// 	agendaModel.remove(i, agendaItemList[i]) // Remove the extra delegates
+				// }
+			} else { // agendaItemList.length == agendaModel.count
+				// console.log('agendaModel', 'skip')
+				// skip
+			}
+			agendaModel.populating = false
+		}
+
+		function processChunk() {
+			if (generation !== agendaModel.parseGeneration) {
+				return
+			}
+			var end = Math.min(itemIndex + agendaModel.parseChunkSize, items.length)
+			for (; itemIndex < end; itemIndex++) {
+				var eventItem = items[itemIndex]
+				if (plasmoid.configuration.agendaBreakupMultiDayEvents) {
+					// for Max(start, visibleMin) .. Min(end, visibleMax)
+					var lowerLimitDate = (agendaModel.clipEventsOutsideLimits && eventItem.startDateTime < agendaModel.visibleDateMin
+						? agendaModel.visibleDateMin
+						: eventItem.startDateTime
+					)
+					var upperLimitDate = eventItem.endDateTime
+					if (eventItem.end.date) {
+						// All Day event "ends" day before.
+						upperLimitDate = new Date(eventItem.endDateTime)
+						upperLimitDate.setDate(upperLimitDate.getDate() - 1)
+					}
+					if (agendaModel.clipEventsOutsideLimits && upperLimitDate > agendaModel.visibleDateMax) {
+						upperLimitDate = agendaModel.visibleDateMax
+					}
+					for (var eventItemDate = new Date(lowerLimitDate); eventItemDate <= upperLimitDate; eventItemDate.setDate(eventItemDate.getDate() + 1)) {
+						insertEventAtDate(agendaItemList, eventItemDate, eventItem)
+					}
 				} else {
-					insertEventAtDate(agendaItemList, eventItem.startDateTime, eventItem)
+					var now = new Date(timeModel.currentTime)
+					var inProgress = eventItem.startDateTime <= now && now <= eventItem.endDateTime
+					if (inProgress) {
+						var today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+						insertEventAtDate(agendaItemList, today, eventItem)
+					} else {
+						insertEventAtDate(agendaItemList, eventItem.startDateTime, eventItem)
+					}
 				}
 			}
-		}
 
-		var today = new Date(timeModel.currentTime)
-		var nextNumDaysEndExclusive = new Date(today.getFullYear(), today.getMonth(), today.getDate() + showNextNumDays + 1)
-		var currentMonthMin = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
-		var currentMonthMaxExclusive = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 1)
-		var currentMonthContainsToday = currentMonthMin <= today && today < currentMonthMaxExclusive
-
-		if (clipEventsFromOtherMonths) {
-			// Remove calendar from different months
-			for (var i = 0; i < agendaItemList.length; i++) {
-				var agendaItem = agendaItemList[i]
-				if (agendaItem.date < currentMonthMin || currentMonthMaxExclusive <= agendaItem.date && nextNumDaysEndExclusive < agendaItem.date) {
-					// console.log('removed agendaItem:', agendaItem.date)
-					agendaItemList.splice(i, 1)
-					i--
-				}
+			if (itemIndex < items.length) {
+				Qt.callLater(processChunk)
+				return
 			}
+
+			finalizeAgendaItems()
 		}
 
-		if (showAllDaysInMonth) {
-			for (var day = new Date(currentMonthMin); day < currentMonthMaxExclusive; day.setDate(day.getDate() + 1)) {
-				addAgendaItemIfMissing(agendaItemList, day)
-			}
-		}
-
-		if (currentMonthContainsToday && showNextNumDays > 0) {
-			var todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-			for (var day = todayMidnight; day < nextNumDaysEndExclusive; day.setDate(day.getDate() + 1)) {
-				addAgendaItemIfMissing(agendaItemList, day)
-			}
-		}
-		
-		if (clipPastEvents) {
-			// Remove calendar events before today.
-			var minDate = today
-			if (!clipPastEventsToday) {
-				minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-			}
-			for (var i = 0; i < agendaItemList.length; i++) {
-				var agendaItem = agendaItemList[i]
-				if (agendaItem.date < minDate) {
-					// console.log('removed agendaItem:', agendaItem.date)
-					agendaItemList.splice(i, 1)
-					i--
-				}
-			}
-		}
-
-		// Make sure the agendaItemList is sorted.
-		// When we have a in-progress multiday event on the current date,
-		// and agendaBreakupMultiDayEvents is false, the current date agendaItem is
-		// out of order since the agendaItem is inserted earlier.
-		agendaItemList.sort(function(a,b) { return a.date - b.date })
-
-
-		var minCount = Math.min(agendaItemList.length, agendaModel.count)
-		var maxCount = Math.max(agendaItemList.length, agendaModel.count)
-		// console.log('agendaModel', 'replaced items', minCount)
-		for (var i = 0; i < minCount; i++) {
-			agendaModel.set(i, agendaItemList[i]) // Replace the existing values
-		}
-		if (agendaItemList.length > agendaModel.count) {
-			// console.log('agendaModel', 'append items', minCount, maxCount, maxCount-minCount)
-			for (var i = minCount; i < agendaItemList.length; i++) {
-				agendaModel.append(agendaItemList[i]) // Add the missing delegates
-			}
-		} else if (agendaItemList.length < agendaModel.count) {
-			// console.log('agendaModel', 'removed items', minCount, maxCount, maxCount-minCount)
-			agendaModel.remove(minCount, maxCount-minCount) // Remove the extra delegates
-			// for (var i = 0; i < agendaItemList.length; i++) {
-			// 	agendaModel.remove(i, agendaItemList[i]) // Remove the extra delegates
-			// }
-		} else { // agendaItemList.length == agendaModel.count
-			// console.log('agendaModel', 'skip')
-			// skip
-		}
-		agendaModel.populating = false
+		processChunk()
 	}
 
 	function parseWeatherForecast(data) {
