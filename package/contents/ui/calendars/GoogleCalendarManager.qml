@@ -189,11 +189,25 @@ CalendarManager {
 		var tasks = []
 		for (var i = 0; i < calendarIdList.length; i++) {
 			var calendarId = calendarIdList[i]
-			var task = fetchGoogleCalendarEvents.bind(this, calendarId)
+			var task = fetchGoogleCalendarEventsAllowError.bind(this, calendarId)
 			tasks.push(task)
 		}
 
 		Async.parallel(tasks, callback)
+	}
+
+	function fetchGoogleCalendarEventsAllowError(calendarId, callback) {
+		fetchGoogleCalendarEvents(calendarId, function(errObj, data) {
+			if (errObj) {
+				callback(null, {
+					calendarId: calendarId,
+					scopedCalendarId: scopedCalendarId(calendarId),
+					error: errObj,
+				})
+				return
+			}
+			callback(null, data)
+		})
 	}
 	function fetchGoogleAccountEvents_err(err, data, xhr) {
 		logger.debug('fetchGoogleAccountEvents_err', err, data, xhr)
@@ -202,9 +216,25 @@ CalendarManager {
 	}
 	function fetchGoogleAccountEvents_done(results) {
 		for (var i = 0; i < results.length; i++) {
-			var calendarId = results[i].calendarId
-			var calendarData = results[i].data
-			var scopedId = results[i].scopedCalendarId || scopedCalendarId(calendarId)
+			var result = results[i]
+			if (!result) {
+				continue
+			}
+			if (result.error) {
+				var errObj = result.error
+				if (errObj && errObj.xhr) {
+					handleError(errObj.err, errObj.data, errObj.xhr)
+				} else {
+					googleCalendarManager.error(
+						i18n("Error fetching calendar: %1", result.calendarId || ""),
+						ErrorType.UnknownError
+					)
+				}
+				continue
+			}
+			var calendarId = result.calendarId
+			var calendarData = result.data
+			var scopedId = result.scopedCalendarId || scopedCalendarId(calendarId)
 			setCalendarData(scopedId, calendarData)
 		}
 		googleCalendarManager.asyncRequestsDone += 1
@@ -347,6 +377,15 @@ function fetchGoogleCalendarEvent_run(calendarId, eventId, callback) {
 	//--- Parsing Events
 	onCalendarParsing: function(calendarId, data) {
 		var calendar = getCalendar(calendarId)
+		if (!calendar) {
+			logger.debug('googleCalendarManager.missingCalendar', calendarId)
+			calendar = {
+				accessRole: 'reader',
+				backgroundColor: null,
+				primary: false,
+				summary: calendarId,
+			}
+		}
 		data.items.forEach(function(event){
 			parseEvent(calendar, event)
 		})
