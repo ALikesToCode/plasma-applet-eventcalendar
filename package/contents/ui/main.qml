@@ -116,13 +116,13 @@ PlasmoidItem {
 
 			property int wheelDelta: 0
 
-			onClicked: {
+			onClicked: function(mouse) {
 				if (mouse.button == Qt.LeftButton) {
 					root.expanded = !root.expanded
 				}
 			}
 
-			onWheel: {
+			onWheel: function(wheel) {
 				var delta = wheel.angleDelta.y || wheel.angleDelta.x
 				wheelDelta += delta
 

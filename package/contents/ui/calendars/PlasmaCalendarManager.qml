@@ -13,6 +13,24 @@ CalendarManager {
 
 	property var executable: ExecUtil { id: executable }
 	property var calendarModel: Qt.createQmlObject("import org.kde.plasma.PimCalendars; PimCalendarsModel {}", plasmaCalendarManager)
+	property var eventPluginsManager: null
+
+	function ensureEventPluginsManager() {
+		if (eventPluginsManager) {
+			return true
+		}
+		try {
+			eventPluginsManager = Qt.createQmlObject(
+				"import org.kde.plasma.workspace.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
+				plasmaCalendarManager
+			)
+			return true
+		} catch (e) {
+			logger.debug('EventPluginsManager unavailable', e)
+			eventPluginsManager = null
+			return false
+		}
+	}
 	function appendPimCalendars(calendarList) {
 		// https://github.com/KDE/kdepim-addons/blob/master/plugins/plasma/pimeventsplugin/PimEventsConfig.qml
 		// https://github.com/KDE/kdepim-addons/blob/master/plugins/plasma/pimeventsplugin/pimcalendarsmodel.cpp
@@ -101,12 +119,16 @@ CalendarManager {
 	// to get a list of events for a specific day.
 
 	Component.onCompleted: {
-		PlasmaCalendarUtils.setEnabledPluginsByFilename(PlasmaCalendar.EventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
+		if (ensureEventPluginsManager()) {
+			PlasmaCalendarUtils.setEnabledPluginsByFilename(eventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
+		}
 	}
 	Connections {
 		target: plasmoid.configuration
 		function onEnabledCalendarPluginsChanged() {
-			PlasmaCalendarUtils.setEnabledPluginsByFilename(PlasmaCalendar.EventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
+			if (ensureEventPluginsManager()) {
+				PlasmaCalendarUtils.setEnabledPluginsByFilename(eventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
+			}
 		}
 	}
 
@@ -127,9 +149,9 @@ CalendarManager {
 
 		Component.onCompleted: {
 			//daysModel.connect
-			if (daysModel && PlasmaCalendar.EventPluginsManager && typeof daysModel.setPluginsManager === "function") {
+			if (daysModel && ensureEventPluginsManager() && typeof daysModel.setPluginsManager === "function") {
 				try {
-					daysModel.setPluginsManager(PlasmaCalendar.EventPluginsManager)
+					daysModel.setPluginsManager(eventPluginsManager)
 				} catch (e) {
 					logger.debug('daysModel.setPluginsManager failed', e)
 				}
