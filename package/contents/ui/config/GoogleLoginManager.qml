@@ -268,7 +268,10 @@ Item {
 
 	function setCalendarIdList(list) {
 		if (activeAccountId) {
-			accountsStore.updateAccount(activeAccountId, { calendarIdList: list })
+			accountsStore.updateAccount(activeAccountId, {
+				calendarIdList: list,
+				calendarSelectionInitialized: true,
+			})
 		}
 	}
 

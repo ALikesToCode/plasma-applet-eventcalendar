@@ -96,6 +96,7 @@ ConfigPage {
 	ExecUtil { id: callbackListener }
 
 	property bool autoLoginInProgress: false
+	property bool autoLoginCancelled: false
 	readonly property bool localRedirect: googleLoginManager.redirectMode === "local"
 	readonly property bool showDebug: page.configBridge.read("debugging", false)
 
@@ -107,6 +108,31 @@ ConfigPage {
 		}
 		return ""
 	}
+	function parseTokenInput(text) {
+		if (!text) {
+			return null
+		}
+		var trimmed = text.trim()
+		if (!trimmed || trimmed[0] !== '{') {
+			return null
+		}
+		var parsed = null
+		try {
+			parsed = JSON.parse(trimmed)
+		} catch (e) {
+			return null
+		}
+		if (!parsed || !parsed.access_token) {
+			return null
+		}
+		if (!parsed.expires_in) {
+			parsed.expires_in = 3600
+		}
+		if (!parsed.token_type) {
+			parsed.token_type = "Bearer"
+		}
+		return parsed
+	}
 
 	function startAutoLogin(accountId, openBrowser) {
 		if (autoLoginInProgress) {
@@ -115,6 +141,7 @@ ConfigPage {
 		if (openBrowser === undefined) {
 			openBrowser = true
 		}
+		autoLoginCancelled = false
 		autoLoginInProgress = true
 		googleLoginManager.prepareAuthorization()
 		googleLoginManager.maybeUseLegacyForLocal()
@@ -145,6 +172,10 @@ ConfigPage {
 		console.log('google_redirect.py command:', cmdStr)
 		// debugOutput.text = "Running:\n" + cmdStr + "\n\n"
 		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+			if (autoLoginCancelled) {
+				autoLoginInProgress = false
+				return
+			}
 			autoLoginInProgress = false
 			debugOutput.text += "Exit: " + exitCode + "\nStdout: " + stdout + "\nStderr: " + stderr + "\n"
 			if (exitCode !== 0) {
@@ -171,6 +202,8 @@ ConfigPage {
 			}
 			authorizationCodeInput.text = ""
 			googleLoginManager.updateAccessToken(data, accountId)
+			messageWidget.success(i18n("Login complete."))
+			googleLoginManager.updateCalendarList()
 		})
 		if (openBrowser) {
 			Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
@@ -388,6 +421,17 @@ ConfigPage {
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 		}
+		RowLayout {
+			Layout.fillWidth: true
+			Button {
+				text: googleLoginManager.isLoggedIn ? i18n("Login (Auto) - Add Account") : i18n("Login (Auto)")
+				enabled: !autoLoginInProgress
+				onClicked: {
+					authorizationCodeInput.text = ""
+					startAutoLogin("")
+				}
+			}
+		}
 		LinkText {
 			Layout.fillWidth: true
 			text: localRedirect
@@ -407,25 +451,29 @@ ConfigPage {
 
 			// ContextMenu
 			MouseArea {
+				id: contextMenuArea
 				anchors.fill: parent
 				acceptedButtons: Qt.RightButton
 				onClicked: function(mouse) {
 					if (mouse.button === Qt.RightButton) {
-						contextMenu.popup()
+						var pos = contextMenuArea.mapToItem(page, mouse.x, mouse.y)
+						contextMenu.popup(pos.x, pos.y)
 					}
 				}
 				onPressAndHold: function(mouse) {
 					if (mouse.source === Qt.MouseEventNotSynthesized) {
-						contextMenu.popup()
+						var pos = contextMenuArea.mapToItem(page, mouse.x, mouse.y)
+						contextMenu.popup(pos.x, pos.y)
 					}
 				}
 
 				Menu {
 					id: contextMenu
-				MenuItem {
-					text: i18n("Copy Link")
-					onTriggered: clipboardHelper.copyText(googleLoginManager.authorizationCodeUrl)
-				}
+					parent: page
+					MenuItem {
+						text: i18n("Copy Link")
+						onTriggered: clipboardHelper.copyText(googleLoginManager.authorizationCodeUrl)
+					}
 				}
 
 				TextEdit {
@@ -471,30 +519,52 @@ ConfigPage {
 				placeholderText: i18n("Paste the authorization code or redirect URL here")
 				text: ""
 			}
-			Button {
-				text: googleLoginManager.isLoggedIn ? i18n("Add Account") : i18n("Submit")
-				enabled: !autoLoginInProgress || !localRedirect
-				onClicked: {
-					if (authorizationCodeInput.text) {
-						googleLoginManager.refreshClientCredentials()
-						googleLoginManager.fetchAccessToken({
-							authorizationCode: authorizationCodeInput.text,
-						})
+				Button {
+					text: googleLoginManager.isLoggedIn ? i18n("Add Account") : i18n("Submit")
+					enabled: !autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text
+					onClicked: {
+						if (authorizationCodeInput.text) {
+							if (autoLoginInProgress) {
+								autoLoginCancelled = true
+								autoLoginInProgress = false
+							}
+							var tokenData = parseTokenInput(authorizationCodeInput.text)
+							if (tokenData) {
+								googleLoginManager.updateAccessToken(tokenData)
+								authorizationCodeInput.text = ""
+								messageWidget.success(i18n("Token accepted."))
+								return
+							}
+							googleLoginManager.refreshClientCredentials()
+							googleLoginManager.fetchAccessToken({
+								authorizationCode: authorizationCodeInput.text,
+							})
 					} else {
 						startAutoLogin("")
 					}
 				}
 			}
-			Button {
-				visible: googleLoginManager.isLoggedIn
-				text: i18n("Update Selected")
-				enabled: !autoLoginInProgress || !localRedirect
-				onClicked: {
-					if (authorizationCodeInput.text) {
-						googleLoginManager.refreshClientCredentials()
-						googleLoginManager.fetchAccessToken({
-							authorizationCode: authorizationCodeInput.text,
-							accountId: googleLoginManager.activeAccountId,
+				Button {
+					visible: googleLoginManager.isLoggedIn
+					text: i18n("Update Selected")
+					enabled: !autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text
+					onClicked: {
+						if (authorizationCodeInput.text) {
+							if (autoLoginInProgress) {
+								autoLoginCancelled = true
+								autoLoginInProgress = false
+							}
+							var tokenData = parseTokenInput(authorizationCodeInput.text)
+							if (tokenData) {
+								googleLoginManager.updateAccessToken(tokenData, googleLoginManager.activeAccountId)
+								authorizationCodeInput.text = ""
+								messageWidget.success(i18n("Token accepted."))
+								return
+							}
+							googleLoginManager.refreshClientCredentials()
+							googleLoginManager.fetchAccessToken({
+								authorizationCode: authorizationCodeInput.text,
+								accountId: googleLoginManager.activeAccountId,
 						})
 					} else {
 						startAutoLogin(googleLoginManager.activeAccountId)

@@ -150,6 +150,7 @@ Item {
 		normalized.refreshToken = account.refreshToken || ""
 		normalized.calendarList = Array.isArray(account.calendarList) ? account.calendarList : []
 		normalized.calendarIdList = ensureStringArray(account.calendarIdList)
+		normalized.calendarSelectionInitialized = account.calendarSelectionInitialized === true
 		normalized.tasklistList = Array.isArray(account.tasklistList) ? account.tasklistList : []
 		normalized.tasklistIdList = ensureStringArray(account.tasklistIdList)
 		return normalized

@@ -36,7 +36,7 @@ Rectangle {
 			acceptedButtons: Qt.LeftButton | Qt.RightButton
 			cursorShape: linkRect.enabled && containsMouse ? Qt.PointingHandCursor : Qt.ArrowCursor
 			enabled: linkRect.enabled
-			onClicked: {
+			onClicked: function(mouse) {
 				mouse.accepted = false
 				linkRect.clicked(mouse)
 				if (!mouse.accepted) {
@@ -48,7 +48,9 @@ Rectangle {
 					}
 				}
 			}
-			onDoubleClicked: linkRect.doubleClicked(mouse)
+			onDoubleClicked: function(mouse) {
+				linkRect.doubleClicked(mouse)
+			}
 		}
 	}
 

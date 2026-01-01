@@ -107,6 +107,22 @@ update_repo_for_plasma() {
     fi
 }
 
+sync_oauth_assets() {
+    local docs_dir="$PWD/docs"
+    local html_src="$docs_dir/oauth_success.html"
+    local css_src="$docs_dir/css/style.css"
+    local dest_dir="$PWD/package/contents/scripts/oauth_assets"
+
+    if [ ! -f "$html_src" ] || [ ! -f "$css_src" ]; then
+        return 0
+    fi
+
+    log "Syncing OAuth helper assets from docs..."
+    mkdir -p "$dest_dir"
+    cp "$html_src" "$dest_dir/success.html"
+    cp "$css_src" "$dest_dir/style.css"
+}
+
 select_kpackage_tool() {
     local plasma_major="$1"
 
@@ -249,6 +265,7 @@ if [ -z "$PLASMA_MAJOR" ]; then
 fi
 
 update_repo_for_plasma "$PLASMA_MAJOR"
+sync_oauth_assets
 
 KPACKAGE_TOOL="$(select_kpackage_tool "$PLASMA_MAJOR")"
 

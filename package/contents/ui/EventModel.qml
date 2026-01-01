@@ -74,7 +74,65 @@ CalendarManager {
 	}
 
 	function getCalendarManager(calendarId) {
-		return eventModel.calendarPluginMap[calendarId]
+		var calendarKey = calendarId ? "" + calendarId : ""
+		var manager = eventModel.calendarPluginMap[calendarKey]
+		if (manager) {
+			return manager
+		}
+		for (var i = 0; i < calendarManagerList.length; i++) {
+			var calendarManager = calendarManagerList[i]
+			if (calendarManager && calendarManager.getCalendar && calendarManager.getCalendar(calendarKey)) {
+				eventModel.calendarPluginMap[calendarKey] = calendarManager
+				return calendarManager
+			}
+		}
+		if (!calendarKey || calendarKey.indexOf("::") < 0) {
+			return null
+		}
+		var splitIndex = calendarKey.indexOf("::")
+		var accountPrefix = calendarKey.slice(0, splitIndex)
+		var rawId = calendarKey.slice(splitIndex + 2)
+		var calendarCandidate = null
+		var taskCandidate = null
+		for (var j = 0; j < calendarManagerList.length; j++) {
+			var googleManager = calendarManagerList[j]
+			if (!googleManager || googleManager.accountId !== accountPrefix || !googleManager.getAccount) {
+				continue
+			}
+			if (googleManager.calendarManagerId === "GoogleCalendar") {
+				calendarCandidate = googleManager
+			} else if (googleManager.calendarManagerId === "GoogleTasks") {
+				taskCandidate = googleManager
+			}
+			var account = googleManager.getAccount()
+			if (googleManager.calendarManagerId === "GoogleCalendar" && account && Array.isArray(account.calendarList)) {
+				for (var c = 0; c < account.calendarList.length; c++) {
+					var calendar = account.calendarList[c]
+					if (rawId === calendar.id || (rawId === "primary" && calendar.primary)) {
+						eventModel.calendarPluginMap[calendarKey] = googleManager
+						return googleManager
+					}
+				}
+			}
+			if (googleManager.calendarManagerId === "GoogleTasks" && account && Array.isArray(account.tasklistList)) {
+				for (var t = 0; t < account.tasklistList.length; t++) {
+					var tasklist = account.tasklistList[t]
+					if (rawId === tasklist.id) {
+						eventModel.calendarPluginMap[calendarKey] = googleManager
+						return googleManager
+					}
+				}
+			}
+		}
+		if (calendarCandidate || taskCandidate) {
+			var looksLikeCalendar = rawId === "primary" || rawId.indexOf("@") >= 0
+			var fallbackManager = looksLikeCalendar ? (calendarCandidate || taskCandidate) : (taskCandidate || calendarCandidate)
+			if (fallbackManager) {
+				eventModel.calendarPluginMap[calendarKey] = fallbackManager
+				return fallbackManager
+			}
+		}
+		return null
 	}
 
 	//---
@@ -229,6 +287,11 @@ CalendarManager {
 			var calendarManager = calendarManagerList[i]
 			var list = calendarManager.getCalendarList()
 			// logger.debugJSON(calendarManager.toString(), list)
+			for (var j = 0; j < list.length; j++) {
+				if (list[j] && list[j].id) {
+					eventModel.calendarPluginMap[list[j].id] = calendarManager
+				}
+			}
 			calendarList = calendarList.concat(list)
 		}
 		return calendarList

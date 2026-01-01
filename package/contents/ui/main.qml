@@ -234,6 +234,11 @@ PlasmoidItem {
 			onTriggered: copyCurrentDateTime()
 		},
 		PlasmaCore.Action {
+			text: i18n("Refresh Events")
+			icon.name: "view-refresh"
+			onTriggered: logic.updateEvents()
+		},
+		PlasmaCore.Action {
 			text: i18nd("plasma_applet_org.kde.plasma.digitalclock", "Adjust Date and Time…")
 			// icon.name: "clock"
 			icon.name: "preferences-system-time"

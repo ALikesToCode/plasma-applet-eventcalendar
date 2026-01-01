@@ -13,23 +13,23 @@ MouseArea {
 	onClicked: focus = true
 
 	property int padding: 0 // Assigned in main.qml
-	property int spacing: 10 * Screen.devicePixelRatio
+	property int spacing: 10
 
 	property real screenWidth: Screen.width > 0 ? Screen.width : plasmoid.screenGeometry.width
 	property real screenHeight: Screen.height > 0 ? Screen.height : plasmoid.screenGeometry.height
 	property real widthScale: Math.max(1, screenWidth / 1920)
 	property real heightScale: Math.max(1, screenHeight / 1080)
 
-	property int topRowHeight: Math.round(plasmoid.configuration.topRowHeight * Screen.devicePixelRatio * heightScale)
-	property int bottomRowHeight: Math.round(plasmoid.configuration.bottomRowHeight * Screen.devicePixelRatio * heightScale)
-	property int singleColumnMonthViewHeight: Math.round(plasmoid.configuration.monthHeightSingleColumn * Screen.devicePixelRatio * heightScale)
+	property int topRowHeight: Math.round(plasmoid.configuration.topRowHeight * heightScale)
+	property int bottomRowHeight: Math.round(plasmoid.configuration.bottomRowHeight * heightScale)
+	property int singleColumnMonthViewHeight: Math.round(plasmoid.configuration.monthHeightSingleColumn * heightScale)
 
 	// DigitalClock LeftColumn minWidth: Kirigami.Units.gridUnit * 22
 	// DigitalClock RightColumn minWidth: Kirigami.Units.gridUnit * 14
 	// 14/(22+14) * 400 = 156
 	// rightColumnWidth=156 looks nice but is very thin for listing events + date + weather.
-	property int leftColumnWidth: Math.round(plasmoid.configuration.leftColumnWidth * Screen.devicePixelRatio * widthScale) // Meteogram + MonthView
-	property int rightColumnWidth: Math.round(plasmoid.configuration.rightColumnWidth * Screen.devicePixelRatio * widthScale) // TimerView + AgendaView
+	property int leftColumnWidth: Math.round(plasmoid.configuration.leftColumnWidth * widthScale) // Meteogram + MonthView
+	property int rightColumnWidth: Math.round(plasmoid.configuration.rightColumnWidth * widthScale) // TimerView + AgendaView
 
 	property int singleColumnWidth: {
 		if (showAgenda && showCalendar) {
@@ -160,8 +160,8 @@ MouseArea {
 			PropertyChanges { target: popup
 				// Use the same size as the digitalclock popup
 				// since we don't need more space to fit more agenda items.
-				Layout.preferredWidth: 378 * Screen.devicePixelRatio * popup.widthScale
-				Layout.preferredHeight: 378 * Screen.devicePixelRatio * popup.heightScale
+				Layout.preferredWidth: 378 * popup.widthScale
+				Layout.preferredHeight: 378 * popup.heightScale
 			}
 			PropertyChanges { target: monthView
 				Layout.preferredWidth: -1
@@ -412,7 +412,7 @@ MouseArea {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 
-			onNewEventFormOpened: {
+			onNewEventFormOpened: function(agendaItem, calendarSelector) {
 				// logger.debug('onNewEventFormOpened')
 				var selectedCalendarId = ""
 				if (plasmoid.configuration.agendaNewEventRememberCalendar) {
@@ -421,7 +421,7 @@ MouseArea {
 				var calendarList = eventModel.getCalendarList()
 				calendarSelector.populate(calendarList, selectedCalendarId)
 			}
-			onSubmitNewEventForm: {
+			onSubmitNewEventForm: function(calendarId, date, text) {
 				logger.debug('onSubmitNewEventForm', calendarId)
 				eventModel.createEvent(calendarId, date, text)
 			}

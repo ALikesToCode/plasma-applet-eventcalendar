@@ -27,7 +27,27 @@ CalendarManager {
 
 	function getCalendarIdList() {
 		var account = getAccount()
-		return account && account.calendarIdList ? account.calendarIdList : []
+		if (!account) {
+			return []
+		}
+		var list = account.calendarIdList || []
+		if (account.calendarSelectionInitialized) {
+			return list
+		}
+		if (list.length) {
+			if (accountsStore && accountId) {
+				accountsStore.updateAccount(accountId, { calendarSelectionInitialized: true })
+			}
+			return list
+		}
+		var defaultList = ["primary"]
+		if (accountsStore && accountId) {
+			accountsStore.updateAccount(accountId, {
+				calendarIdList: defaultList,
+				calendarSelectionInitialized: true,
+			})
+		}
+		return defaultList
 	}
 
 	function scopedCalendarId(rawId) {

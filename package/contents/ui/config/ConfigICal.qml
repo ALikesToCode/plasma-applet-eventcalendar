@@ -113,6 +113,7 @@ ConfigPage {
 
 							FileDialog {
 								id: filePicker
+								parent: page
 
 								nameFilters: [ i18n("iCalendar (*.ics)") ]
 

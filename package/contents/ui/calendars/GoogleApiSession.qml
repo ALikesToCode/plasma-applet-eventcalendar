@@ -7,8 +7,13 @@ QtObject {
 
 	property var accountsStore
 	property string accountId: ""
+	property int accountRevision: 0
+	property var connectedStore: null
 
 	readonly property string accessToken: {
+		// Ensure refreshes propagate when account data updates.
+		var _accountId = accountId
+		var _ = accountRevision
 		var account = getAccount()
 		return account ? account.accessToken : ""
 	}
@@ -96,14 +101,17 @@ QtObject {
 		logger.debug('fetchNewAccessToken')
 		var account = getAccount()
 		var url = 'https://oauth2.googleapis.com/token'
+		var data = {
+			client_id: account ? account.sessionClientId : "",
+			refresh_token: account ? account.refreshToken : "",
+			grant_type: 'refresh_token',
+		}
+		if (account && account.sessionClientSecret) {
+			data.client_secret = account.sessionClientSecret
+		}
 		Requests.post({
 			url: url,
-			data: {
-				client_id: account ? account.sessionClientId : "",
-				client_secret: account ? account.sessionClientSecret : "",
-				refresh_token: account ? account.refreshToken : "",
-				grant_type: 'refresh_token',
-			},
+			data: data,
 		}, callback)
 	}
 
@@ -138,5 +146,56 @@ QtObject {
 		delay(timeout, function(){
 			callback()
 		})
+	}
+
+	function handleAccountUpdated(updatedId) {
+		if (updatedId === accountId) {
+			accountRevision += 1
+		}
+	}
+
+	function handleAccountsChanged() {
+		accountRevision += 1
+	}
+
+	function disconnectStore(store) {
+		if (!store) {
+			return
+		}
+		try {
+			store.accountUpdated.disconnect(handleAccountUpdated)
+		} catch (e) {}
+		try {
+			store.accountsChanged.disconnect(handleAccountsChanged)
+		} catch (e) {}
+	}
+
+	function connectStore(store) {
+		if (!store) {
+			return
+		}
+		store.accountUpdated.connect(handleAccountUpdated)
+		store.accountsChanged.connect(handleAccountsChanged)
+	}
+
+	onAccountsStoreChanged: {
+		if (connectedStore === accountsStore) {
+			return
+		}
+		disconnectStore(connectedStore)
+		connectedStore = accountsStore
+		connectStore(connectedStore)
+	}
+
+	Component.onCompleted: {
+		if (connectedStore !== accountsStore) {
+			connectStore(accountsStore)
+			connectedStore = accountsStore
+		}
+	}
+
+	Component.onDestruction: {
+		disconnectStore(connectedStore)
+		connectedStore = null
 	}
 }

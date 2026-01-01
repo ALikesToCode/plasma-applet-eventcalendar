@@ -3,14 +3,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import org.kde.kcmutils as KCM
 import org.kde.kirigami as Kirigami
+import org.kde.kcmutils as KCM
 
 KCM.SimpleKCM {
 	id: page
 	Layout.fillWidth: true
-	default property alias _contentChildren: content.data
-	Layout.fillHeight: true
+	implicitHeight: content.implicitHeight
 
 	// BEGIN AUTO CFG PROPS
 	property var cfg_debugging
@@ -346,6 +345,9 @@ KCM.SimpleKCM {
 
 	ColumnLayout {
 		id: content
+		anchors.left: parent.left
+		anchors.right: parent.right
+		anchors.top: parent.top
 		spacing: Kirigami.Units.smallSpacing
 
 		// Workaround for crash when using default on a Layout.
@@ -355,6 +357,35 @@ KCM.SimpleKCM {
 			while (children.length > 0) {
 				children[children.length - 1].parent = page
 			}
+		}
+	}
+
+	function clearItemAnchors(item) {
+		if (!item || !item.anchors) {
+			return
+		}
+		item.anchors.left = undefined
+		item.anchors.right = undefined
+		item.anchors.top = undefined
+		item.anchors.bottom = undefined
+		item.anchors.fill = undefined
+		item.anchors.centerIn = undefined
+		item.anchors.horizontalCenter = undefined
+		item.anchors.verticalCenter = undefined
+	}
+
+	Component.onCompleted: {
+		var items = []
+		for (var i = 0; i < scrollablePageChildren.length; i++) {
+			items.push(scrollablePageChildren[i])
+		}
+		for (var j = 0; j < items.length; j++) {
+			var child = items[j]
+			if (!child || child === content || child === appletVersionLoader) {
+				continue
+			}
+			clearItemAnchors(child)
+			child.parent = content
 		}
 	}
 

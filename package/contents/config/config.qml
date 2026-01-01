@@ -6,6 +6,9 @@ import "../ui/calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 ConfigModel {
 	id: configModel
 	property var eventPluginsManager: null
+	readonly property bool hasPlasmoidConfig: typeof plasmoid !== "undefined"
+		&& plasmoid
+		&& plasmoid.configuration
 
 	ConfigCategory {
 		name: i18n("General")
@@ -46,7 +49,7 @@ ConfigModel {
 		name: i18n("ICalendar (.ics)")
 		icon: "text-calendar"
 		source: "config/ConfigICal.qml"
-		visible: plasmoid.configuration.debugging
+		visible: hasPlasmoidConfig && plasmoid.configuration.debugging
 	}
 	ConfigCategory {
 		name: i18n("Google Calendar")
@@ -62,7 +65,7 @@ ConfigModel {
 		name: i18n("Advanced")
 		icon: "applications-development"
 		source: "lib/ConfigAdvanced.qml"
-		visible: plasmoid.configuration.debugging
+		visible: hasPlasmoidConfig && plasmoid.configuration.debugging
 	}
 
 	Component.onCompleted: {
@@ -83,7 +86,8 @@ ConfigModel {
 			icon: model.decoration
 			source: model.configUi
 			readonly property string pluginFilename: PlasmaCalendarUtils.getPluginFilename(model.pluginPath)
-			visible: plasmoid.configuration.enabledCalendarPlugins.indexOf(pluginFilename) > -1
+			visible: hasPlasmoidConfig
+				&& plasmoid.configuration.enabledCalendarPlugins.indexOf(pluginFilename) > -1
 		}
 
 		onObjectAdded: function(index, object) {
