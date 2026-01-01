@@ -111,11 +111,10 @@ ConfigPage {
 								filePicker.open()
 							}
 
-							FileDialog {
-								id: filePicker
-								parent: page
+								FileDialog {
+									id: filePicker
 
-								nameFilters: [ i18n("iCalendar (*.ics)") ]
+									nameFilters: [ i18n("iCalendar (*.ics)") ]
 
 								onAccepted: calendarUrlField.text = selectedFile.toString()
 							}
