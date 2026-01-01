@@ -371,6 +371,7 @@ Item {
 		if (!account) {
 			var created = accountsStore.addAccount({
 				label: '',
+				skipDefaultCalendarSelection: true,
 			})
 			targetId = created.id
 		}

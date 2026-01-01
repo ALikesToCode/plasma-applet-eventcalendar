@@ -199,8 +199,10 @@ Item {
 
 	function addAccount(account) {
 		var normalized = normalizeAccount(account || {})
-		if (!normalized.calendarIdList.length) {
+		var skipDefaultSelection = account && account.skipDefaultCalendarSelection === true
+		if (!normalized.calendarIdList.length && !skipDefaultSelection) {
 			normalized.calendarIdList = ["primary"]
+			normalized.calendarSelectionInitialized = true
 		}
 		var nextAccounts = accounts.slice(0)
 		nextAccounts.push(normalized)
