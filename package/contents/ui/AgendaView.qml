@@ -9,7 +9,16 @@ import "LocaleFuncs.js" as LocaleFuncs
 Item {
 	id: agendaView
 
-	readonly property int scrollbarWidth: width - (agendaScrollView.contentItem ? agendaScrollView.contentItem.contentWidth : width)
+	readonly property int scrollbarWidth: {
+		var bar = agendaScrollView.QQC2.ScrollBar.vertical
+		if (bar && bar.width > 0) {
+			return bar.width
+		}
+		if (bar && bar.implicitWidth > 0) {
+			return bar.implicitWidth
+		}
+		return 0
+	}
 
 	property color inProgressColor: appletConfig.agendaInProgressColor
 	property int inProgressFontWeight: Font.Bold
