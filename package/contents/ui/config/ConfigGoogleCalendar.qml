@@ -264,13 +264,6 @@ ConfigPage {
 			messageWidget.err(err)
 		}
 	}
-	Component.onCompleted: {
-		if (page.cfg_googleRedirectMode !== "local") {
-			page.configBridge.write("googleRedirectMode", "local")
-		}
-	}
-
-
 	HeaderText {
 		text: i18n("Accounts")
 	}
@@ -852,6 +845,9 @@ ConfigPage {
 	}
 
 	Component.onCompleted: {
+		if (page.cfg_googleRedirectMode !== "local") {
+			page.configBridge.write("googleRedirectMode", "local")
+		}
 		rebuildAccountsModel()
 		if (googleLoginManager.isLoggedIn) {
 			googleLoginManager.calendarListChanged()
