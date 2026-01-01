@@ -435,8 +435,8 @@ ConfigPage {
 		LinkText {
 			Layout.fillWidth: true
 			text: localRedirect
-				? i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to a localhost URL. Copy the full URL (or just the code) and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
-				: i18n("Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and grant access, your browser will redirect to the helper page, which will try to send the code back automatically.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
+				? i18n("Click Login (Auto) to open <a href=\"%1\">%2</a>. After you grant access, the browser redirects to a localhost URL. If auto-capture succeeds you can ignore the field below; otherwise copy the full URL (or just the code) and paste it.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
+				: i18n("Click Login (Auto) to open <a href=\"%1\">%2</a>. After you grant access, the browser redirects to the helper page and will try to send the code back automatically. If it fails, copy the code and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 			onLinkActivated: function(link) {
@@ -507,8 +507,8 @@ ConfigPage {
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 			text: localRedirect
-				? i18n("Tip: Leave the field empty and click Add Account or Update Selected to auto-capture the callback.")
-				: i18n("Tip: Click Add Account with an empty field to start the listener. If the helper page cannot reach the widget, copy the code manually and paste it below.")
+				? i18n("Tip: If auto-capture works, you do not need to paste anything.")
+				: i18n("Tip: If auto-capture fails, copy the code from the helper page and paste it below.")
 			visible: true
 		}
 		RowLayout {
