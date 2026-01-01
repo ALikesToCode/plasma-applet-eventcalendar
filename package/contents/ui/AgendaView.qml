@@ -9,15 +9,17 @@ import "LocaleFuncs.js" as LocaleFuncs
 Item {
 	id: agendaView
 
-	readonly property int scrollbarWidth: {
+	property int scrollbarWidth: 0
+
+	function updateScrollbarWidth() {
 		var bar = agendaScrollView.QQC2.ScrollBar.vertical
-		if (bar && bar.width > 0) {
-			return bar.width
+		var width = 0
+		if (bar) {
+			width = bar.width > 0 ? bar.width : (bar.implicitWidth || 0)
 		}
-		if (bar && bar.implicitWidth > 0) {
-			return bar.implicitWidth
+		if (scrollbarWidth !== width) {
+			scrollbarWidth = width
 		}
-		return 0
 	}
 
 	property color inProgressColor: appletConfig.agendaInProgressColor
@@ -57,6 +59,10 @@ Item {
 			})
 		}
 	}
+
+	Component.onCompleted: updateScrollbarWidth()
+	onWidthChanged: updateScrollbarWidth()
+	onHeightChanged: updateScrollbarWidth()
 
 	QQC2.ScrollView {
 		id: agendaScrollView
@@ -181,6 +187,13 @@ Item {
 		function positionViewAtEnd() {
 			scrollToY(contentHeightValue)
 		}
+	}
+
+	Connections {
+		target: agendaScrollView.QQC2.ScrollBar.vertical
+		function onWidthChanged() { updateScrollbarWidth() }
+		function onImplicitWidthChanged() { updateScrollbarWidth() }
+		function onVisibleChanged() { updateScrollbarWidth() }
 	}
 
 	// TODO: properly detect when all events have completed loading
