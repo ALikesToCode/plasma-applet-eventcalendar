@@ -213,7 +213,7 @@ ConfigPage {
 	GoogleLoginManager {
 		id: googleLoginManager
 		configBridge: page.configBridge
-		redirectMode: page.cfg_googleRedirectMode || "local"
+		redirectMode: "local"
 		onAccountsChanged: rebuildAccountsModel()
 		onActiveAccountIdChanged: rebuildAccountsModel()
 
@@ -262,6 +262,11 @@ ConfigPage {
 
 		onError: function(err) {
 			messageWidget.err(err)
+		}
+	}
+	Component.onCompleted: {
+		if (page.cfg_googleRedirectMode !== "local") {
+			page.configBridge.write("googleRedirectMode", "local")
 		}
 	}
 
@@ -384,32 +389,11 @@ ConfigPage {
 	HeaderText {
 		text: i18n("Redirect Mode")
 	}
-	ColumnLayout {
+	Label {
 		Layout.fillWidth: true
-
-		ConfigRadioButtonGroup {
-			label: i18n("Callback:")
-			configKey: "googleRedirectMode"
-			model: [
-				{ value: "local", text: i18n("Localhost (auto capture)") },
-				{ value: "hosted", text: i18n("Helper page (GitHub Pages)") },
-			]
-		}
-		Label {
-			Layout.fillWidth: true
-			color: readableNegativeTextColor
-			wrapMode: Text.Wrap
-			text: localRedirect
-				? i18n("Localhost keeps everything on your machine and supports auto capture.")
-				: i18n("Helper page works without a localhost redirect. It will try to send the code back to the widget; if that fails, copy the code manually.")
-		}
-		Label {
-			Layout.fillWidth: true
-			color: readableNegativeTextColor
-			wrapMode: Text.Wrap
-			visible: !localRedirect
-			text: i18n("Hosted mode requires your OAuth client to allow %1 as a redirect URI.", googleLoginManager.redirectUri)
-		}
+		color: readableNegativeTextColor
+		wrapMode: Text.Wrap
+		text: i18n("Callback: Localhost (auto capture). Helper page is shown below as a backup.")
 	}
 
 	ColumnLayout {
@@ -634,7 +618,8 @@ ConfigPage {
 					}
 
 					contentItem: RowLayout {
-						width: calendarRow.availableWidth - calendarRow.indicator.width - calendarRow.spacing
+						width: calendarRow.availableWidth
+						Layout.fillWidth: true
 						height: calendarRow.availableHeight
 						spacing: Kirigami.Units.smallSpacing
 
@@ -737,7 +722,8 @@ ConfigPage {
 					}
 
 					contentItem: RowLayout {
-						width: tasklistRow.availableWidth - tasklistRow.indicator.width - tasklistRow.spacing
+						width: tasklistRow.availableWidth
+						Layout.fillWidth: true
 						height: tasklistRow.availableHeight
 						spacing: Kirigami.Units.smallSpacing
 
