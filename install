@@ -147,6 +147,7 @@ DISTRO_LIKE=""
 DISTRO_FAMILY=""
 PLASMA_MAJOR=""
 KPACKAGE_TOOL=""
+PACKAGES_UPDATED=false
 
 detect_distro() {
     if [ -f /etc/os-release ]; then
@@ -181,7 +182,10 @@ detect_distro() {
 install_packages() {
     case "$DISTRO_FAMILY" in
         "debian")
-            sudo apt-get update
+            if [ "$PACKAGES_UPDATED" = "false" ]; then
+                sudo apt-get update
+                PACKAGES_UPDATED=true
+            fi
             sudo apt-get install -y "$@"
             ;;
         "arch")
@@ -197,37 +201,102 @@ install_packages() {
     esac
 }
 
+install_packages_optional() {
+    if [ "$#" -eq 0 ]; then
+        return 0
+    fi
+
+    for package in "$@"; do
+        if ! install_packages "$package"; then
+            log "WARNING: Optional package '$package' failed to install."
+        fi
+    done
+}
+
 # Function to install required packages
 install_requirements() {
     detect_distro
+
+    local core_packages=()
+    local optional_packages=()
+    local qdbus_package=""
 
     case "$DISTRO_FAMILY" in
         "debian")
             if [ "$PLASMA_MAJOR" = "6" ]; then
                 required_commands=("kpackagetool6")
                 packages_to_install=("kpackagetool6")
+                qdbus_package="qt6-tools-dev-tools"
             else
                 required_commands=("kpackagetool5")
                 packages_to_install=("kpackagetool5")
+                qdbus_package="qttools5-dev-tools"
             fi
+            core_packages=(
+                "python3"
+                "python3-gi"
+                "gir1.2-notify-0.7"
+                "libnotify-bin"
+                "libcanberra0"
+            )
+            optional_packages=(
+                "python3-icalendar"
+                "akonadi-server"
+                "kdepim-addons"
+                "konsolekalendar"
+                "alsa-utils"
+                "kmix"
+            )
             ;;
         "arch")
             if [ "$PLASMA_MAJOR" = "6" ]; then
                 required_commands=("kpackagetool6")
                 packages_to_install=("kpackage")
+                qdbus_package="qt6-tools"
             else
                 required_commands=("kpackagetool5")
                 packages_to_install=("kpackage5")
+                qdbus_package="qt5-tools"
             fi
+            core_packages=(
+                "python"
+                "python-gobject"
+                "libnotify"
+                "libcanberra"
+            )
+            optional_packages=(
+                "python-icalendar"
+                "akonadi"
+                "kdepim-addons"
+                "kdepim-runtime"
+                "alsa-utils"
+                "kmix"
+            )
             ;;
         "fedora")
             if [ "$PLASMA_MAJOR" = "6" ]; then
                 required_commands=("kpackagetool6")
                 packages_to_install=("kf6-kpackage")
+                qdbus_package="qt6-qttools"
             else
                 required_commands=("kpackagetool5")
                 packages_to_install=("kf5-kpackage")
+                qdbus_package="qt5-qttools"
             fi
+            core_packages=(
+                "python3"
+                "python3-gobject"
+                "libnotify"
+                "libcanberra"
+            )
+            optional_packages=(
+                "python3-icalendar"
+                "akonadi-server"
+                "kdepim-addons"
+                "kdepim-runtime"
+                "alsa-utils"
+                "kmix"
+            )
             ;;
         *)
             echo "Unsupported distribution: ${DISTRO:-unknown}"
@@ -242,6 +311,20 @@ install_requirements() {
             check_command_success "$?" "Failed to install ${packages_to_install[$i]}"
         fi
     done
+
+    if [ -n "$qdbus_package" ]; then
+        optional_packages+=("$qdbus_package")
+    fi
+
+    if [ "${#core_packages[@]}" -gt 0 ]; then
+        log "Installing core runtime dependencies..."
+        install_packages "${core_packages[@]}"
+    fi
+
+    if [ "${#optional_packages[@]}" -gt 0 ]; then
+        log "Installing optional runtime dependencies..."
+        install_packages_optional "${optional_packages[@]}"
+    fi
 }
 
 read_metadata_desktop_value() {

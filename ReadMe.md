@@ -12,21 +12,29 @@ Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.
 
 ## Dependencies
 
-Runtime:
-- Plasma 6 or Plasma 5
+Core runtime:
+- Plasma 6 or Plasma 5 (Qt/QML + KDE Frameworks that ship with Plasma)
 - `python3`
-- `python3-gi` and `gir1.2-notify-0.7` (libnotify bindings used by `notification.py`)
+- `python3-gi` + `gir1.2-notify-0.7` (libnotify bindings used by `notification.py`)
+- `notify-send` (`libnotify-bin`/`libnotify`, used as a fallback for notifications)
 - `libcanberra` (optional, for notification sounds)
-- `notify-send` (`libnotify-bin`, used as a fallback for notifications)
+
+Feature-specific (optional):
+- ICalendar (.ics) import: `python3-icalendar` (Python `icalendar` module)
+- Local PIM/Akonadi calendars: `akonadi` + `kdepim-addons` (provides `PimCalendarsModel`)
+- Create local events: `konsolekalendar` (from kdepim runtime/tools)
+- Mouse wheel volume presets:
+  - `amixer` (alsa-utils) for the no-UI option
+  - `qdbus`/`qdbus6` + `kmix` (kglobalaccel shortcuts) for the UI option
 
 Install/update/uninstall scripts:
 - `bash`
 - `git` (clone/update)
 - `kpackagetool6` (Plasma 6) or `kpackagetool5` (Plasma 5)
-- `qdbus` or `qdbus6`
-- `jq`
+- `qdbus` or `qdbus6` (reload/remove widgets)
+- `jq` (read metadata)
 
-Note: the install script attempts to install `kpackagetool` and `jq` on Debian/Arch/Fedora. On other distros, install these manually.
+Note: package names vary by distro. The install script attempts to install `kpackagetool` and `jq` on Debian/Arch/Fedora; on other distros, install manually.
 
 ## Contributing
 

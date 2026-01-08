@@ -24,6 +24,11 @@ cleanup() {
 
 trap cleanup EXIT
 
+DISTRO=""
+DISTRO_LIKE=""
+DISTRO_FAMILY=""
+PACKAGES_UPDATED=false
+
 detect_plasma_major() {
     local version_line=""
     if command -v plasmashell >/dev/null 2>&1; then
@@ -60,7 +65,195 @@ select_target_branch() {
     echo "$default_branch"
 }
 
+detect_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        DISTRO="${ID:-}"
+        DISTRO_LIKE="${ID_LIKE:-}"
+    elif type lsb_release >/dev/null 2>&1; then
+        DISTRO=$(lsb_release -i | cut -d: -f2 | sed s/'^\t'//)
+        DISTRO_LIKE=""
+    else
+        DISTRO=$(uname -s)
+        DISTRO_LIKE=""
+    fi
+
+    DISTRO=$(echo "$DISTRO" | tr '[:upper:]' '[:lower:]')
+    DISTRO_LIKE=$(echo "$DISTRO_LIKE" | tr '[:upper:]' '[:lower:]')
+
+    DISTRO_FAMILY="$DISTRO"
+    case " $DISTRO $DISTRO_LIKE " in
+        *"arch"*|*"endeavouros"*|*"manjaro"*|*"garuda"*)
+            DISTRO_FAMILY="arch"
+            ;;
+        *"debian"*|*"ubuntu"*|*"neon"*|*"kali"*|*"raspbian"*)
+            DISTRO_FAMILY="debian"
+            ;;
+        *"fedora"*|*"rhel"*|*"centos"*)
+            DISTRO_FAMILY="fedora"
+            ;;
+    esac
+}
+
+install_packages() {
+    case "$DISTRO_FAMILY" in
+        "debian")
+            if [ "$PACKAGES_UPDATED" = "false" ]; then
+                sudo apt-get update
+                PACKAGES_UPDATED=true
+            fi
+            sudo apt-get install -y "$@"
+            ;;
+        "arch")
+            sudo pacman -S --needed "$@"
+            ;;
+        "fedora")
+            sudo dnf install -y "$@"
+            ;;
+        *)
+            echo "Unsupported distribution: ${DISTRO:-unknown}"
+            return 1
+            ;;
+    esac
+}
+
+install_packages_optional() {
+    if [ "$#" -eq 0 ]; then
+        return 0
+    fi
+
+    for package in "$@"; do
+        if ! install_packages "$package"; then
+            log "WARNING: Optional package '$package' failed to install."
+        fi
+    done
+}
+
+install_requirements() {
+    detect_distro
+
+    local required_commands=()
+    local packages_to_install=()
+    local core_packages=()
+    local optional_packages=()
+    local qdbus_package=""
+
+    case "$DISTRO_FAMILY" in
+        "debian")
+            if [ "$plasma_major" = "6" ]; then
+                required_commands=("kpackagetool6")
+                packages_to_install=("kpackagetool6")
+                qdbus_package="qt6-tools-dev-tools"
+            else
+                required_commands=("kpackagetool5")
+                packages_to_install=("kpackagetool5")
+                qdbus_package="qttools5-dev-tools"
+            fi
+            core_packages=(
+                "git"
+                "python3"
+                "python3-gi"
+                "gir1.2-notify-0.7"
+                "libnotify-bin"
+                "libcanberra0"
+            )
+            optional_packages=(
+                "python3-icalendar"
+                "akonadi-server"
+                "kdepim-addons"
+                "konsolekalendar"
+                "alsa-utils"
+                "kmix"
+            )
+            ;;
+        "arch")
+            if [ "$plasma_major" = "6" ]; then
+                required_commands=("kpackagetool6")
+                packages_to_install=("kpackage")
+                qdbus_package="qt6-tools"
+            else
+                required_commands=("kpackagetool5")
+                packages_to_install=("kpackage5")
+                qdbus_package="qt5-tools"
+            fi
+            core_packages=(
+                "git"
+                "python"
+                "python-gobject"
+                "libnotify"
+                "libcanberra"
+            )
+            optional_packages=(
+                "python-icalendar"
+                "akonadi"
+                "kdepim-addons"
+                "kdepim-runtime"
+                "alsa-utils"
+                "kmix"
+            )
+            ;;
+        "fedora")
+            if [ "$plasma_major" = "6" ]; then
+                required_commands=("kpackagetool6")
+                packages_to_install=("kf6-kpackage")
+                qdbus_package="qt6-qttools"
+            else
+                required_commands=("kpackagetool5")
+                packages_to_install=("kf5-kpackage")
+                qdbus_package="qt5-qttools"
+            fi
+            core_packages=(
+                "git"
+                "python3"
+                "python3-gobject"
+                "libnotify"
+                "libcanberra"
+            )
+            optional_packages=(
+                "python3-icalendar"
+                "akonadi-server"
+                "kdepim-addons"
+                "kdepim-runtime"
+                "alsa-utils"
+                "kmix"
+            )
+            ;;
+        *)
+            echo "Unsupported distribution: ${DISTRO:-unknown}"
+            return 1
+            ;;
+    esac
+
+    for i in "${!required_commands[@]}"; do
+        if ! command -v "${required_commands[$i]}" &> /dev/null; then
+            log "${required_commands[$i]} is not installed. Attempting to install..."
+            install_packages "${packages_to_install[$i]}"
+        fi
+    done
+
+    if [ -n "$qdbus_package" ]; then
+        optional_packages+=("$qdbus_package")
+    fi
+
+    if [ "${#core_packages[@]}" -gt 0 ]; then
+        log "Installing core runtime dependencies..."
+        install_packages "${core_packages[@]}"
+    fi
+
+    if [ "${#optional_packages[@]}" -gt 0 ]; then
+        log "Installing optional runtime dependencies..."
+        install_packages_optional "${optional_packages[@]}"
+    fi
+}
+
 # Ensure we're in a git repository
+plasma_major="$(detect_plasma_major || true)"
+if [ -z "$plasma_major" ]; then
+    log "WARNING: Unable to detect Plasma version; defaulting to master branch."
+fi
+
+install_requirements
+
 if ! git rev-parse --git-dir > /dev/null 2>&1; then
     log "ERROR: Not in a git repository"
     exit 1
@@ -69,11 +262,6 @@ fi
 if ! git diff --quiet || ! git diff --cached --quiet; then
     log "ERROR: Uncommitted changes detected. Please commit or stash before updating."
     exit 1
-fi
-
-plasma_major="$(detect_plasma_major || true)"
-if [ -z "$plasma_major" ]; then
-    log "WARNING: Unable to detect Plasma version; defaulting to master branch."
 fi
 
 target_branch="$(select_target_branch "$plasma_major")"
