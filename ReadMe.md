@@ -10,6 +10,24 @@ Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.
 - Plasma 5 (legacy): `plasma-5`
 - `plasma-6` is reserved for development/testing.
 
+## Dependencies
+
+Runtime:
+- Plasma 6 or Plasma 5
+- `python3`
+- `python3-gi` and `gir1.2-notify-0.7` (libnotify bindings used by `notification.py`)
+- `libcanberra` (optional, for notification sounds)
+- `notify-send` (`libnotify-bin`, used as a fallback for notifications)
+
+Install/update/uninstall scripts:
+- `bash`
+- `git` (clone/update)
+- `kpackagetool6` (Plasma 6) or `kpackagetool5` (Plasma 5)
+- `qdbus` or `qdbus6`
+- `jq`
+
+Note: the install script attempts to install `kpackagetool` and `jq` on Debian/Arch/Fedora. On other distros, install these manually.
+
 ## Contributing
 
 See `CONTRIBUTING.md` for guidelines and `MAINTENANCE.md` for project status.
