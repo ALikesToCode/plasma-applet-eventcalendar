@@ -15,6 +15,8 @@ ListModel {
 	property int parseChunkSize: 50
 
 	property bool showDailyWeather: false
+	property var lastWeatherData: null
+	property var pendingWeatherData: null
 
 	property int showNextNumDays: 14
 	property bool showAllDaysInMonth: true
@@ -335,6 +337,11 @@ ListModel {
 				// skip
 			}
 			agendaModel.populating = false
+			if (agendaModel.pendingWeatherData) {
+				var weatherData = agendaModel.pendingWeatherData
+				agendaModel.pendingWeatherData = null
+				agendaModel.applyWeatherForecast(weatherData)
+			}
 		}
 
 		function processChunk() {
@@ -385,7 +392,7 @@ ListModel {
 		processChunk()
 	}
 
-	function parseWeatherForecast(data) {
+	function applyWeatherForecast(data) {
 		if (!(data && data.list)) {
 			return
 		}
@@ -414,6 +421,16 @@ ListModel {
 			}
 		}
 		agendaModel.showDailyWeather = showWeatherColumn
+	}
+
+	function parseWeatherForecast(data) {
+		agendaModel.lastWeatherData = data
+		if (agendaModel.populating) {
+			agendaModel.pendingWeatherData = data
+			return
+		}
+		agendaModel.pendingWeatherData = null
+		agendaModel.applyWeatherForecast(data)
 	}
 
 	Component.onCompleted: {
