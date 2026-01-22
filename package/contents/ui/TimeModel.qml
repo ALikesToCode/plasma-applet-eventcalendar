@@ -8,7 +8,7 @@ Item {
 	property string timezone: "Local"
 	property var currentTime: dataSource.data[timezone]["DateTime"]
 	property alias dataSource: dataSource
-	property var allTimezones: Qt.binding(function() {
+	property var allTimezones: {
 		var timezones = plasmoid.configuration.selectedTimeZones.toString()
 		if (timezones.length > 0) {
 			timezones = timezones.split(',')
@@ -19,7 +19,7 @@ Item {
 			timezones.push('Local')
 		}
 		return timezones
-	})
+	}
 
 	signal secondChanged()
 	signal minuteChanged()
@@ -32,7 +32,7 @@ Item {
 		connectedSources: timeModel.allTimezones
 		interval: 1000
 		intervalAlignment: Plasma5Support.Types.NoAlignment
-		onNewData: function(sourceName, data) {
+		function onNewData(sourceName, data) {
 			if (sourceName === 'Local') {
 				timeModel.tick()
 			}
