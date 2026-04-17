@@ -20,7 +20,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(levelname)s: %(message)s'
 )
-logging.info("Script started with args: %s", sys.argv)
+logging.info("Script started")
 
 client_id = client_secret = listen_port = redirect_uri = code_verifier = None
 exit_code = 0
