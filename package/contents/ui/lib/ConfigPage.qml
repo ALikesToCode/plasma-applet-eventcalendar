@@ -329,11 +329,25 @@ KCM.SimpleKCM {
 			return fallback
 		}
 
+		function isEqual(a, b) {
+			if (a === b) return true
+			if (typeof a === 'object' && typeof b === 'object') {
+				return JSON.stringify(a) === JSON.stringify(b)
+			}
+			return false
+		}
+
 		function write(key, value) {
 			var prop = "cfg_" + key
 			if (prop in page) {
+				if (isEqual(page[prop], value)) {
+					return
+				}
 				page[prop] = value
 			} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+				if (isEqual(plasmoid.configuration[key], value)) {
+					return
+				}
 				plasmoid.configuration[key] = value
 			}
 			if (typeof kcm !== "undefined") {
