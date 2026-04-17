@@ -168,9 +168,7 @@ ConfigPage {
 			cmd.push('--code_verifier')
 			cmd.push(authContext.pkceVerifier)
 		}
-		var cmdStr = JSON.stringify(cmd)
-		console.log('google_redirect.py command:', cmdStr)
-		// debugOutput.text = "Running:\n" + cmdStr + "\n\n"
+		// debugOutput.text = "Running:\n" + JSON.stringify(cmd) + "\n\n"
 		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (autoLoginCancelled) {
 				autoLoginInProgress = false
