@@ -10,6 +10,7 @@ Item {
 
 	Logger {
 		id: logger
+		name: "eventcalendar"
 		showDebug: readConfig("debugging", false)
 	}
 
@@ -229,6 +230,28 @@ Item {
 		authState = ""
 		pendingAuthContext = null
 	}
+	function clientIdSuffix(clientId) {
+		var value = clientId ? String(clientId) : ""
+		return value.length > 12 ? value.slice(-12) : value
+	}
+	function summarizeTokenResponse(parsed, ctx, accountId, existingAccount) {
+		return {
+			accountId: accountId || "",
+			clientIdSuffix: clientIdSuffix(ctx && ctx.clientId),
+			redirectUri: ctx && ctx.redirectUri ? ctx.redirectUri : "",
+			usingPkce: !!(ctx && ctx.pkceVerifier),
+			hasClientSecret: !!(ctx && ctx.clientSecret),
+			existingAccountId: existingAccount && existingAccount.id ? existingAccount.id : "",
+			existingAccountHasRefreshToken: !!(existingAccount && existingAccount.refreshToken),
+			hasAccessToken: !!(parsed && parsed.access_token),
+			hasRefreshToken: !!(parsed && parsed.refresh_token),
+			tokenType: parsed && parsed.token_type ? parsed.token_type : "",
+			expiresIn: parsed && parsed.expires_in ? parsed.expires_in : 0,
+			scope: parsed && parsed.scope ? parsed.scope : "",
+			error: parsed && parsed.error ? parsed.error : "",
+			errorDescription: parsed && parsed.error_description ? parsed.error_description : "",
+		}
+	}
 	function buildAuthorizationUrl(ctx) {
 		var url = 'https://accounts.google.com/o/oauth2/v2/auth'
 		url += '?scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks')
@@ -347,6 +370,15 @@ Item {
 		if (ctx.pkceVerifier) {
 			payload.code_verifier = ctx.pkceVerifier
 		}
+		logger.debugJSON("fetchAccessToken.request", {
+			accountId: args.accountId || "",
+			clientIdSuffix: clientIdSuffix(ctx.clientId),
+			redirectUri: ctx.redirectUri,
+			usingPkce: !!ctx.pkceVerifier,
+			hasClientSecret: !!ctx.clientSecret,
+			existingAccountId: existingAccount && existingAccount.id ? existingAccount.id : "",
+			existingAccountHasRefreshToken: !!(existingAccount && existingAccount.refreshToken),
+		})
 		Requests.post({
 			url: url,
 			data: payload,
@@ -361,6 +393,11 @@ Item {
 					parsed = null
 				}
 			}
+			logger.debugJSON("fetchAccessToken.responseSummary", {
+				status: xhr ? xhr.status : 0,
+				err: err || "",
+				summary: summarizeTokenResponse(parsed, ctx, args.accountId, existingAccount),
+			})
 			if (err) {
 				var requestError = describeAuthError(ctx, parsed, err)
 				handleError(requestError, null)
@@ -385,6 +422,7 @@ Item {
 				return
 			}
 			if (!parsed.refresh_token && !(existingAccount && existingAccount.refreshToken)) {
+				logger.debugJSON("fetchAccessToken.missingRefreshToken", summarizeTokenResponse(parsed, ctx, args.accountId, existingAccount))
 				var refreshTokenError = "Google login completed, but no refresh token was returned. Revoke the app's Google access and login again."
 				handleError(refreshTokenError, null)
 				if (typeof callback === "function") {
@@ -404,13 +442,25 @@ Item {
 	function updateAccessToken(data, accountId) {
 		var account = accountId ? accountsStore.getAccount(accountId) : null
 		var targetId = accountId
+		var createdAccount = false
 		if (!account) {
 			var created = accountsStore.addAccount({
 				label: '',
 				skipDefaultCalendarSelection: true,
 			})
 			targetId = created.id
+			createdAccount = true
 		}
+		logger.debugJSON("updateAccessToken", {
+			requestedAccountId: accountId || "",
+			targetId: targetId,
+			createdAccount: createdAccount,
+			clientIdSuffix: clientIdSuffix(effectiveClientId),
+			sessionUsesPkce: !effectiveClientSecret,
+			hasAccessToken: !!data.access_token,
+			hasRefreshToken: !!data.refresh_token,
+			reusedExistingRefreshToken: !data.refresh_token && !!(account && account.refreshToken),
+		})
 		accountsStore.updateAccount(targetId, {
 			sessionClientId: effectiveClientId,
 			sessionUsesPkce: !effectiveClientSecret,

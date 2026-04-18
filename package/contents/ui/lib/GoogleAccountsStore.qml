@@ -12,6 +12,7 @@ Item {
 	property string activeAccountKey: "googleActiveAccountId"
 
 	property var configBridge: null
+	property bool debugEnabled: false
 	property string secretStorePath: {
 		var resolved = String(Qt.resolvedUrl("../../scripts/secret_store.py"))
 		return resolved.indexOf("file://") === 0 ? resolved.slice(7) : resolved
@@ -23,6 +24,12 @@ Item {
 	property var accounts: []
 
 	signal accountUpdated(string accountId)
+
+	Logger {
+		id: logger
+		name: "eventcalendar"
+		showDebug: store.debugEnabled
+	}
 
 	ExecUtil {
 		id: secretExec
@@ -50,6 +57,7 @@ Item {
 	}
 
 	function syncFromConfig() {
+		debugEnabled = readConfig("debugging", false)
 		var nextAccountsValue = readConfig(accountsKey, "")
 		if (accountsConfigValue !== nextAccountsValue) {
 			accountsConfigValue = nextAccountsValue
@@ -308,6 +316,11 @@ Item {
 		}
 		accounts[index] = normalizeAccount(next)
 		if (patch.refreshToken !== undefined) {
+			logger.debugJSON("updateAccount.refreshToken", {
+				accountId: accountId,
+				action: patch.refreshToken ? "store" : "clear",
+				length: (patch.refreshToken || "").length,
+			})
 			storeRefreshToken(accountId, patch.refreshToken || "")
 		}
 		serialize()
@@ -472,6 +485,11 @@ Item {
 			return
 		}
 		var readyFile = generateTempFilePath("eventcalendar-secret-store")
+		logger.debugJSON("storeRefreshToken.start", {
+			accountId: accountId,
+			length: refreshToken.length,
+			readyFile: readyFile,
+		})
 		secretExec.execArgv([
 			"python3",
 			secretStorePath,
@@ -485,11 +503,24 @@ Item {
 			"--ready-file",
 			readyFile,
 		], function(cmd, exitCode, exitStatus, stdout, stderr) {
+			logger.debugJSON("storeRefreshToken.helperExit", {
+				accountId: accountId,
+				exitCode: exitCode,
+				exitStatus: exitStatus,
+				stdout: (stdout || "").trim(),
+				stderr: (stderr || "").trim(),
+			})
 			if (exitCode !== 0 && typeof callback === "function") {
 				callback((stderr || stdout || "").trim() || "Failed to store refresh token.")
 			}
 		})
 		waitForReadyFile(readyFile, function(err, payload) {
+			logger.debugJSON("storeRefreshToken.readyFile", {
+				accountId: accountId,
+				err: err || "",
+				hasPayload: !!payload,
+				port: payload && payload.port ? payload.port : 0,
+			})
 			if (err) {
 				if (typeof callback === "function") {
 					callback(err)
@@ -505,6 +536,13 @@ Item {
 					value: refreshToken,
 				},
 			}, function(postErr, data, xhr) {
+				logger.debugJSON("storeRefreshToken.postResult", {
+					accountId: accountId,
+					err: postErr || "",
+					status: xhr ? xhr.status : 0,
+					ok: !!(data && data.ok === true),
+					error: data && data.error ? data.error : "",
+				})
 				if (typeof callback === "function") {
 					if (postErr || !data || data.ok !== true) {
 						callback(postErr || (data && data.error) || "Failed to store refresh token.")
@@ -529,6 +567,13 @@ Item {
 			accountId,
 		], function(cmd, exitCode, exitStatus, stdout, stderr) {
 			var value = (stdout || "").replace(/\n+$/g, "")
+			logger.debugJSON("loadRefreshToken.result", {
+				accountId: accountId,
+				exitCode: exitCode,
+				exitStatus: exitStatus,
+				length: value.length,
+				stderr: (stderr || "").trim(),
+			})
 			if (exitCode !== 0 && !value) {
 				callback(null, "")
 				return
