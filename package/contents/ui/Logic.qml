@@ -192,6 +192,16 @@ Item {
 
 	//---
 	property int currentErrorType: ErrorType.UnknownError
+	function normalizedConfigValue(value) {
+		return value ? String(value).trim() : ""
+	}
+	function currentGoogleClientId() {
+		var customClientId = normalizedConfigValue(plasmoid.configuration.customClientId)
+		return customClientId || "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
+	}
+	function currentGoogleUsesPkce() {
+		return !normalizedConfigValue(plasmoid.configuration.customClientSecret)
+	}
 	function parseGoogleAccounts() {
 		var raw = plasmoid.configuration.googleAccounts
 		if (!raw) {
@@ -217,13 +227,14 @@ Item {
 		var accounts = parseGoogleAccounts()
 		for (var i = 0; i < accounts.length; i++) {
 			var account = accounts[i]
-			if (account.accessToken && account.sessionClientId && account.sessionClientId != plasmoid.configuration.latestClientId) {
+			if (account.sessionClientId
+				&& (account.sessionClientId !== currentGoogleClientId()
+					|| account.sessionUsesPkce !== currentGoogleUsesPkce())
+			) {
 				return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
 			}
 		}
-		if (plasmoid.configuration.accessToken && plasmoid.configuration.latestClientId != plasmoid.configuration.sessionClientId) {
-			return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
-		} else if (!plasmoid.configuration.accessToken && plasmoid.configuration.access_token) {
+		if (plasmoid.configuration.access_token) {
 			return i18n("Logged out of Google. Please login again.")
 		} else {
 			return ""

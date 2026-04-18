@@ -27,7 +27,12 @@ Item {
 		if (!activeAccount) {
 			return false
 		}
-		if (activeAccount.accessToken && activeAccount.sessionClientId != effectiveClientId) {
+		if (activeAccount.sessionClientId && activeAccount.sessionClientId != effectiveClientId) {
+			return true
+		}
+		if (activeAccount.sessionUsesPkce !== undefined
+			&& activeAccount.sessionUsesPkce !== (!effectiveClientSecret)
+		) {
 			return true
 		}
 		return false
@@ -47,8 +52,6 @@ Item {
 	readonly property string redirectUri: normalizedRedirectMode(redirectMode) === "hosted"
 		? hostedRedirectUri
 		: localRedirectUri
-	property string legacyClientId: "391436299960-k0s16nm589meovhoblpcquqgbbrena17.apps.googleusercontent.com"
-	property string legacyClientSecret: "Gdr_7lKIQuGBD4Up3MOiw-7i"
 	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
 	property var configBridge: null
 	function normalizedClientValue(value) {
@@ -131,44 +134,28 @@ Item {
 
 	function refreshClientCredentials() {
 		migrateDefaultClientIfNeeded()
-		var useDesktopClient = readConfig("useDesktopClient", false)
 		var customId = normalizedClientValue(readConfig("customClientId", ""))
 		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
-		var latestId = readConfig("latestClientId", "")
-		var latestSecret = readConfig("latestClientSecret", "")
-		if (customId || customSecret) {
+		if (customId) {
 			effectiveClientId = customId
 			effectiveClientSecret = customSecret
-		} else if (useDesktopClient) {
+		} else {
 			effectiveClientId = defaultClientId
 			effectiveClientSecret = ""
-		} else {
-			effectiveClientId = latestId
-			effectiveClientSecret = latestSecret
 		}
 	}
 
 	function migrateDefaultClientIfNeeded() {
-		var customId = normalizedClientValue(readConfig("customClientId", ""))
-		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
-		if (customId || customSecret) {
-			return
+		if (!normalizedClientValue(readConfig("customClientId", ""))
+			&& readConfig("useDesktopClient", false) !== true
+		) {
+			writeConfig("useDesktopClient", true)
 		}
-		var useDesktopClient = readConfig("useDesktopClient", false)
-		var latestId = readConfig("latestClientId", "")
-		var latestSecret = readConfig("latestClientSecret", "")
-		if (!latestId) {
-			writeConfig("latestClientId", legacyClientId)
-			writeConfig("latestClientSecret", legacyClientSecret)
-			return
+		if (readConfig("latestClientId", "") !== defaultClientId) {
+			writeConfig("latestClientId", defaultClientId)
 		}
-		if (!useDesktopClient && latestId === defaultClientId) {
-			writeConfig("latestClientId", legacyClientId)
-			writeConfig("latestClientSecret", legacyClientSecret)
-			return
-		}
-		if (latestId === legacyClientId && !latestSecret) {
-			writeConfig("latestClientSecret", legacyClientSecret)
+		if (readConfig("latestClientSecret", "")) {
+			writeConfig("latestClientSecret", "")
 		}
 	}
 
@@ -215,11 +202,6 @@ Item {
 	function prepareAuthorization() {
 		refreshClientCredentials()
 		var mode = normalizedRedirectMode(redirectMode)
-		if (mode === "hosted" && !effectiveClientSecret) {
-			writeConfig("googleRedirectMode", "local")
-			error("Hosted mode requires a client secret. Switching to localhost.")
-			mode = "local"
-		}
 		if (!effectiveClientSecret) {
 			resetPkce()
 		} else {
@@ -229,25 +211,8 @@ Item {
 		resetAuthState()
 		pendingAuthContext = buildAuthContext(mode)
 	}
-	function switchToLegacyClient() {
-		writeConfig("latestClientId", legacyClientId)
-		writeConfig("latestClientSecret", legacyClientSecret)
-		refreshClientCredentials()
-		prepareAuthorization()
-	}
 	function maybeUseLegacyForLocal() {
-		var ctx = currentAuthContext()
-		if (normalizedRedirectMode(redirectMode) !== "local") {
-			return false
-		}
-		if (ctx.clientSecret) {
-			return false
-		}
-		if (ctx.clientId !== defaultClientId) {
-			return false
-		}
-		switchToLegacyClient()
-		return true
+		return false
 	}
 	function clearAuthorizationContext() {
 		authState = ""
@@ -316,16 +281,22 @@ Item {
 		return trimmed
 	}
 
-	function fetchAccessToken(args) {
+	function fetchAccessToken(args, callback) {
 		var ctx = currentAuthContext()
 		var authCode = extractAuthorizationCode(args.authorizationCode)
 		if (!authCode) {
 			handleError('Invalid Google Authorization Code', null)
+			if (typeof callback === "function") {
+				callback('Invalid Google Authorization Code')
+			}
 			return
 		}
 		var url = 'https://oauth2.googleapis.com/token'
 		if (!ctx.pkceVerifier && !ctx.clientSecret) {
 			handleError('Missing PKCE verifier. Start login from the widget and try again.', null)
+			if (typeof callback === "function") {
+				callback('Missing PKCE verifier. Start login from the widget and try again.')
+			}
 			return
 		}
 		var payload = {
@@ -356,31 +327,31 @@ Item {
 			}
 			if (err) {
 				handleError(err, parsed || data)
+				if (typeof callback === "function") {
+					callback(err)
+				}
 				return
 			}
 			if (!parsed) {
 				handleError('Error parsing /oauth2/v4/token data as JSON', null)
+				if (typeof callback === "function") {
+					callback('Error parsing token response.')
+				}
 				return
 			}
 			if (parsed && parsed.error) {
-				var errorDesc = parsed.error_description || ""
-				var missingSecret = parsed.error === "invalid_request" && errorDesc.indexOf("client_secret") !== -1
-				if (missingSecret
-					&& !ctx.clientSecret
-					&& ctx.clientId === defaultClientId
-					&& normalizedRedirectMode(redirectMode) === "local"
-				) {
-					switchToLegacyClient()
-					error("Google requires a client secret for the built-in client. Switching to a fallback login. Please complete the login again.")
-					Qt.openUrlExternally(authorizationCodeUrl)
-					return
-				}
 				handleError(err, parsed)
+				if (typeof callback === "function") {
+					callback(parsed.error_description || parsed.error || err || 'Token exchange failed.')
+				}
 				return
 			}
 
 			// Ready
 			updateAccessToken(parsed, args.accountId)
+			if (typeof callback === "function") {
+				callback(null, parsed)
+			}
 		})
 	}
 
@@ -396,7 +367,7 @@ Item {
 		}
 		accountsStore.updateAccount(targetId, {
 			sessionClientId: effectiveClientId,
-			sessionClientSecret: effectiveClientSecret,
+			sessionUsesPkce: !effectiveClientSecret,
 			accessToken: data.access_token,
 			accessTokenType: data.token_type,
 			accessTokenExpiresAt: Date.now() + data.expires_in * 1000,

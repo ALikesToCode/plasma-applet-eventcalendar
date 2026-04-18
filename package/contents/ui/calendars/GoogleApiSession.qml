@@ -9,6 +9,7 @@ QtObject {
 	property string accountId: ""
 	property int accountRevision: 0
 	property var connectedStore: null
+	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
 
 	readonly property string accessToken: {
 		// Ensure refreshes propagate when account data updates.
@@ -25,11 +26,45 @@ QtObject {
 		return accountsStore.getAccount(accountId)
 	}
 
+	function readConfig(key, fallback) {
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var value = plasmoid.configuration[key]
+			return (value === undefined || value === null) ? fallback : value
+		}
+		return fallback
+	}
+
+	function normalizedClientValue(value) {
+		return value ? String(value).trim() : ""
+	}
+
+	function resolveRefreshClientSecret(account) {
+		if (!account || account.sessionUsesPkce === true) {
+			return ""
+		}
+		var customClientId = normalizedClientValue(readConfig("customClientId", ""))
+		var customClientSecret = normalizedClientValue(readConfig("customClientSecret", ""))
+		if (account.sessionClientId === customClientId) {
+			return customClientSecret
+		}
+		if (account.sessionClientId === defaultClientId) {
+			return ""
+		}
+		return ""
+	}
+
 	//--- Refresh Credentials
 	function checkAccessToken(callback) {
 		logger.debug('checkAccessToken')
 		var account = getAccount()
-		if (!account || !account.accessToken) {
+		if (!account) {
+			return callback('No access token.')
+		}
+		if (!account.accessToken && account.refreshToken) {
+			updateAccessToken(callback)
+			return
+		}
+		if (!account.accessToken) {
 			return callback('No access token.')
 		}
 		if (account.accessTokenExpiresAt < Date.now() + 5000) {
@@ -100,14 +135,18 @@ QtObject {
 	function fetchNewAccessToken(callback) {
 		logger.debug('fetchNewAccessToken')
 		var account = getAccount()
+		var refreshClientSecret = resolveRefreshClientSecret(account)
+		if (account && account.sessionUsesPkce !== true && !refreshClientSecret) {
+			return callback('Saved Google session requires a configured client secret. Please login again.')
+		}
 		var url = 'https://oauth2.googleapis.com/token'
 		var data = {
 			client_id: account ? account.sessionClientId : "",
 			refresh_token: account ? account.refreshToken : "",
 			grant_type: 'refresh_token',
 		}
-		if (account && account.sessionClientSecret) {
-			data.client_secret = account.sessionClientSecret
+		if (refreshClientSecret) {
+			data.client_secret = refreshClientSecret
 		}
 		Requests.post({
 			url: url,

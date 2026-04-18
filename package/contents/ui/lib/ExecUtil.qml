@@ -28,6 +28,10 @@ Plasma5Support.DataSource {
 	}
 
 	property var listeners: ({}) // Empty Map
+	property string argvRunnerPath: {
+		var resolved = Qt.resolvedUrl("../../scripts/run_argv.py")
+		return resolved.indexOf("file://") === 0 ? resolved.slice(7) : resolved
+	}
 
 	// Note that this has not gone under a security audit.
 	// You probably shouldn't trust 3rd party input.
@@ -53,10 +57,23 @@ Plasma5Support.DataSource {
 		return str.replace(/[\'\"]/g, '')
 	}
 
+	function encodeArgvPayload(argv) {
+		var payload = Qt.btoa(JSON.stringify(argv))
+		payload = payload.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+		return payload
+	}
+
+	function buildArrayCommand(argv) {
+		return [
+			"python3",
+			argvRunnerPath,
+			encodeArgvPayload(argv),
+		].map(wrapToken).join(" ")
+	}
+
 	function exec(cmd, callback) {
 		if (Array.isArray(cmd)) {
-			cmd = cmd.map(wrapToken)
-			cmd = cmd.join(' ')
+			cmd = buildArrayCommand(cmd)
 		}
 		if (typeof callback === 'function') {
 			if (listeners[cmd]) { // Our implementation only allows 1 callback per command.

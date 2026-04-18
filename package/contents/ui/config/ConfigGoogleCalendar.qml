@@ -150,7 +150,6 @@ ConfigPage {
 		autoLoginCancelled = false
 		autoLoginInProgress = true
 		googleLoginManager.prepareAuthorization()
-		googleLoginManager.maybeUseLegacyForLocal()
 		var authContext = googleLoginManager.currentAuthContext()
 		messageWidget.info(localRedirect
 			? i18n("Waiting for browser callback...")
@@ -158,22 +157,10 @@ ConfigPage {
 		var cmd = [
 			'python3',
 			localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py")),
-			'--client_id',
-			authContext.clientId,
 			'--listen_port',
 			'53682',
-			'--redirect_uri',
-			authContext.redirectUri,
 		]
-		if (authContext.clientSecret) {
-			cmd.push('--client_secret')
-			cmd.push(authContext.clientSecret)
-		}
 		debugOutput.text = "Attempting to run:\n" + JSON.stringify(redactCmd(cmd)) + "\n\n"
-		if (authContext.pkceVerifier) {
-			cmd.push('--code_verifier')
-			cmd.push(authContext.pkceVerifier)
-		}
 		if (authContext.state) {
 			cmd.push('--state')
 			cmd.push(authContext.state)
@@ -204,17 +191,29 @@ ConfigPage {
 			try {
 				data = JSON.parse(payload)
 			} catch (e) {
-				messageWidget.err(i18n("Auto login failed: invalid token data."))
+				messageWidget.err(i18n("Auto login failed: invalid callback data."))
 				return
 			}
 			if (data.error) {
 				messageWidget.err(i18n("Auto login failed: %1", data.error))
 				return
 			}
+			if (!data.authorization_code) {
+				messageWidget.err(i18n("Auto login failed: authorization code missing."))
+				return
+			}
 			authorizationCodeInput.text = ""
-			googleLoginManager.updateAccessToken(data, accountId)
-			messageWidget.success(i18n("Login complete."))
-			googleLoginManager.updateCalendarList()
+			googleLoginManager.fetchAccessToken({
+				authorizationCode: data.authorization_code,
+				accountId: accountId,
+			}, function(err) {
+				if (err) {
+					messageWidget.err(i18n("Auto login failed: %1", err))
+					return
+				}
+				messageWidget.success(i18n("Login complete."))
+				googleLoginManager.updateCalendarList()
+			})
 		})
 		if (openBrowser) {
 			Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
@@ -526,6 +525,13 @@ ConfigPage {
 							googleLoginManager.refreshClientCredentials()
 							googleLoginManager.fetchAccessToken({
 								authorizationCode: authorizationCodeInput.text,
+							}, function(err) {
+								if (err) {
+									messageWidget.err(i18n("Login failed: %1", err))
+									return
+								}
+								authorizationCodeInput.text = ""
+								messageWidget.success(i18n("Login complete."))
 							})
 					} else {
 						startAutoLogin("")
@@ -553,6 +559,13 @@ ConfigPage {
 							googleLoginManager.fetchAccessToken({
 								authorizationCode: authorizationCodeInput.text,
 								accountId: googleLoginManager.activeAccountId,
+						}, function(err) {
+							if (err) {
+								messageWidget.err(i18n("Login failed: %1", err))
+								return
+							}
+							authorizationCodeInput.text = ""
+							messageWidget.success(i18n("Login complete."))
 						})
 					} else {
 						startAutoLogin(googleLoginManager.activeAccountId)
@@ -824,17 +837,9 @@ ConfigPage {
 					var cmd = [
 						'python3',
 						localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py")),
-						'--client_id',
-						authContext.clientId,
 						'--listen_port',
 						'53682',
-						'--redirect_uri',
-						authContext.redirectUri,
 					]
-					if (authContext.clientSecret) {
-						cmd.push('--client_secret')
-						cmd.push(authContext.clientSecret)
-					}
 					debugOutput.text = "Manually starting listener...\nCommand: " + JSON.stringify(redactCmd(cmd)) + "\n"
 					if (authContext.state) {
 						cmd.push('--state')

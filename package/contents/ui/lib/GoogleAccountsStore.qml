@@ -1,6 +1,7 @@
 import QtQuick
 
 import "ConfigUtils.js" as ConfigUtils
+import "Requests.js" as Requests
 
 Item {
 	id: store
@@ -10,6 +11,10 @@ Item {
 	property string activeAccountKey: "googleActiveAccountId"
 
 	property var configBridge: null
+	property string secretStorePath: {
+		var resolved = Qt.resolvedUrl("../../scripts/secret_store.py")
+		return resolved.indexOf("file://") === 0 ? resolved.slice(7) : resolved
+	}
 
 	property var accountsConfigValue: ""
 	property string activeAccountId: ""
@@ -17,6 +22,10 @@ Item {
 	property var accounts: []
 
 	signal accountUpdated(string accountId)
+
+	ExecUtil {
+		id: secretExec
+	}
 
 	Component.onCompleted: {
 		if (!configBridge) {
@@ -52,6 +61,7 @@ Item {
 
 	function loadAccounts() {
 		var parsed = normalizeAccounts(parseAccounts(accountsConfigValue))
+		var needsSecretMigration = accountsNeedSecretMigration(parsed)
 		if (hasSameAccountIds(accounts, parsed)) {
 			for (var i = 0; i < parsed.length; i++) {
 				accounts[i] = parsed[i]
@@ -60,6 +70,11 @@ Item {
 		} else {
 			accounts = parsed
 		}
+		if (needsSecretMigration) {
+			migrateSecretsToSecretStore(parsed)
+			serialize()
+		}
+		loadStoredSecrets()
 		ensureActiveAccount()
 	}
 
@@ -144,6 +159,9 @@ Item {
 		normalized.label = account.label || ""
 		normalized.sessionClientId = account.sessionClientId || ""
 		normalized.sessionClientSecret = account.sessionClientSecret || ""
+		normalized.sessionUsesPkce = account.sessionUsesPkce !== undefined
+			? account.sessionUsesPkce === true
+			: !normalized.sessionClientSecret
 		normalized.accessToken = account.accessToken || ""
 		normalized.accessTokenType = account.accessTokenType || ""
 		normalized.accessTokenExpiresAt = account.accessTokenExpiresAt || 0
@@ -166,8 +184,25 @@ Item {
 		return []
 	}
 
+	function serializeAccount(account) {
+		return {
+			id: account.id,
+			label: account.label,
+			sessionClientId: account.sessionClientId,
+			sessionUsesPkce: account.sessionUsesPkce === true,
+			accessTokenType: account.accessTokenType,
+			accessTokenExpiresAt: account.accessTokenExpiresAt,
+			calendarList: account.calendarList,
+			calendarIdList: account.calendarIdList,
+			calendarSelectionInitialized: account.calendarSelectionInitialized === true,
+			tasklistList: account.tasklistList,
+			tasklistIdList: account.tasklistIdList,
+		}
+	}
+
 	function serialize() {
-		var payload = Qt.btoa(JSON.stringify(accounts || []))
+		var safeAccounts = (accounts || []).map(serializeAccount)
+		var payload = Qt.btoa(JSON.stringify(safeAccounts))
 		if (configBridge) {
 			accountsConfigValue = payload
 		}
@@ -207,6 +242,9 @@ Item {
 		var nextAccounts = accounts.slice(0)
 		nextAccounts.push(normalized)
 		accounts = nextAccounts
+		if (normalized.refreshToken) {
+			storeRefreshToken(normalized.id, normalized.refreshToken)
+		}
 		serialize()
 		if (!activeAccountId) {
 			setActiveAccountId(normalized.id)
@@ -228,6 +266,9 @@ Item {
 			next[patchKey] = patch[patchKey]
 		}
 		accounts[index] = normalizeAccount(next)
+		if (patch.refreshToken !== undefined) {
+			storeRefreshToken(accountId, patch.refreshToken || "")
+		}
 		serialize()
 		accountUpdated(accountId)
 	}
@@ -240,6 +281,7 @@ Item {
 		var nextAccounts = accounts.slice(0)
 		nextAccounts.splice(index, 1)
 		accounts = nextAccounts
+		clearRefreshToken(accountId)
 		serialize()
 		if (activeAccountId === accountId) {
 			setActiveAccountId(accounts.length ? accounts[0].id : "")
@@ -303,8 +345,202 @@ Item {
 		return ""
 	}
 
+	function accountsNeedSecretMigration(list) {
+		for (var i = 0; i < list.length; i++) {
+			var account = list[i]
+			if (account && (account.refreshToken || account.accessToken || account.sessionClientSecret)) {
+				return true
+			}
+		}
+		return false
+	}
+
+	function migrateSecretsToSecretStore(list) {
+		for (var i = 0; i < list.length; i++) {
+			var account = list[i]
+			if (account && account.refreshToken) {
+				storeRefreshToken(account.id, account.refreshToken)
+			}
+		}
+	}
+
+	function localFileUrl(path) {
+		return path.indexOf("file://") === 0 ? path : "file://" + path
+	}
+
+	function generateTempFilePath(prefix) {
+		var timePart = Date.now().toString(36)
+		var randPart = Math.floor(Math.random() * 1000000).toString(36)
+		return "/tmp/" + prefix + "-" + timePart + "-" + randPart + ".json"
+	}
+
+	function delay(delayTime, callback) {
+		var timer = Qt.createQmlObject("import QtQuick; Timer {}", store)
+		timer.interval = delayTime
+		timer.repeat = false
+		timer.triggered.connect(function() {
+			timer.destroy()
+			callback()
+		})
+		timer.start()
+	}
+
+	function waitForReadyFile(readyFile, callback, attemptsLeft) {
+		if (attemptsLeft === undefined) {
+			attemptsLeft = 50
+		}
+		Requests.getFile(localFileUrl(readyFile), function(err, data) {
+			var payload = null
+			if (!err && data) {
+				try {
+					payload = JSON.parse(data)
+				} catch (e) {
+					payload = null
+				}
+			}
+			if (payload && payload.port && payload.token) {
+				callback(null, payload)
+				return
+			}
+			if (attemptsLeft <= 0) {
+				callback("Timed out waiting for secret storage helper.")
+				return
+			}
+			delay(100, function() {
+				waitForReadyFile(readyFile, callback, attemptsLeft - 1)
+			})
+		})
+	}
+
+	function updateAccountSecret(accountId, patch) {
+		var index = getAccountIndex(accountId)
+		if (index < 0) {
+			return
+		}
+		var next = normalizeAccount(accounts[index])
+		for (var key in patch) {
+			next[key] = patch[key]
+		}
+		accounts[index] = normalizeAccount(next)
+		accountUpdated(accountId)
+	}
+
+	function storeRefreshToken(accountId, refreshToken, callback) {
+		if (!accountId) {
+			if (typeof callback === "function") {
+				callback("Missing account id.")
+			}
+			return
+		}
+		if (!refreshToken) {
+			clearRefreshToken(accountId, callback)
+			return
+		}
+		var readyFile = generateTempFilePath("eventcalendar-secret-store")
+		secretExec.exec([
+			"python3",
+			secretStorePath,
+			"store-once",
+			"--scope",
+			"google-account",
+			"--key",
+			"refresh_token",
+			"--account-id",
+			accountId,
+			"--ready-file",
+			readyFile,
+		], function(cmd, exitCode, exitStatus, stdout, stderr) {
+			if (exitCode !== 0 && typeof callback === "function") {
+				callback((stderr || stdout || "").trim() || "Failed to store refresh token.")
+			}
+		})
+		waitForReadyFile(readyFile, function(err, payload) {
+			if (err) {
+				if (typeof callback === "function") {
+					callback(err)
+				}
+				return
+			}
+			Requests.postJSON({
+				url: "http://127.0.0.1:" + payload.port + "/store",
+				headers: {
+					"Authorization": "Bearer " + payload.token,
+				},
+				data: {
+					value: refreshToken,
+				},
+			}, function(postErr, data, xhr) {
+				if (typeof callback === "function") {
+					if (postErr || !data || data.ok !== true) {
+						callback(postErr || (data && data.error) || "Failed to store refresh token.")
+					} else {
+						callback(null)
+					}
+				}
+			})
+		})
+	}
+
+	function loadRefreshToken(accountId, callback) {
+		secretExec.exec([
+			"python3",
+			secretStorePath,
+			"read",
+			"--scope",
+			"google-account",
+			"--key",
+			"refresh_token",
+			"--account-id",
+			accountId,
+		], function(cmd, exitCode, exitStatus, stdout, stderr) {
+			var value = (stdout || "").replace(/\n+$/g, "")
+			if (exitCode !== 0 && !value) {
+				callback(null, "")
+				return
+			}
+			callback(null, value)
+		})
+	}
+
+	function clearRefreshToken(accountId, callback) {
+		secretExec.exec([
+			"python3",
+			secretStorePath,
+			"clear",
+			"--scope",
+			"google-account",
+			"--key",
+			"refresh_token",
+			"--account-id",
+			accountId,
+		], function(cmd, exitCode, exitStatus, stdout, stderr) {
+			if (typeof callback === "function") {
+				if (exitCode === 0) {
+					callback(null)
+				} else {
+					callback((stderr || stdout || "").trim() || "Failed to clear refresh token.")
+				}
+			}
+		})
+	}
+
+	function loadStoredSecrets() {
+		for (var i = 0; i < accounts.length; i++) {
+			(function(accountId) {
+				loadRefreshToken(accountId, function(err, refreshToken) {
+					if (!err && refreshToken) {
+						updateAccountSecret(accountId, {
+							refreshToken: refreshToken,
+						})
+					}
+				})
+			})(accounts[i].id)
+		}
+	}
+
 	function migrateLegacyAccountIfNeeded() {
 		if (accounts.length > 0) {
+			clearLegacyStandaloneConfig()
 			return
 		}
 		if (!readConfig("accessToken", "") && !readConfig("refreshToken", "")) {
@@ -330,5 +566,19 @@ Item {
 		if (account.id) {
 			setActiveAccountId(account.id)
 		}
+		clearLegacyStandaloneConfig()
+	}
+
+	function clearLegacyStandaloneConfig() {
+		writeConfig("sessionClientId", "")
+		writeConfig("sessionClientSecret", "")
+		writeConfig("accessToken", "")
+		writeConfig("accessTokenType", "")
+		writeConfig("accessTokenExpiresAt", 0)
+		writeConfig("refreshToken", "")
+		writeConfig("calendarList", "")
+		writeConfig("calendarIdList", "")
+		writeConfig("tasklistList", "")
+		writeConfig("tasklistIdList", "")
 	}
 }
