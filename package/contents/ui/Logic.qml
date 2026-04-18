@@ -1,6 +1,7 @@
 import QtQuick
 import "./ErrorType.js" as ErrorType
 import "./weather/WeatherApi.js" as WeatherApi
+import "./lib/SafeConfig.js" as SafeConfig
 
 Item {
 	readonly property Item popup: root.fullRepresentationItem
@@ -210,16 +211,10 @@ Item {
 		if (Array.isArray(raw)) {
 			return raw
 		}
-		var decoded = raw
 		try {
-			decoded = Qt.atob(raw)
-		} catch (e) {
-			decoded = raw
-		}
-		try {
-			var parsed = JSON.parse(decoded)
+			var parsed = SafeConfig.parseBase64Json(raw, [])
 			return Array.isArray(parsed) ? parsed : []
-		} catch (e2) {
+		} catch (e) {
 			return []
 		}
 	}

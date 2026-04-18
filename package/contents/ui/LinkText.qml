@@ -5,6 +5,13 @@ import org.kde.kirigami as Kirigami
 import "Shared.js" as Shared
 
 Label {
+	function plainText() {
+		return (text || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+	}
+
+	Accessible.role: Accessible.StaticText
+	Accessible.name: plainText()
+
 	linkColor: Kirigami.Theme.highlightColor
 	onLinkActivated: Shared.openExternalUrl(link)
 

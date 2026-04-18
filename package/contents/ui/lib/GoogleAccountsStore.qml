@@ -2,6 +2,7 @@ import QtQuick
 
 import "ConfigUtils.js" as ConfigUtils
 import "Requests.js" as Requests
+import "SafeConfig.js" as SafeConfig
 
 Item {
 	id: store
@@ -125,16 +126,10 @@ Item {
 		if (typeof value === "object") {
 			return []
 		}
-		var decoded = value
 		try {
-			decoded = Qt.atob(value)
-		} catch (e) {
-			decoded = value
-		}
-		try {
-			var parsed = JSON.parse(decoded)
+			var parsed = SafeConfig.parseBase64Json(value, [])
 			return Array.isArray(parsed) ? parsed : []
-		} catch (e2) {
+		} catch (e) {
 			return []
 		}
 	}
@@ -308,16 +303,10 @@ Item {
 		if (!value) {
 			return []
 		}
-		var decoded = value
 		try {
-			decoded = Qt.atob(value)
-		} catch (e) {
-			decoded = value
-		}
-		try {
-			var parsed = JSON.parse(decoded)
+			var parsed = SafeConfig.parseBase64Json(value, [])
 			return Array.isArray(parsed) ? parsed : []
-		} catch (e2) {
+		} catch (e) {
 			return []
 		}
 	}
