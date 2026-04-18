@@ -13,6 +13,25 @@ LinkRect {
 	readonly property int eventItemIndex: index
 	Layout.fillWidth: true
 	implicitHeight: contents.implicitHeight
+	activeFocusOnTab: enabled
+	Accessible.role: Accessible.Button
+	Accessible.name: model.summary || i18n("Calendar event")
+	Accessible.description: accessibleDescription()
+	Accessible.focusable: activeFocusOnTab
+	Accessible.focused: activeFocus
+	Accessible.onPressAction: activateEvent()
+	Keys.onReturnPressed: function(event) {
+		activateEvent()
+		event.accepted = true
+	}
+	Keys.onEnterPressed: function(event) {
+		activateEvent()
+		event.accepted = true
+	}
+	Keys.onSpacePressed: function(event) {
+		activateEvent()
+		event.accepted = true
+	}
 
 	property bool eventItemInProgress: false
 	property bool eventItemInPast: false
@@ -48,12 +67,32 @@ LinkRect {
 
 	property alias isEditing: editEventForm.active
 	enabled: !isEditing
+	function activateEvent() {
+		if (!enabled) {
+			return
+		}
+		Shared.openExternalUrl(model.htmlLink)
+	}
+	function accessibleDescription() {
+		var parts = []
+		if (eventTimestamp) {
+			parts.push(eventTimestamp)
+		}
+		if (model.location) {
+			parts.push(model.location)
+		}
+		if (eventItemInProgress) {
+			parts.push(i18n("In progress"))
+		}
+		parts.push(i18n("Press to open the event in the browser"))
+		return parts.join(". ")
+	}
 
 	readonly property string eventTimestamp: LocaleFuncs.formatEventDuration(model, {
 		relativeDate: agendaItemDate,
 		clock24h: appletConfig.clock24h,
 	})
-	readonly property bool isAllDay: eventTimestamp === i18n("All Day") // TODO: Remove string comparison.
+	readonly property bool isAllDay: !!model.start && !!model.start.date && !model.start.dateTime
 	readonly property bool isCondensed: plasmoid.configuration.agendaCondensedAllDayEvent && isAllDay
 
 
@@ -252,7 +291,6 @@ LinkRect {
 	}
 
 	onLeftClicked: {
-		// logger.log('agendaItem.event.leftClicked', model.startDateTime, mouse)
 		if (false) {
 			var event = events.get(eventItemIndex)
 			logger.logJSON("event", event)
@@ -260,8 +298,7 @@ LinkRect {
 			logger.logJSON("calendar", calendar)
 			upcomingEvents.sendEventStartingNotification(model)
 		} else {
-			// agenda_event_clicked == "browser_viewevent"
-			Shared.openExternalUrl(model.htmlLink)
+			activateEvent()
 		}
 	}
 

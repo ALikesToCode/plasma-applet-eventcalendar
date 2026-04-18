@@ -4,6 +4,13 @@ import org.kde.plasma.core 2.0 as PlasmaCore
 import "Shared.js" as Shared
 
 Label {
+	function plainText() {
+		return (text || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+	}
+
+	Accessible.role: Accessible.StaticText
+	Accessible.name: plainText()
+
 	linkColor: PlasmaCore.ColorScope.highlightColor
 	onLinkActivated: Shared.openExternalUrl(link)
 	MouseArea {

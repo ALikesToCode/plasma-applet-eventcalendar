@@ -36,6 +36,16 @@ LinkRect {
 
 	property alias isEditing: editTaskForm.active
 	enabled: !isEditing
+	function taskAccessibleDescription() {
+		var parts = []
+		if (eventTimestamp) {
+			parts.push(i18n("Due %1", eventTimestamp))
+		}
+		if (taskIsOverdue) {
+			parts.push(i18n("Overdue"))
+		}
+		return parts.join(". ")
+	}
 
 	readonly property string eventTimestamp: {
 		if (model.due) {
@@ -67,6 +77,11 @@ LinkRect {
 			Layout.alignment: Qt.AlignTop
 			visible: !editTaskForm.visible
 			checked: model.isCompleted
+			activeFocusOnTab: visible && enabled
+			Accessible.name: model.title || i18n("Task")
+			Accessible.description: taskAccessibleDescription()
+			Accessible.checkable: true
+			Accessible.checked: checked
 
 			onToggled: {
 				var task = tasks.get(taskItemIndex)

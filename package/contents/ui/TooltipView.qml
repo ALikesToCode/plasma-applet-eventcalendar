@@ -19,22 +19,37 @@ Item {
 	property var dataSource: timeModel.dataSource
 	readonly property string timezoneTimeFormat: Qt.locale().timeFormat(Locale.ShortFormat)
 
+	function sanitizeZoneId(zone) {
+		return ("" + zone).replace(/[^A-Za-z0-9_\/+\-]/g, '')
+	}
+
+	function zoneData(zone) {
+		var safeZone = sanitizeZoneId(zone)
+		var data = dataSource && dataSource.data ? dataSource.data[safeZone] : null
+		return data || null
+	}
+
 	function timeForZone(zone) {
 		var compactRepresentationItem = plasmoid.compactRepresentationItem
 		if (!compactRepresentationItem) {
 			return ""
 		}
+		var zoneInfo = zoneData(zone)
+		var localInfo = zoneData("Local")
+		if (!zoneInfo || !localInfo || !zoneInfo["DateTime"] || typeof zoneInfo["Offset"] === "undefined") {
+			return ""
+		}
 
 		// get the time for the given timezone from the dataengine
-		var now = dataSource.data[zone]["DateTime"]
+		var now = zoneInfo["DateTime"]
 		// get current UTC time
 		var msUTC = now.getTime() + (now.getTimezoneOffset() * 60000)
 		// add the dataengine TZ offset to it
-		var dateTime = new Date(msUTC + (dataSource.data[zone]["Offset"] * 1000))
+		var dateTime = new Date(msUTC + (zoneInfo["Offset"] * 1000))
 
 		var formattedTime = Qt.formatTime(dateTime, timezoneTimeFormat)
 
-		if (dateTime.getDay() != dataSource.data["Local"]["DateTime"].getDay()) {
+		if (dateTime.getDay() != localInfo["DateTime"].getDay()) {
 			formattedTime += " (" + Qt.formatDate(dateTime, Locale.ShortFormat) + ")"
 		}
 
@@ -42,11 +57,15 @@ Item {
 	}
 
 	function nameForZone(zone) {
+		var zoneInfo = zoneData(zone)
 		if (plasmoid.configuration.displayTimezoneAsCode) {
-			return dataSource.data[zone]["Timezone Abbreviation"]
-		} else {
-			return DigitalClock.TimezonesI18n.i18nCity(dataSource.data[zone]["Timezone City"])
+			return zoneInfo && zoneInfo["Timezone Abbreviation"] ? zoneInfo["Timezone Abbreviation"] : ""
 		}
+		if (zoneInfo && zoneInfo["Timezone City"]) {
+			return DigitalClock.TimezonesI18n.i18nCity(zoneInfo["Timezone City"])
+		}
+		var parts = sanitizeZoneId(zone).split('/')
+		return parts[parts.length - 1].replace(/_/g, ' ')
 	}
 
 	ColumnLayout {
