@@ -585,12 +585,14 @@ ConfigPage {
 				model: calendarsModel
 				delegate: CheckDelegate {
 					id: calendarRow
-					width: parent.width
+					Layout.fillWidth: true
 					implicitHeight: Kirigami.Units.gridUnit * 2.5
 					checkable: true
 					hoverEnabled: true
 					highlighted: hovered
 					padding: Kirigami.Units.smallSpacing
+					leftPadding: padding + indicator.width + spacing
+					rightPadding: padding
 					checked: model.show
 					onToggled: {
 						calendarsModel.setProperty(index, 'show', checked)
@@ -689,12 +691,14 @@ ConfigPage {
 				model: tasklistsModel
 				delegate: CheckDelegate {
 					id: tasklistRow
-					width: parent.width
+					Layout.fillWidth: true
 					implicitHeight: Kirigami.Units.gridUnit * 2.5
 					checkable: true
 					hoverEnabled: true
 					highlighted: hovered
 					padding: Kirigami.Units.smallSpacing
+					leftPadding: padding + indicator.width + spacing
+					rightPadding: padding
 					checked: model.show
 					onToggled: {
 						tasklistsModel.setProperty(index, 'show', checked)
