@@ -46,7 +46,7 @@ RowLayout {
 		}
 		// onValueChanged: plasmoid.configuration[configKey] = value
 		onValueChanged: serializeTimer.start()
-		to: 2147483647
+		to: 100000
 	}
 
 	Label {

@@ -24,12 +24,14 @@ ConfigPage {
 
 	ConfigSection {
 		RowLayout {
-			visible: page.configBridge.read("debugging", false) && weatherService.value === 'OpenWeatherMap'
+			visible: weatherService.value === 'OpenWeatherMap'
 			Label {
 				text: i18n("API App Id:")
 			}
 			ConfigString {
 				configKey: 'openWeatherMapAppId'
+				echoMode: TextInput.Password
+				placeholderText: i18n("Required for OpenWeatherMap")
 			}
 		}
 

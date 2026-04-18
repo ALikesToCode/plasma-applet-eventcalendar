@@ -25,7 +25,7 @@ RowLayout {
 	}
 	property int decimals: 0
 	property int horizontalAlignment: Text.AlignLeft
-	property real maximumValue: 2147483647
+	property real maximumValue: 100000
 	property real minimumValue: 0
 	property string prefix: ""
 	property real stepSize: 1
@@ -110,6 +110,7 @@ RowLayout {
 	}
 
 	readonly property real _scale: Math.pow(10, _decimals)
+	readonly property int _maxScaledValue: 2147483647
 
 	function _fractionDigits(numberValue) {
 		var text = String(numberValue)
@@ -118,7 +119,8 @@ RowLayout {
 	}
 
 	function _toScaled(numberValue) {
-		return Math.round(numberValue * _scale)
+		var scaled = Math.round(numberValue * _scale)
+		return Math.max(-_maxScaledValue, Math.min(_maxScaledValue, scaled))
 	}
 
 	function _fromScaled(numberValue) {

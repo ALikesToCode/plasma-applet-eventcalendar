@@ -368,6 +368,19 @@ MouseArea {
 				// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/calendar/daysmodel.h
 				var items = data.items
 				var itemIndex = 0
+				var dayCount = monthView.daysModel.count
+				if (!dayCount) {
+					return
+				}
+				var firstDayData = monthView.daysModel.get(0)
+				var firstDayDate = new Date(firstDayData.yearNumber, firstDayData.monthNumber - 1, firstDayData.dayNumber)
+				function dayOffsetFromFirst(date) {
+					var millisPerDay = 24 * 60 * 60 * 1000
+					return Math.floor((date.getTime() - firstDayDate.getTime()) / millisPerDay)
+				}
+				function clampDayIndex(index) {
+					return Math.max(0, Math.min(dayCount - 1, index))
+				}
 
 				function processChunk() {
 					if (generation !== monthView.parseGeneration) {
@@ -382,19 +395,25 @@ MouseArea {
 							// All day events end at midnight which is technically the next day.
 							eventItemEndDate.setDate(eventItemEndDate.getDate() - 1)
 						}
-						// logger.debug(eventItemStartDate, eventItemEndDate)
-						for (var dayIndex = 0; dayIndex < monthView.daysModel.count; dayIndex++) {
-							var dayData = monthView.daysModel.get(dayIndex)
-							var dayDataDate = new Date(dayData.yearNumber, dayData.monthNumber - 1, dayData.dayNumber)
-							if (eventItemStartDate <= dayDataDate && dayDataDate <= eventItemEndDate) {
-								// logger.debug('\t', dayDataDate)
-								monthView.daysModel.setProperty(dayIndex, 'showEventBadge', true)
-								var events = dayData.events || []
-								events.append(eventItem)
-								monthView.daysModel.setProperty(dayIndex, 'events', events)
-							} else if (eventItemEndDate < dayDataDate) {
-								break
+						var rawStartIndex = dayOffsetFromFirst(eventItemStartDate)
+						var rawEndIndex = dayOffsetFromFirst(eventItemEndDate)
+						if (rawEndIndex < 0 || rawStartIndex >= dayCount) {
+							continue
+						}
+						var startIndex = clampDayIndex(rawStartIndex)
+						var endIndex = clampDayIndex(rawEndIndex)
+						if (endIndex < startIndex) {
+							continue
+						}
+						for (var dayIndex = startIndex; dayIndex <= endIndex; dayIndex++) {
+							if (generation !== monthView.parseGeneration) {
+								return
 							}
+							var dayData = monthView.daysModel.get(dayIndex)
+							monthView.daysModel.setProperty(dayIndex, 'showEventBadge', true)
+							var events = dayData.events || []
+							events.append(eventItem)
+							monthView.daysModel.setProperty(dayIndex, 'events', events)
 						}
 					}
 

@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import ipaddress
 import json
+import os
 import socket
 import urllib.parse
 import urllib.request
@@ -14,6 +15,9 @@ MAX_ICS_BYTES = 10 * 1024 * 1024
 REQUEST_TIMEOUT = 15
 ALLOWED_URL_SCHEMES = {"file", "http", "https"}
 SAFE_REMOTE_SCHEMES = {"http", "https"}
+LOCAL_ICS_DIR = os.path.realpath(
+	os.path.expanduser("~/.local/share/plasma_org.kde.plasma.eventcalendar")
+)
 
 
 def debug(*args):
@@ -148,6 +152,16 @@ def parse_calendar_url(raw_url):
 	if scheme == "file":
 		if parsed.netloc not in ("", "localhost"):
 			raise ValueError("Only local file calendar URLs are supported")
+		path = os.path.realpath(urllib.request.url2pathname(parsed.path or ""))
+		if not path:
+			raise ValueError("Calendar file path is empty")
+		if not path.lower().endswith(".ics"):
+			raise ValueError("Local calendar files must use the .ics extension")
+		try:
+			if os.path.commonpath([LOCAL_ICS_DIR, path]) != LOCAL_ICS_DIR:
+				raise ValueError("Local calendar files must stay inside the applet data directory")
+		except ValueError:
+			raise ValueError("Local calendar file path is invalid")
 		return parsed
 
 	validate_remote_host(parsed)
