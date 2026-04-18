@@ -35,6 +35,12 @@ ConfigPage {
 		return path.indexOf("file://") === 0 ? path.slice(7) : path
 	}
 
+	function redactCmd(cmd) {
+		return cmd.map(function(arg, i) {
+			return (i > 0 && cmd[i - 1] === '--client_secret') ? '***' : arg
+		})
+	}
+
 	function sortByKey(key, a, b){
 		if (typeof a[key] === "string") {
 			return a[key].toLowerCase().localeCompare(b[key].toLowerCase())
@@ -163,14 +169,11 @@ ConfigPage {
 			cmd.push('--client_secret')
 			cmd.push(authContext.clientSecret)
 		}
-		debugOutput.text = "Attempting to run:\n" + JSON.stringify(cmd) + "\n\n"
+		debugOutput.text = "Attempting to run:\n" + JSON.stringify(redactCmd(cmd)) + "\n\n"
 		if (authContext.pkceVerifier) {
 			cmd.push('--code_verifier')
 			cmd.push(authContext.pkceVerifier)
 		}
-		var cmdStr = JSON.stringify(cmd)
-		console.log('google_redirect.py command:', cmdStr)
-		// debugOutput.text = "Running:\n" + cmdStr + "\n\n"
 		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (autoLoginCancelled) {
 				autoLoginInProgress = false
@@ -824,7 +827,7 @@ ConfigPage {
 						cmd.push('--client_secret')
 						cmd.push(authContext.clientSecret)
 					}
-					debugOutput.text = "Manually starting listener...\nCommand: " + JSON.stringify(cmd) + "\n"
+					debugOutput.text = "Manually starting listener...\nCommand: " + JSON.stringify(redactCmd(cmd)) + "\n"
 					callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 						debugOutput.text += "Listener Finished.\nExit: " + exitCode + "\nStdout: " + stdout + "\nStderr: " + stderr + "\n"
 					})

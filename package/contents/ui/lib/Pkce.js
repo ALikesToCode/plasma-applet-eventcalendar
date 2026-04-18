@@ -1,18 +1,13 @@
 .pragma library
 
-function generateVerifier(length) {
-    var size = length || 64
-    if (size < 43) {
-        size = 43
-    } else if (size > 128) {
-        size = 128
-    }
-    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
-    var result = ""
-    for (var i = 0; i < size; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return result
+// Qt.createUuid() uses a CSPRNG on supported platforms: /dev/urandom
+// on Linux, CryptGenRandom on Windows, arc4random on macOS.
+// Three UUIDv4s give 366 bits of entropy (3 x 122), exceeding
+// RFC 7636's recommended 256 bits. Result is 96 hex chars, within
+// the spec's 43-128 char range.
+function generateVerifier() {
+    return (Qt.createUuid() + Qt.createUuid() + Qt.createUuid())
+        .replace(/[{}\-]/g, '')
 }
 
 function base64UrlEncode(bytes) {

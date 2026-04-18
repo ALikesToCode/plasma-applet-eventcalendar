@@ -20,7 +20,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(levelname)s: %(message)s'
 )
-logging.info("Script started with args: %s", sys.argv)
+logging.info("Script started")
 
 client_id = client_secret = listen_port = redirect_uri = code_verifier = None
 exit_code = 0
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     redirect_uri = args.redirect_uri or "http://127.0.0.1:{}/".format(listen_port)
     code_verifier = args.code_verifier
 
-    server_address = ("", listen_port)
+    server_address = ("127.0.0.1", listen_port)
     try:
         httpd = HTTPServer(server_address, OAuthRedirectHandler)
         logging.info("Server started on port %s", listen_port)
