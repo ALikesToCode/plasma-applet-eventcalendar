@@ -29,9 +29,7 @@ CalendarManager {
 	}
 
 	function fetchGoogleAccountData() {
-		if (session.accessToken) {
-			fetchGoogleAccountTasks(tasklistIdList)
-		}
+		fetchGoogleAccountTasks(tasklistIdList)
 	}
 
 	//--- Utils
@@ -67,7 +65,7 @@ CalendarManager {
 	//-------------------------
 	// CalendarManager
 	function getCalendarList() {
-		if (session.accessToken && plasmoid.configuration.tasklistList) {
+		if (plasmoid.configuration.tasklistList) {
 			var tasklistList
 			try {
 				tasklistList = SafeConfig.parseBase64Json(plasmoid.configuration.tasklistList, [])

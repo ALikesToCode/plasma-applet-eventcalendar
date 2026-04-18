@@ -52,9 +52,6 @@ CalendarManager {
 	}
 
 	function fetchGoogleAccountData() {
-		if (!session.accessToken) {
-			return
-		}
 		var storedCalendarList = getCalendarList()
 		if (!storedCalendarList.length) {
 			fetchGoogleCalendarList()
@@ -666,7 +663,7 @@ CalendarManager {
 
 	//--- CalendarManager
 	function getCalendarList() {
-		if (session.accessToken && plasmoid.configuration.calendarList) {
+		if (plasmoid.configuration.calendarList) {
 			var calendarList
 			try {
 				calendarList = SafeConfig.parseBase64Json(plasmoid.configuration.calendarList, [])

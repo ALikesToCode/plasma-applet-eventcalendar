@@ -310,6 +310,25 @@ Item {
 		})
 	}
 
+	function loadRefreshToken(callback) {
+		executable.execArgv([
+			"python3",
+			secretStorePath,
+			"read",
+			"--scope",
+			"google-session",
+			"--key",
+			"refresh_token",
+		], function(cmd, exitCode, exitStatus, stdout, stderr) {
+			var value = (stdout || "").replace(/\n+$/g, "")
+			if (exitCode !== 0 && !value) {
+				callback(null, "")
+				return
+			}
+			callback(null, value)
+		})
+	}
+
 	function describeAuthError(data, fallbackErr) {
 		var errorDescription = data && data.error_description
 			? String(data.error_description)
@@ -422,7 +441,17 @@ Item {
 				handleError(describeAuthError(parsed, err), null)
 				return
 			}
-			updateAccessToken(parsed)
+			if (parsed.refresh_token) {
+				updateAccessToken(parsed)
+				return
+			}
+			loadRefreshToken(function(refreshErr, refreshToken) {
+				if (!refreshErr && refreshToken) {
+					updateAccessToken(parsed)
+					return
+				}
+				handleError("Google login completed, but no refresh token was returned. Revoke the app's Google access and login again.", null)
+			})
 		})
 	}
 
