@@ -387,7 +387,7 @@ CalendarManager {
 			return
 		}
 		var akonadiCalendarId = calendarId.substr('plasma_Events_'.length)
-		if (isNaN(parseInt(akonadiCalendarId, 10))) {
+		if (!/^[0-9]+$/.test(akonadiCalendarId)) {
 			logger.log('Could not parse a proper akonadiCalendarId=', akonadiCalendarId, ' from calendarId=', calendarId)
 			return
 		}

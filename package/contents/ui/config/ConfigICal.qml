@@ -101,7 +101,15 @@ ConfigPage {
 							id: calendarUrlField
 							Layout.fillWidth: true
 							text: model.url
-							onTextChanged: calendarsModel.setItemProperty(index, 'url', text)
+							placeholderText: i18n("Absolute file path or http(s):// URL")
+							validator: RegExpValidator {
+								regExp: /^(|https?:\/\/.+|file:\/\/.+|\/.+)$/
+							}
+							onTextChanged: {
+								if (text === '' || acceptableInput) {
+									calendarsModel.setItemProperty(index, 'url', text.trim())
+								}
+							}
 						}
 
 						Button {

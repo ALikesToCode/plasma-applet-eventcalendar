@@ -145,11 +145,9 @@ LinkRect {
 				Layout.fillWidth: true
 				wrapMode: Text.Wrap // See warning at taskTitle.wrapMode
 
-					linkColor: Kirigami.Theme.highlightColor
-					onLinkActivated: function(link) {
-						Qt.openUrlExternally(link)
-					}
-					MouseArea {
+				linkColor: Kirigami.Theme.highlightColor
+				onLinkActivated: Shared.openExternalUrl(link)
+				MouseArea {
 					anchors.fill: parent
 					acceptedButtons: Qt.NoButton // we don't want to eat clicks on the Text
 					cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -220,7 +218,7 @@ LinkRect {
 		menuItem.icon.name = "internet-web-browser"
 		menuItem.enabled = !!task.htmlLink
 		menuItem.clicked.connect(function() {
-			Qt.openUrlExternally(task.htmlLink)
+			Shared.openExternalUrl(task.htmlLink)
 		})
 		contextMenu.addMenuItem(menuItem)
 	}

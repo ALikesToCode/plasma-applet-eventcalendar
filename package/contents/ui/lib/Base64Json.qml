@@ -1,6 +1,7 @@
 import QtQuick
 
 import "ConfigUtils.js" as ConfigUtils
+import "SafeConfig.js" as SafeConfig
 
 QtObject {
 	property string configKey
@@ -19,6 +20,7 @@ QtObject {
 		}
 		return ""
 	}
+	property var defaultValue: []
 	property var value: null
 
 	onConfigValueChanged: deserialize()
@@ -27,35 +29,34 @@ QtObject {
 
 	function deserialize() {
 		if (configValue === "" || configValue === undefined || configValue === null) {
-			value = []
+			value = defaultValue
 			return
 		}
 		if (typeof configValue !== "string") {
-			value = configValue || []
+			value = configValue || defaultValue
 			return
 		}
-		var decoded = configValue
 		try {
-			decoded = Qt.atob(configValue)
-		} catch (e) {
-			decoded = configValue
-		}
-		try {
-			value = JSON.parse(decoded)
-		} catch (e2) {
-			value = []
+			value = SafeConfig.parseBase64Json(configValue, defaultValue)
+		} catch (err) {
+			console.warn("[eventcalendar] Failed to parse base64 config", configKey, err)
+			value = defaultValue
 		}
 	}
 
 	function serialize() {
-		var v = Qt.btoa(JSON.stringify(value))
-		if (configBridge) {
-			configBridge.write(configKey, v)
-		} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
-			plasmoid.configuration[configKey] = v
-			if (typeof kcm !== "undefined") {
-				kcm.needsSave = true
+		try {
+			var serializedValue = SafeConfig.serializeBase64Json(value)
+			if (configBridge) {
+				configBridge.write(configKey, serializedValue)
+			} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+				plasmoid.configuration[configKey] = serializedValue
+				if (typeof kcm !== "undefined") {
+					kcm.needsSave = true
+				}
 			}
+		} catch (err) {
+			console.warn("[eventcalendar] Failed to serialize base64 config", configKey, err)
 		}
 	}
 }

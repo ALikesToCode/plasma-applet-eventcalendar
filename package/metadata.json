@@ -23,7 +23,7 @@
 		"Description[sv]": "Plasmoid för kalender och agenda med väder som synkroniseras med Google Kalender.",
 		"Icon": "view-calendar",
 		"Id": "org.kde.plasma.eventcalendar",
-		"License": "GPL",
+		"License": "GPL-2.0-or-later",
 		"Name": "Event Calendar",
 		"Name[da]": "Begivenhedskalender",
 		"Name[de]": "Ereigniskalender",

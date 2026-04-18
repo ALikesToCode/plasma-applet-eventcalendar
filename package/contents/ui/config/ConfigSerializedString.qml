@@ -1,10 +1,11 @@
 import QtQuick
 
 import "../lib/ConfigUtils.js" as ConfigUtils
+import "../lib/SafeConfig.js" as SafeConfig
 
 QtObject {
 	id: obj
-	property string configKey: ''
+	property string configKey: ""
 	property var configBridge: null
 	readonly property string configValue: {
 		if (!configKey) {
@@ -26,19 +27,28 @@ QtObject {
 	Component.onCompleted: configBridge = ConfigUtils.findBridge(obj)
 
 	function serialize() {
-		var payload = Qt.btoa(JSON.stringify(value))
-		if (configBridge) {
-			configBridge.write(configKey, payload)
-		} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
-			plasmoid.configuration[configKey] = payload
-			if (typeof kcm !== "undefined") {
-				kcm.needsSave = true
+		try {
+			var payload = SafeConfig.serializeBase64Json(value)
+			if (configBridge) {
+				configBridge.write(configKey, payload)
+			} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+				plasmoid.configuration[configKey] = payload
+				if (typeof kcm !== "undefined") {
+					kcm.needsSave = true
+				}
 			}
+		} catch (err) {
+			console.warn("[eventcalendar] Failed to serialize config", configKey, err)
 		}
 	}
 
 	function deserialize() {
-		value = configValue ? JSON.parse(Qt.atob(configValue)) : defaultValue
+		try {
+			value = SafeConfig.parseBase64Json(configValue, defaultValue)
+		} catch (err) {
+			console.warn("[eventcalendar] Failed to parse config", configKey, err)
+			value = defaultValue
+		}
 	}
 
 	onConfigKeyChanged: deserialize()

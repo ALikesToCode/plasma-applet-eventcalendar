@@ -2,6 +2,7 @@
 
 .import "OpenWeatherMap.js" as OpenWeatherMap
 .import "WeatherCanada.js" as WeatherCanada
+.import "../Shared.js" as Shared
 
 /* How many hours each data point represents */
 function getDataPointDuration(config) {
@@ -33,7 +34,7 @@ function openCityUrl(config) {
 	if (weatherService == 'OpenWeatherMap') {
 		OpenWeatherMap.openOpenWeatherMapCityUrl(config.openWeatherMapCityId)
 	} else if (weatherService == 'WeatherCanada') {
-		Qt.openUrlExternally(WeatherCanada.getCityUrl(config.weatherCanadaCityId))
+		Shared.openExternalUrl(WeatherCanada.getCityUrl(config.weatherCanadaCityId))
 	}
 }
 
@@ -117,7 +118,6 @@ var weatherIconBySeverity = [
 	'weather-few-clouds',
 	'weather-clouds-night',
 	'weather-clouds',
-	'weather-overcast',
 	'weather-fog',
 	'weather-overcast',
 	'weather-showers-scattered-night',

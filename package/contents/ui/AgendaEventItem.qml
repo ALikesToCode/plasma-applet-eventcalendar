@@ -179,11 +179,9 @@ LinkRect {
 				maximumLineCount: plasmoid.configuration.agendaMaxDescriptionLines
 				elide: Text.ElideRight
 
-					linkColor: Kirigami.Theme.highlightColor
-					onLinkActivated: function(link) {
-						Qt.openUrlExternally(link)
-					}
-					MouseArea {
+				linkColor: Kirigami.Theme.highlightColor
+				onLinkActivated: Shared.openExternalUrl(link)
+				MouseArea {
 					anchors.fill: parent
 					acceptedButtons: Qt.NoButton // we don't want to eat clicks on the Text
 					cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -227,7 +225,7 @@ LinkRect {
 						}
 					}
 					icon.source: Qt.resolvedUrl("../icons/hangouts.svg")
-					onClicked: Qt.openUrlExternally(externalLink)
+					onClicked: Shared.openExternalUrl(externalLink)
 				}
 			}
 
@@ -244,7 +242,7 @@ LinkRect {
 			upcomingEvents.sendEventStartingNotification(model)
 		} else {
 			// agenda_event_clicked == "browser_viewevent"
-			Qt.openUrlExternally(model.htmlLink)
+			Shared.openExternalUrl(model.htmlLink)
 		}
 	}
 
@@ -281,7 +279,7 @@ LinkRect {
 		menuItem.icon.name = "internet-web-browser"
 		menuItem.enabled = !!event.htmlLink
 		menuItem.clicked.connect(function() {
-			Qt.openUrlExternally(event.htmlLink)
+			Shared.openExternalUrl(event.htmlLink)
 		})
 		contextMenu.addMenuItem(menuItem)
 	}

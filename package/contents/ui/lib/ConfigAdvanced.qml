@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "SafeConfig.js" as SafeConfig
 
 ConfigPage {
 	id: page
@@ -138,8 +139,12 @@ ConfigPage {
 				TextArea {
 					text: {
 						if (modelValue) {
-							var data = JSON.parse(Qt.atob(modelValue))
-							return JSON.stringify(data, null, '  ')
+							try {
+								var data = SafeConfig.parseBase64Json(modelValue, {})
+								return JSON.stringify(data, null, '  ')
+							} catch (err) {
+								return '<invalid base64json: ' + err + '>'
+							}
 						} else {
 							return ''
 						}

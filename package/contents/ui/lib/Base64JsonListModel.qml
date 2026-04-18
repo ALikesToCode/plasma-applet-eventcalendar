@@ -7,6 +7,7 @@ ListModel {
 	property int oldCount: count
 	property QtObject base64Json: Base64Json {
 		id: base64Json
+		defaultValue: []
 		value: []
 		onValueChanged: {
 			listModel.clear()

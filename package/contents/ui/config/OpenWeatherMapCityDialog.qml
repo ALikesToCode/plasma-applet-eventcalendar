@@ -163,9 +163,12 @@ Dialog {
 				appId: configBridge ? configBridge.read("openWeatherMapAppId", "") : "",
 				q: q,
 			}, function(err, data, xhr) {
-				if (err) return console.log("searchCityList.err", err, xhr && xhr.status, data)
-				logger.debug("searchCityList.response")
-				logger.debugJSON("searchCityList.response", data)
+				if (err) {
+					chooseCityDialog.loadingCityList = false
+					return console.log('searchCityList.err', err, xhr && xhr.status)
+				}
+				logger.debug('searchCityList.response')
+				logger.debugJSON('searchCityList.response', data)
 
 				parseCityList(data)
 

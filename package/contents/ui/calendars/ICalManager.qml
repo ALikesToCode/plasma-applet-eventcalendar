@@ -11,11 +11,6 @@ CalendarManager {
 	// property var eventsData: { "items": [] }
 
 	property var calendarList: [
-		{
-			url: "/home/chris/Code/icsjson/basic.ics",
-			backgroundColor: '#ff0',
-			isTasklist: false,
-		}
 	]
 
 	function localFilePath(url) {
@@ -51,10 +46,12 @@ CalendarManager {
 				logger.log('ical.stderr', stderr)
 				return callback(stderr)
 			}
-			var data = JSON.parse(stdout)
-			// console.log(cmd)
-			// console.log(str)
-			callback(null, data)
+			try {
+				callback(null, JSON.parse(stdout))
+			} catch (err) {
+				logger.log('ical.parseError', err, stdout)
+				callback(err.toString())
+			}
 		})
 	}
 
