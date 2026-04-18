@@ -25,7 +25,9 @@ SENSITIVE_FLAGS = {
 
 def decode_argv(payload: str) -> list[str]:
     try:
-        decoded = base64.urlsafe_b64decode(payload.encode("ascii")).decode("utf-8")
+        normalized = payload.strip()
+        normalized += "=" * (-len(normalized) % 4)
+        decoded = base64.urlsafe_b64decode(normalized.encode("ascii")).decode("utf-8")
         parsed = json.loads(decoded)
     except (ValueError, json.JSONDecodeError) as exc:
         raise ValueError("Invalid argv payload: {}".format(exc)) from exc
