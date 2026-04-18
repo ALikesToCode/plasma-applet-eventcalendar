@@ -12,6 +12,25 @@ QtObject {
 
 	readonly property string accessToken: plasmoid.configuration.accessToken
 
+	function normalizedClientValue(value) {
+		return value ? String(value).trim() : ""
+	}
+
+	function resolveRefreshClientSecret(sessionClientId) {
+		var sessionClientSecret = normalizedClientValue(plasmoid.configuration.sessionClientSecret)
+		if (sessionClientSecret) {
+			return sessionClientSecret
+		}
+
+		var latestClientId = normalizedClientValue(plasmoid.configuration.latestClientId)
+		var latestClientSecret = normalizedClientValue(plasmoid.configuration.latestClientSecret)
+		if (sessionClientId && sessionClientId === latestClientId && latestClientSecret) {
+			return latestClientSecret
+		}
+
+		return ""
+	}
+
 	function loadRefreshToken(callback) {
 		executable.execArgv([
 			"python3",
@@ -47,14 +66,30 @@ QtObject {
 			}
 			logger.debug("updateAccessToken")
 			fetchNewAccessToken(refreshToken, function(requestErr, data, xhr) {
-				if (requestErr || (!requestErr && data && data.error)) {
+				if (requestErr) {
 					logger.log("Error when using refreshToken:", requestErr, data)
 					return callback(requestErr)
 				}
-				logger.debug("onAccessToken", data)
-				data = JSON.parse(data)
 
-				googleApiSession.applyAccessToken(data)
+				var parsed = null
+				try {
+					parsed = JSON.parse(data)
+				} catch (e) {
+					logger.log("Error parsing refresh response:", e, data)
+					return callback("Invalid refresh response.")
+				}
+
+				if (parsed && parsed.error) {
+					logger.log("Error when using refreshToken:", parsed)
+					return callback(parsed.error_description || parsed.error)
+				}
+				if (!parsed || !parsed.access_token) {
+					logger.log("Missing access token in refresh response:", parsed)
+					return callback("Missing access token.")
+				}
+
+				logger.debug("onAccessToken", parsed)
+				googleApiSession.applyAccessToken(parsed)
 
 				callback(null)
 			})
@@ -76,13 +111,24 @@ QtObject {
 
 	function fetchNewAccessToken(refreshToken, callback) {
 		logger.debug("fetchNewAccessToken")
+		var sessionClientId = normalizedClientValue(plasmoid.configuration.sessionClientId) || defaultClientId
+		var sessionClientSecret = resolveRefreshClientSecret(sessionClientId)
+		if (sessionClientId !== defaultClientId && !sessionClientSecret) {
+			return callback("Saved Google session requires a configured client secret. Please login again.")
+		}
+
+		var payload = {
+			client_id: sessionClientId,
+			refresh_token: refreshToken,
+			grant_type: "refresh_token",
+		}
+		if (sessionClientSecret) {
+			payload.client_secret = sessionClientSecret
+		}
+
 		Requests.post({
 			url: "https://oauth2.googleapis.com/token",
-			data: {
-				client_id: defaultClientId,
-				refresh_token: refreshToken,
-				grant_type: "refresh_token",
-			},
+			data: payload,
 		}, callback)
 	}
 

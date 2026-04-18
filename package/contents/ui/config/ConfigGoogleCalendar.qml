@@ -112,6 +112,16 @@ ConfigPage {
 	}
 	ColumnLayout {
 		visible: !googleLoginManager.isLoggedIn
+		Layout.fillWidth: true
+
+		MessageWidget {
+			visible: true
+			messageType: MessageWidget.MessageType.Warning
+			closeButtonVisible: false
+			text: plasmoid.configuration.latestClientSecret
+				? i18n("Using a previously stored Google OAuth client for compatibility.")
+				: i18n("Google may reject the built-in OAuth client with HTTP 400 because it now requires a client secret. If login fails, restore a previously working latestClientId/latestClientSecret pair in the widget configuration.")
+		}
 		Label {
 			Layout.fillWidth: true
 			text: i18n("To sync with Google Calendar click the button to first authorize your account.")

@@ -14,6 +14,8 @@ Item {
 	property string pkceVerifier: ""
 	property string pkceChallenge: ""
 	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
+	property string effectiveClientId: defaultClientId
+	property string effectiveClientSecret: ""
 	property string secretStorePath: plasmoid.file("", "scripts/secret_store.py")
 
 	Logger {
@@ -22,31 +24,53 @@ Item {
 	}
 
 	Component.onCompleted: {
-		if (plasmoid.configuration.latestClientId !== defaultClientId) {
+		if (!normalizedClientValue(plasmoid.configuration.latestClientId)) {
 			plasmoid.configuration.latestClientId = defaultClientId
-		}
-		if (plasmoid.configuration.latestClientSecret) {
-			plasmoid.configuration.latestClientSecret = ""
-		}
-		if (plasmoid.configuration.sessionClientSecret) {
-			plasmoid.configuration.sessionClientSecret = ""
 		}
 		if (plasmoid.configuration.refreshToken) {
 			storeRefreshToken(plasmoid.configuration.refreshToken)
 			plasmoid.configuration.refreshToken = ""
 		}
-		ensurePkce()
+		refreshClientCredentials()
+		if (!effectiveClientSecret) {
+			ensurePkce()
+		}
 	}
 
 	readonly property bool isLoggedIn: !!plasmoid.configuration.accessToken
 	readonly property bool needsRelog: {
-		if (plasmoid.configuration.accessToken && plasmoid.configuration.sessionClientId !== defaultClientId) {
-			return true
+		if (plasmoid.configuration.accessToken) {
+			var sessionClientId = normalizedClientValue(plasmoid.configuration.sessionClientId)
+			var sessionClientSecret = normalizedClientValue(plasmoid.configuration.sessionClientSecret)
+			if (sessionClientId !== effectiveClientId || sessionClientSecret !== effectiveClientSecret) {
+				return true
+			}
 		}
 		if (!plasmoid.configuration.accessToken && plasmoid.configuration.access_token) {
 			return true
 		}
 		return false
+	}
+
+	function normalizedClientValue(value) {
+		return value ? String(value).trim() : ""
+	}
+
+	function refreshClientCredentials() {
+		var latestId = normalizedClientValue(plasmoid.configuration.latestClientId)
+		var latestSecret = normalizedClientValue(plasmoid.configuration.latestClientSecret)
+		if (!latestId) {
+			latestId = defaultClientId
+			plasmoid.configuration.latestClientId = latestId
+		}
+
+		if (latestSecret) {
+			effectiveClientId = latestId
+			effectiveClientSecret = latestSecret
+		} else {
+			effectiveClientId = defaultClientId
+			effectiveClientSecret = ""
+		}
 	}
 
 	property var m_calendarList: ConfigSerializedString {
@@ -100,34 +124,56 @@ Item {
 	}
 
 	function generateAuthState() {
-		return String(Qt.createUuid()).replace(/[{}\-]/g, "")
+		return Pkce.generateOpaqueToken(32)
+	}
+
+	function resetPkce() {
+		pkceVerifier = Pkce.generateVerifier()
+		pkceChallenge = Pkce.challengeFromVerifier(pkceVerifier)
 	}
 
 	function ensurePkce() {
 		if (!pkceVerifier || !pkceChallenge) {
-			pkceVerifier = Pkce.generateVerifier()
-			pkceChallenge = Pkce.challengeFromVerifier(pkceVerifier)
+			resetPkce()
 		}
 	}
 
-	readonly property string authorizationCodeUrl: {
-		ensurePkce()
+	function prepareAuthorization() {
+		refreshClientCredentials()
+		if (effectiveClientSecret) {
+			pkceVerifier = ""
+			pkceChallenge = ""
+		} else {
+			resetPkce()
+		}
+		authState = generateAuthState()
+	}
+
+	function clearAuthorizationContext() {
+		authState = ""
+		pkceVerifier = ""
+		pkceChallenge = ""
+	}
+
+	function buildAuthorizationUrl() {
 		var url = "https://accounts.google.com/o/oauth2/v2/auth"
 		url += "?scope=" + encodeURIComponent("https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks")
 		url += "&response_type=code"
 		url += "&redirect_uri=" + encodeURIComponent(redirectUri())
 		url += "&access_type=offline"
 		url += "&prompt=consent"
-		url += "&client_id=" + encodeURIComponent(defaultClientId)
+		url += "&client_id=" + encodeURIComponent(effectiveClientId)
 		if (authState) {
 			url += "&state=" + encodeURIComponent(authState)
 		}
-		if (pkceChallenge) {
+		if (!effectiveClientSecret && pkceChallenge) {
 			url += "&code_challenge=" + encodeURIComponent(pkceChallenge)
 			url += "&code_challenge_method=S256"
 		}
 		return url
 	}
+
+	readonly property string authorizationCodeUrl: buildAuthorizationUrl()
 
 	function generateTempFilePath(prefix) {
 		var timePart = Date.now().toString(36)
@@ -245,18 +291,43 @@ Item {
 		})
 	}
 
+	function describeAuthError(data, fallbackErr) {
+		var errorDescription = data && data.error_description
+			? String(data.error_description)
+			: ""
+		if (data && data.error === "invalid_request"
+			&& errorDescription.toLowerCase().indexOf("client_secret is missing") !== -1
+		) {
+			if (!effectiveClientSecret && effectiveClientId === defaultClientId) {
+				return "Google rejected the built-in login because this client now requires a client secret. Restore a previously working latestClientId/latestClientSecret pair in the widget configuration and try again."
+			}
+			return errorDescription
+		}
+		if (errorDescription) {
+			return errorDescription
+		}
+		if (data && data.error && data.error.message) {
+			return String(data.error.message)
+		}
+		if (data && data.error) {
+			return String(data.error)
+		}
+		return fallbackErr || "Google authentication failed."
+	}
+
 	function fetchAccessToken() {
-		ensurePkce()
-		authState = generateAuthState()
+		prepareAuthorization()
 
 		var cmd = [
 			"python3",
 			plasmoid.file("", "scripts/google_redirect.py"),
 			"--listen_port",
 			callbackListenPort.toString(),
-			"--state",
-			authState,
 		]
+		if (authState) {
+			cmd.push("--state")
+			cmd.push(authState)
+		}
 
 		Qt.openUrlExternally(authorizationCodeUrl)
 
@@ -290,16 +361,28 @@ Item {
 	}
 
 	function exchangeAuthorizationCode(authorizationCode) {
+		refreshClientCredentials()
+		var payload = {
+			client_id: effectiveClientId,
+			code: authorizationCode,
+			grant_type: "authorization_code",
+			redirect_uri: redirectUri(),
+		}
+		if (effectiveClientSecret) {
+			payload.client_secret = effectiveClientSecret
+		} else if (pkceVerifier) {
+			payload.code_verifier = pkceVerifier
+		} else {
+			handleError("Missing PKCE verifier. Start login from the widget and try again.", null)
+			return
+		}
+
 		Requests.post({
 			url: "https://oauth2.googleapis.com/token",
-			data: {
-				client_id: defaultClientId,
-				code: authorizationCode,
-				grant_type: "authorization_code",
-				redirect_uri: redirectUri(),
-				code_verifier: pkceVerifier,
-			},
+			data: payload,
 		}, function(err, data, xhr) {
+			logger.debug("/oauth2/v4/token Response", data)
+
 			var parsed = null
 			if (data) {
 				try {
@@ -308,12 +391,16 @@ Item {
 					parsed = null
 				}
 			}
-			if (err || !parsed) {
-				handleError(err || "Error parsing token response.", parsed)
+			if (err) {
+				handleError(describeAuthError(parsed, err), null)
+				return
+			}
+			if (!parsed) {
+				handleError("Error parsing token response.", null)
 				return
 			}
 			if (parsed.error) {
-				handleError(err, parsed)
+				handleError(describeAuthError(parsed, err), null)
 				return
 			}
 			updateAccessToken(parsed)
@@ -321,11 +408,10 @@ Item {
 	}
 
 	function updateAccessToken(data) {
-		authState = ""
-		plasmoid.configuration.latestClientId = defaultClientId
-		plasmoid.configuration.latestClientSecret = ""
-		plasmoid.configuration.sessionClientId = defaultClientId
-		plasmoid.configuration.sessionClientSecret = ""
+		plasmoid.configuration.latestClientId = effectiveClientId
+		plasmoid.configuration.latestClientSecret = effectiveClientSecret
+		plasmoid.configuration.sessionClientId = effectiveClientId
+		plasmoid.configuration.sessionClientSecret = effectiveClientSecret
 		plasmoid.configuration.accessToken = data.access_token
 		plasmoid.configuration.accessTokenType = data.token_type
 		plasmoid.configuration.accessTokenExpiresAt = Date.now() + data.expires_in * 1000
@@ -334,6 +420,7 @@ Item {
 			storeRefreshToken(data.refresh_token)
 		}
 		newAccessToken()
+		clearAuthorizationContext()
 	}
 
 	onNewAccessToken: updateData()
@@ -418,18 +505,19 @@ Item {
 		calendarIdList = []
 		tasklistList = []
 		tasklistIdList = []
+		clearAuthorizationContext()
 		sessionReset()
 	}
 
 	function handleError(err, data) {
-		if (data && data.error && data.error_description) {
+		if (err) {
+			session.error(err)
+		} else if (data && data.error && data.error_description) {
 			var errorMessage = "" + data.error + " (" + data.error_description + ")"
 			session.error(errorMessage)
 		} else if (data && data.error && data.error.message && typeof data.error.code !== "undefined") {
 			var apiErrorMessage = "" + data.error.message + " (" + data.error.code + ")"
 			session.error(apiErrorMessage)
-		} else if (err) {
-			session.error(err)
 		}
 	}
 }
