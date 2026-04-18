@@ -63,7 +63,7 @@ Plasma5Support.DataSource {
 		return payload
 	}
 
-	function buildArrayCommand(argv) {
+	function buildArgvCommand(argv) {
 		return [
 			"python3",
 			argvRunnerPath,
@@ -71,10 +71,52 @@ Plasma5Support.DataSource {
 		].map(wrapToken).join(" ")
 	}
 
-	function exec(cmd, callback) {
-		if (Array.isArray(cmd)) {
-			cmd = buildArrayCommand(cmd)
+	function isSensitiveArgFlag(arg) {
+		var lower = ("" + arg).toLowerCase()
+		return [
+			"--access-token",
+			"--access_token",
+			"--refresh-token",
+			"--refresh_token",
+			"--client-secret",
+			"--client_secret",
+			"--password",
+			"--passwd",
+			"--authorization",
+			"--cookie",
+		].indexOf(lower) >= 0
+	}
+
+	function isSensitiveArgValue(arg) {
+		var lower = ("" + arg).toLowerCase()
+		return lower.indexOf("authorization:") === 0
+			|| lower.indexOf("cookie:") === 0
+			|| lower.indexOf("bearer ") === 0
+	}
+
+	function containsSensitiveArgv(argv) {
+		for (var i = 0; i < argv.length; i++) {
+			if (isSensitiveArgFlag(argv[i])) {
+				return true
+			}
+			if (i > 0 && isSensitiveArgFlag(argv[i - 1])) {
+				return true
+			}
+			if (isSensitiveArgValue(argv[i])) {
+				return true
+			}
 		}
+		return false
+	}
+
+	function failImmediately(cmd, callback, message) {
+		console.error(message)
+		if (typeof callback === "function") {
+			callback(Array.isArray(cmd) ? JSON.stringify(cmd) : String(cmd), 1, 1, "", message)
+		}
+	}
+
+	function runCommand(cmd, callback) {
 		if (typeof callback === 'function') {
 			if (listeners[cmd]) { // Our implementation only allows 1 callback per command.
 				exited.disconnect(listeners[cmd])
@@ -87,6 +129,26 @@ Plasma5Support.DataSource {
 		connectSource(cmd)
 	}
 
+	function exec(cmd, callback) {
+		if (Array.isArray(cmd)) {
+			failImmediately(cmd, callback, "ExecUtil.exec() only accepts string commands. Use execArgv() for non-secret argv values.")
+			return
+		}
+		runCommand(cmd, callback)
+	}
+
+	function execArgv(argv, callback) {
+		if (!Array.isArray(argv) || !argv.length) {
+			failImmediately(argv, callback, "ExecUtil.execArgv() requires a non-empty argv array.")
+			return
+		}
+		if (containsSensitiveArgv(argv)) {
+			failImmediately(argv, callback, "ExecUtil.execArgv() must not be used with secrets or authorization headers.")
+			return
+		}
+		runCommand(buildArgvCommand(argv), callback)
+	}
+
 	function execCallback(callback, cmd, exitCode, exitStatus, stdout, stderr) {
 		delete listeners[cmd]
 		callback(cmd, exitCode, exitStatus, stdout, stderr)
@@ -94,10 +156,10 @@ Plasma5Support.DataSource {
 
 	//--- Tests
 	function test() {
-		exec(['notify-send', 'test', '$(notify-send escape1)'])
-		exec(['notify-send', 'test', '`notify-send escape2`'])
-		exec(['notify-send', 'test', '\'; notify-send escape3;\''])
-		exec(['notify-send', 'test', '\\\'; notify-send escape4;\\\''])
+		execArgv(['notify-send', 'test', '$(notify-send escape1)'])
+		execArgv(['notify-send', 'test', '`notify-send escape2`'])
+		execArgv(['notify-send', 'test', '\'; notify-send escape3;\''])
+		execArgv(['notify-send', 'test', '\\\'; notify-send escape4;\\\''])
 	}
 	// Component.onCompleted: test()
 }

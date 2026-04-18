@@ -42,7 +42,7 @@ QtObject {
 		var sanitizedBody = executable.sanitizeString(args.body)
 		cmd.push(sanitizedSummary)
 		cmd.push(sanitizedBody)
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+		executable.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			var actionId = stdout.replace('\n', ' ').trim()
 			if (typeof callback === 'function') {
 				callback(actionId)

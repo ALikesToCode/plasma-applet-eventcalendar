@@ -19,7 +19,7 @@ Item {
 	}
 
 	Component.onCompleted: {
-		executable.exec([
+		executable.execArgv([
 			'kreadconfig5',
 			'--file',
 			metadataFilepath,

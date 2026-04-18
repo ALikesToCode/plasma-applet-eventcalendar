@@ -351,7 +351,7 @@ CalendarManager {
 			'--summary',
 			text,
 		]
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr){
+		executable.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr){
 			logger.debug('konsolekalendar.cmd', cmd)
 			logger.debug('konsolekalendar.exitCode', exitCode)
 			logger.debug('konsolekalendar.exitStatus', exitStatus)

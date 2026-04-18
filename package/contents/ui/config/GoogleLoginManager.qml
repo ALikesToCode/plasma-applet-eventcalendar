@@ -183,7 +183,7 @@ Item {
 			return
 		}
 		var readyFile = generateTempFilePath("eventcalendar-secret-store")
-		executable.exec([
+		executable.execArgv([
 			"python3",
 			secretStorePath,
 			"store-once",
@@ -226,7 +226,7 @@ Item {
 	}
 
 	function clearRefreshToken(callback) {
-		executable.exec([
+		executable.execArgv([
 			"python3",
 			secretStorePath,
 			"clear",
@@ -260,7 +260,7 @@ Item {
 
 		Qt.openUrlExternally(authorizationCodeUrl)
 
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+		executable.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (exitCode) {
 				logger.log("fetchAccessToken.stderr", stderr)
 				logger.log("fetchAccessToken.stdout", stdout)

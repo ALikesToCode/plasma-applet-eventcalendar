@@ -35,7 +35,7 @@ CalendarManager {
 			startTime.getFullYear() + '-' + (startTime.getMonth()+1) + '-' + startTime.getDate(),
 			endTime.getFullYear() + '-' + (endTime.getMonth()+1) + '-' + endTime.getDate(),
 		]
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+		executable.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (exitCode) {
 				logger.log('ical.stderr', stderr)
 				return callback(stderr)

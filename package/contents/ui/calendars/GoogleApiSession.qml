@@ -13,7 +13,7 @@ QtObject {
 	readonly property string accessToken: plasmoid.configuration.accessToken
 
 	function loadRefreshToken(callback) {
-		executable.exec([
+		executable.execArgv([
 			"python3",
 			secretStorePath,
 			"read",
