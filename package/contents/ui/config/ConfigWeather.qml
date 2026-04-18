@@ -25,12 +25,14 @@ ConfigPage {
 
 	ConfigSection {
 		RowLayout {
-			visible: plasmoid.configuration.debugging && weatherService.value === 'OpenWeatherMap'
+			visible: weatherService.value === 'OpenWeatherMap'
 			Label {
 				text: i18n("API App Id:")
 			}
 			ConfigString {
 				configKey: 'openWeatherMapAppId'
+				echoMode: TextInput.Password
+				placeholderText: i18n("Required for OpenWeatherMap")
 			}
 		}
 

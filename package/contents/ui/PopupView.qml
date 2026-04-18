@@ -302,6 +302,8 @@ MouseArea {
 			borderOpacity: plasmoid.configuration.monthShowBorder ? 0.25 : 0
 			showWeekNumbers: plasmoid.configuration.monthShowWeekNumbers
 			highlightCurrentDayWeek: plasmoid.configuration.monthHighlightCurrentDayWeek
+			property int parseGeneration: 0
+			property int parseChunkSize: 50
 
 			Layout.preferredWidth: popup.leftColumnWidth
 			Layout.preferredHeight: popup.bottomRowHeight
@@ -325,30 +327,63 @@ MouseArea {
 					dayData.events.clear()
 				}
 
-				// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/calendar/daysmodel.h
-				for (var j = 0; j < data.items.length; j++) {
-					var eventItem = data.items[j]
-					var eventItemStartDate = new Date(eventItem.startDateTime.getFullYear(), eventItem.startDateTime.getMonth(), eventItem.startDateTime.getDate())
-					var eventItemEndDate = new Date(eventItem.endDateTime.getFullYear(), eventItem.endDateTime.getMonth(), eventItem.endDateTime.getDate())
-					if (eventItem.end.date) {
-						// All day events end at midnight which is technically the next day.
-						eventItemEndDate.setDate(eventItemEndDate.getDate() - 1)
+				var generation = ++monthView.parseGeneration
+				var items = data.items
+				var itemIndex = 0
+				var dayCount = monthView.daysModel.count
+				if (!dayCount) {
+					return
+				}
+				var firstDayData = monthView.daysModel.get(0)
+				var firstDayDate = new Date(firstDayData.yearNumber, firstDayData.monthNumber - 1, firstDayData.dayNumber)
+				function dayOffsetFromFirst(date) {
+					var millisPerDay = 24 * 60 * 60 * 1000
+					return Math.floor((date.getTime() - firstDayDate.getTime()) / millisPerDay)
+				}
+				function clampDayIndex(index) {
+					return Math.max(0, Math.min(dayCount - 1, index))
+				}
+
+				function processChunk() {
+					if (generation !== monthView.parseGeneration) {
+						return
 					}
-					// logger.debug(eventItemStartDate, eventItemEndDate)
-					for (var i = 0; i < monthView.daysModel.count; i++) {
-						var dayData = monthView.daysModel.get(i)
-						var dayDataDate = new Date(dayData.yearNumber, dayData.monthNumber - 1, dayData.dayNumber)
-						if (eventItemStartDate <= dayDataDate && dayDataDate <= eventItemEndDate) {
-							// logger.debug('\t', dayDataDate)
-							monthView.daysModel.setProperty(i, 'showEventBadge', true)
+					var end = Math.min(itemIndex + monthView.parseChunkSize, items.length)
+					for (; itemIndex < end; itemIndex++) {
+						var eventItem = items[itemIndex]
+						var eventItemStartDate = new Date(eventItem.startDateTime.getFullYear(), eventItem.startDateTime.getMonth(), eventItem.startDateTime.getDate())
+						var eventItemEndDate = new Date(eventItem.endDateTime.getFullYear(), eventItem.endDateTime.getMonth(), eventItem.endDateTime.getDate())
+						if (eventItem.end.date) {
+							eventItemEndDate.setDate(eventItemEndDate.getDate() - 1)
+						}
+						var rawStartIndex = dayOffsetFromFirst(eventItemStartDate)
+						var rawEndIndex = dayOffsetFromFirst(eventItemEndDate)
+						if (rawEndIndex < 0 || rawStartIndex >= dayCount) {
+							continue
+						}
+						var startIndex = clampDayIndex(rawStartIndex)
+						var endIndex = clampDayIndex(rawEndIndex)
+						if (endIndex < startIndex) {
+							continue
+						}
+						for (var dayIndex = startIndex; dayIndex <= endIndex; dayIndex++) {
+							if (generation !== monthView.parseGeneration) {
+								return
+							}
+							var dayData = monthView.daysModel.get(dayIndex)
+							monthView.daysModel.setProperty(dayIndex, "showEventBadge", true)
 							var events = dayData.events || []
 							events.append(eventItem)
-							monthView.daysModel.setProperty(i, 'events', events)
-						} else if (eventItemEndDate < dayDataDate) {
-							break
+							monthView.daysModel.setProperty(dayIndex, "events", events)
 						}
 					}
+
+					if (itemIndex < items.length) {
+						Qt.callLater(processChunk)
+					}
 				}
+
+				processChunk()
 			}
 
 			onDayDoubleClicked: {

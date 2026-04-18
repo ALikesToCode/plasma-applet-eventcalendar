@@ -40,7 +40,7 @@ Item {
 
 			PlasmaComponents3.ToolButton {
 				id: timerLabel
-				text: "0:00"
+				text: timerModel.formatTimer(timerModel.secondsLeft)
 				icon.name: {
 					if (timerModel.secondsLeft === 0) {
 						return 'chronometer'
@@ -55,6 +55,17 @@ Item {
 				font.pointSize: -1
 				font.pixelSize: appletConfig.timerClockFontHeight
 				Layout.alignment: Qt.AlignVCenter
+				focusPolicy: Qt.StrongFocus
+				Accessible.role: Accessible.Button
+				Accessible.name: {
+					if (timerModel.running) {
+						return i18n("Timer, %1 remaining. Activate to pause.", text)
+					}
+					if (timerModel.secondsLeft > 0) {
+						return i18n("Timer, %1 remaining. Activate to start.", text)
+					}
+					return i18n("Timer set to %1. Use plus or minus to change the duration.", text)
+				}
 				property string tooltip: {
 					var s = ""
 					if (timerModel.secondsLeft > 0) {
@@ -65,7 +76,7 @@ Item {
 						}
 						s += "\n"
 					}
-					s += i18n("Scroll to add to duration")
+					s += i18n("Scroll or use plus and minus keys to adjust duration")
 					return s
 				}
 				QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
@@ -79,6 +90,25 @@ Item {
 						timerModel.runTimer()
 					} else { // timerModel.secondsLeft == 0
 						// ignore
+					}
+				}
+
+				Keys.onPressed: function(event) {
+					if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
+						timerModel.increaseDuration()
+						timerModel.pause()
+						event.accepted = true
+						return
+					}
+					if (event.key === Qt.Key_Minus || event.key === Qt.Key_Underscore) {
+						timerModel.decreaseDuration()
+						timerModel.pause()
+						event.accepted = true
+						return
+					}
+					if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+						timerLabel.clicked()
+						event.accepted = true
 					}
 				}
 

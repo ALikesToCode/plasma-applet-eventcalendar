@@ -32,7 +32,7 @@ RowLayout {
 
 		value: configValue
 		onValueChanged: serializeTimer.start()
-		maximumValue: 2147483647
+		maximumValue: 100000
 	}
 
 	Label {

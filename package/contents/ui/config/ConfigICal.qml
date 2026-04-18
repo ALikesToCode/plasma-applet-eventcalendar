@@ -17,6 +17,28 @@ ConfigPage {
 		id: kuser
 	}
 
+	readonly property string localCalendarDir: '/home/' + kuser.loginName + '/.local/share/plasma_org.kde.plasma.eventcalendar'
+
+	function normalizeLocalPath(value) {
+		var path = String(value || "").trim()
+		if (path.indexOf("file://") === 0) {
+			path = path.slice(7)
+		}
+		return path
+	}
+
+	function isAllowedCalendarUrl(value) {
+		var trimmed = String(value || "").trim()
+		if (!trimmed) {
+			return true
+		}
+		if (/^https?:\/\/\S+$/i.test(trimmed)) {
+			return true
+		}
+		var path = normalizeLocalPath(trimmed)
+		return path.indexOf(localCalendarDir + "/") === 0 && /\.ics$/i.test(path)
+	}
+
 	Base64JsonListModel {
 		id: calendarsModel
 		configKey: 'icalCalendarList'
@@ -32,8 +54,7 @@ ConfigPage {
 		}
 
 		function addNewCalendar() {
-			var dirPath = '/home/' + kuser.loginName + '/.local/share/plasma_org.kde.plasma.eventcalendar'
-			var icsPath = dirPath + '/calendar.ics'
+			var icsPath = localCalendarDir + '/calendar.ics'
 			addItem({
 				url: icsPath,
 				name: 'Label',
@@ -103,12 +124,9 @@ ConfigPage {
 							id: calendarUrlField
 							Layout.fillWidth: true
 							text: model.url
-							placeholderText: i18n("Absolute file path or http(s):// URL")
-							validator: RegExpValidator {
-								regExp: /^(|https?:\/\/.+|file:\/\/.+|\/.+)$/
-							}
+							placeholderText: i18n("https:// URL or local %1/*.ics file", localCalendarDir)
 							onTextChanged: {
-								if (text === '' || acceptableInput) {
+								if (isAllowedCalendarUrl(text)) {
 									calendarsModel.setItemProperty(index, 'url', text.trim())
 								}
 							}
@@ -125,9 +143,12 @@ ConfigPage {
 								id: filePicker
 
 								nameFilters: [ i18n("iCalendar (*.ics)") ]
+								folder: "file://" + localCalendarDir
 
 								onFileUrlChanged: {
-									calendarUrlField.text = fileUrl
+									if (isAllowedCalendarUrl(fileUrl)) {
+										calendarUrlField.text = fileUrl
+									}
 								}
 							}
 						}

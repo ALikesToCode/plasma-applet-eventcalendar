@@ -32,7 +32,7 @@ RowLayout {
 		value: plasmoid.configuration[configKey]
 		// onValueChanged: plasmoid.configuration[configKey] = value
 		onValueChanged: serializeTimer.start()
-		maximumValue: 2147483647
+		maximumValue: 100000
 	}
 
 	Label {
