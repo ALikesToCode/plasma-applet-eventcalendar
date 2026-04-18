@@ -34,6 +34,22 @@ QtObject {
 			plasmoid.configuration.v72Migration = true
 		}
 
+		// Added in: v73
+		if (!plasmoid.configuration.v73Migration) {
+			if (!plasmoid.configuration.enabledCalendarPluginsAllowEmpty) {
+				var oldEnabledCalendarPlugins = plasmoid.configuration.enabledCalendarPlugins
+				var newEnabledCalendarPlugins = PlasmaCalendarUtils.getEffectivePluginFilenameList(
+					null,
+					oldEnabledCalendarPlugins,
+					false
+				)
+				plasmoid.configuration.enabledCalendarPlugins = newEnabledCalendarPlugins
+				logMigration('fallback enabledCalendarPlugins (' + oldEnabledCalendarPlugins + ' => ' + newEnabledCalendarPlugins + ')')
+			}
+
+			plasmoid.configuration.v73Migration = true
+		}
+
 		// Renamed in: v71
 		if (!plasmoid.configuration.v71Migration) {
 			copy('widget_show_meteogram', 'widgetShowMeteogram')

@@ -31,6 +31,16 @@ CalendarManager {
 			return false
 		}
 	}
+	function syncEnabledPlugins() {
+		if (!ensureEventPluginsManager()) {
+			return
+		}
+		PlasmaCalendarUtils.setEnabledPluginsByFilename(
+			eventPluginsManager,
+			plasmoid.configuration.enabledCalendarPlugins,
+			plasmoid.configuration.enabledCalendarPluginsAllowEmpty
+		)
+	}
 	function appendPimCalendars(calendarList) {
 		// https://github.com/KDE/kdepim-addons/blob/master/plugins/plasma/pimeventsplugin/PimEventsConfig.qml
 		// https://github.com/KDE/kdepim-addons/blob/master/plugins/plasma/pimeventsplugin/pimcalendarsmodel.cpp
@@ -119,16 +129,15 @@ CalendarManager {
 	// to get a list of events for a specific day.
 
 	Component.onCompleted: {
-		if (ensureEventPluginsManager()) {
-			PlasmaCalendarUtils.setEnabledPluginsByFilename(eventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
-		}
+		syncEnabledPlugins()
 	}
 	Connections {
 		target: plasmoid.configuration
 		function onEnabledCalendarPluginsChanged() {
-			if (ensureEventPluginsManager()) {
-				PlasmaCalendarUtils.setEnabledPluginsByFilename(eventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
-			}
+			syncEnabledPlugins()
+		}
+		function onEnabledCalendarPluginsAllowEmptyChanged() {
+			syncEnabledPlugins()
 		}
 	}
 

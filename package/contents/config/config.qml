@@ -9,6 +9,11 @@ ConfigModel {
 	readonly property bool hasPlasmoidConfig: typeof plasmoid !== "undefined"
 		&& plasmoid
 		&& plasmoid.configuration
+	readonly property var effectiveEnabledCalendarPlugins: PlasmaCalendarUtils.getEffectivePluginFilenameList(
+		eventPluginsManager,
+		hasPlasmoidConfig ? plasmoid.configuration.enabledCalendarPlugins : [],
+		hasPlasmoidConfig ? plasmoid.configuration.enabledCalendarPluginsAllowEmpty : false
+	)
 
 	ConfigCategory {
 		name: i18n("General")
@@ -87,7 +92,7 @@ ConfigModel {
 			source: model.configUi
 			readonly property string pluginFilename: PlasmaCalendarUtils.getPluginFilename(model.pluginPath)
 			visible: hasPlasmoidConfig
-				&& plasmoid.configuration.enabledCalendarPlugins.indexOf(pluginFilename) > -1
+				&& effectiveEnabledCalendarPlugins.indexOf(pluginFilename) > -1
 		}
 
 		onObjectAdded: function(index, object) {

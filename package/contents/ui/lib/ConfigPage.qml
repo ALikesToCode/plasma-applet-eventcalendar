@@ -64,6 +64,8 @@ KCM.SimpleKCM {
 	property var cfg_leftColumnWidthDefault
 	property var cfg_rightColumnWidth
 	property var cfg_rightColumnWidthDefault
+	property var cfg_v73Migration
+	property var cfg_v73MigrationDefault
 	property var cfg_v72Migration
 	property var cfg_v72MigrationDefault
 	property var cfg_v71Migration
@@ -208,6 +210,8 @@ KCM.SimpleKCM {
 	property var cfg_eventStartingSfxPathDefault
 	property var cfg_enabledCalendarPlugins
 	property var cfg_enabledCalendarPluginsDefault
+	property var cfg_enabledCalendarPluginsAllowEmpty
+	property var cfg_enabledCalendarPluginsAllowEmptyDefault
 	property var cfg_googleAccounts
 	property var cfg_googleAccountsDefault
 	property var cfg_googleActiveAccountId

@@ -59,7 +59,9 @@ ConfigPage {
 		if (!eventPluginsManager) {
 			return
 		}
-		page.configBridge.write("enabledCalendarPlugins", PlasmaCalendarUtils.pluginPathToFilenameList(eventPluginsManager.enabledPlugins))
+		var enabledPluginFilenames = PlasmaCalendarUtils.pluginPathToFilenameList(eventPluginsManager.enabledPlugins)
+		page.configBridge.write("enabledCalendarPlugins", enabledPluginFilenames)
+		page.configBridge.write("enabledCalendarPluginsAllowEmpty", enabledPluginFilenames.length === 0)
 	}
 	Component.onCompleted: {
 		try {
@@ -71,7 +73,11 @@ ConfigPage {
 			console.warn("[eventcalendar] PlasmaCalendar.EventPluginsManager unavailable:", e)
 			return
 		}
-		PlasmaCalendarUtils.populateEnabledPluginsByFilename(eventPluginsManager, page.configBridge.read("enabledCalendarPlugins", []))
+		PlasmaCalendarUtils.populateEnabledPluginsByFilename(
+			eventPluginsManager,
+			page.configBridge.read("enabledCalendarPlugins", []),
+			page.configBridge.read("enabledCalendarPluginsAllowEmpty", false)
+		)
 	}
 
 	HeaderText {
