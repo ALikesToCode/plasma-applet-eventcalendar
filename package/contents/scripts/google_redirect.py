@@ -110,7 +110,7 @@ class OAuthRedirectHandler(BaseHTTPRequestHandler):
             params = parse_qs(text.split("?", 1)[-1])
             if "state" in params:
                 return params["state"][0]
-        return ""
+        return text
 
     def _fail_request(self, message, stderr_message, html_response=False):
         logging.error(stderr_message)
