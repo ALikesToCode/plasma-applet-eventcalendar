@@ -78,9 +78,11 @@ CalendarManager {
 	}
 
 	function fetchGoogleAccountData() {
-		if (session.accessToken) {
-			fetchGoogleAccountTasks(getTasklistIdList())
+		var account = getAccount()
+		if (!account) {
+			return
 		}
+		fetchGoogleAccountTasks(getTasklistIdList())
 	}
 
 	//--- Errors
@@ -171,7 +173,7 @@ CalendarManager {
 	// CalendarManager
 	function getCalendarList() {
 		var account = getAccount()
-		if (!session.accessToken || !account || !account.tasklistList) {
+		if (!account || !account.tasklistList) {
 			return []
 		}
 		var tasklistList = account.tasklistList

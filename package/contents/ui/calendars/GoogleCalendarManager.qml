@@ -87,9 +87,6 @@ CalendarManager {
 	}
 
 	function fetchGoogleAccountData() {
-		if (!session.accessToken) {
-			return
-		}
 		var account = getAccount()
 		if (!account) {
 			return
@@ -783,7 +780,7 @@ function fetchGoogleCalendarEvent_run(calendarId, eventId, callback) {
 	//--- CalendarManager
 	function getCalendarList() {
 		var account = getAccount()
-		if (!session.accessToken || !account || !account.calendarList) {
+		if (!account || !account.calendarList) {
 			return []
 		}
 		var calendarList = account.calendarList

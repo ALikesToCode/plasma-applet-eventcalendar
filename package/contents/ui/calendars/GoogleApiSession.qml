@@ -66,14 +66,14 @@ QtObject {
 		logger.debug('checkAccessToken')
 		var account = getAccount()
 		if (!account) {
-			return callback('No access token.')
+			return callback('No Google account.')
 		}
 		if (!account.accessToken && account.refreshToken) {
 			updateAccessToken(callback)
 			return
 		}
 		if (!account.accessToken) {
-			return callback('No access token.')
+			return callback('No refresh token. Please login again.')
 		}
 		if (account.accessTokenExpiresAt < Date.now() + 5000) {
 			updateAccessToken(callback)

@@ -319,6 +319,7 @@ Item {
 	function fetchAccessToken(args, callback) {
 		var ctx = currentAuthContext()
 		var authCode = extractAuthorizationCode(args.authorizationCode)
+		var existingAccount = args.accountId ? accountsStore.getAccount(args.accountId) : null
 		if (!authCode) {
 			handleError('Invalid Google Authorization Code', null)
 			if (typeof callback === "function") {
@@ -380,6 +381,14 @@ Item {
 				handleError(parsedError, null)
 				if (typeof callback === "function") {
 					callback(parsedError)
+				}
+				return
+			}
+			if (!parsed.refresh_token && !(existingAccount && existingAccount.refreshToken)) {
+				var refreshTokenError = "Google login completed, but no refresh token was returned. Revoke the app's Google access and login again."
+				handleError(refreshTokenError, null)
+				if (typeof callback === "function") {
+					callback(refreshTokenError)
 				}
 				return
 			}
