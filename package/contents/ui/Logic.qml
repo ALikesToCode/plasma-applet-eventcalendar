@@ -93,7 +93,7 @@ Item {
 	function deferredUpdateWeather() {
 		logic.updateDailyWeather()
 
-		if (popup.showMeteogram) {
+		if (popup && popup.showMeteogram) {
 			logic.updateHourlyWeather()
 		}
 	}
@@ -151,7 +151,7 @@ Item {
 			logic.lastForecastErr = null
 			logic.hourlyWeatherData = data
 			logic.currentWeatherData = data.list[0]
-			popup.updateMeteogram()
+			if (popup) popup.updateMeteogram()
 		})
 	}
 
