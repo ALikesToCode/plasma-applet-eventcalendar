@@ -5,12 +5,35 @@ import "../lib/Requests.js" as Requests
 QtObject {
 	id: googleApiSession
 
+	ExecUtil { id: executable }
+
+	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
+	property string secretStorePath: plasmoid.file("", "scripts/secret_store.py")
+
 	readonly property string accessToken: plasmoid.configuration.accessToken
 
-	//--- Refresh Credentials
+	function loadRefreshToken(callback) {
+		executable.exec([
+			"python3",
+			secretStorePath,
+			"read",
+			"--scope",
+			"google-session",
+			"--key",
+			"refresh_token",
+		], function(cmd, exitCode, exitStatus, stdout, stderr) {
+			var value = (stdout || "").replace(/\n+$/g, "")
+			if (exitCode !== 0 && !value) {
+				callback(null, "")
+				return
+			}
+			callback(null, value)
+		})
+	}
+
 	function checkAccessToken(callback) {
-		logger.debug('checkAccessToken')
-		if (plasmoid.configuration.accessTokenExpiresAt < Date.now() + 5000) {
+		logger.debug("checkAccessToken")
+		if (!plasmoid.configuration.accessToken || plasmoid.configuration.accessTokenExpiresAt < Date.now() + 5000) {
 			updateAccessToken(callback)
 		} else {
 			callback(null)
@@ -18,26 +41,24 @@ QtObject {
 	}
 
 	function updateAccessToken(callback) {
-		// logger.debug('accessTokenExpiresAt', plasmoid.configuration.accessTokenExpiresAt)
-		// logger.debug('                 now', Date.now())
-		// logger.debug('refreshToken', plasmoid.configuration.refreshToken)
-		if (plasmoid.configuration.refreshToken) {
-			logger.debug('updateAccessToken')
-			fetchNewAccessToken(function(err, data, xhr) {
-				if (err || (!err && data && data.error)) {
-					logger.log('Error when using refreshToken:', err, data)
-					return callback(err)
+		loadRefreshToken(function(err, refreshToken) {
+			if (err || !refreshToken) {
+				return callback(err || "No refresh token. Cannot update access token.")
+			}
+			logger.debug("updateAccessToken")
+			fetchNewAccessToken(refreshToken, function(requestErr, data, xhr) {
+				if (requestErr || (!requestErr && data && data.error)) {
+					logger.log("Error when using refreshToken:", requestErr, data)
+					return callback(requestErr)
 				}
-				logger.debug('onAccessToken', data)
+				logger.debug("onAccessToken", data)
 				data = JSON.parse(data)
 
 				googleApiSession.applyAccessToken(data)
 
 				callback(null)
 			})
-		} else {
-			callback('No refresh token. Cannot update access token.')
-		}
+		})
 	}
 
 	signal accessTokenError(string msg)
@@ -53,49 +74,40 @@ QtObject {
 		newAccessToken()
 	}
 
-	function fetchNewAccessToken(callback) {
-		logger.debug('fetchNewAccessToken')
-		var url = 'https://www.googleapis.com/oauth2/v4/token'
+	function fetchNewAccessToken(refreshToken, callback) {
+		logger.debug("fetchNewAccessToken")
 		Requests.post({
-			url: url,
+			url: "https://oauth2.googleapis.com/token",
 			data: {
-				client_id: plasmoid.configuration.sessionClientId,
-				client_secret: plasmoid.configuration.sessionClientSecret,
-				refresh_token: plasmoid.configuration.refreshToken,
-				grant_type: 'refresh_token',
+				client_id: defaultClientId,
+				refresh_token: refreshToken,
+				grant_type: "refresh_token",
 			},
 		}, callback)
 	}
 
-
-	//---
 	property int errorCount: 0
 	function getErrorTimeout(n) {
-		// Exponential Backoff
-		// 43200 seconds is 12 hours, which is a reasonable polling limit when the API is down.
-		// After 6 errors, we wait an entire minute.
-		// After 11 errors, we wait an entire hour.
-		// After 15 errors, we will have waited 9 hours.
-		// 16 errors and above uses the upper limit of 12 hour intervals.
 		return 1000 * Math.min(43200, Math.pow(2, n))
 	}
-	// https://stackoverflow.com/questions/28507619/how-to-create-delay-function-in-qml
+
 	function delay(delayTime, callback) {
 		var timer = Qt.createQmlObject("import QtQuick 2.0; Timer {}", googleCalendarManager)
 		timer.interval = delayTime
 		timer.repeat = false
 		timer.triggered.connect(callback)
-		timer.triggered.connect(function release(){
+		timer.triggered.connect(function release() {
 			timer.triggered.disconnect(callback)
 			timer.triggered.disconnect(release)
 			timer.destroy()
 		})
 		timer.start()
 	}
+
 	function waitForErrorTimeout(callback) {
 		errorCount += 1
 		var timeout = getErrorTimeout(errorCount)
-		delay(timeout, function(){
+		delay(timeout, function() {
 			callback()
 		})
 	}
