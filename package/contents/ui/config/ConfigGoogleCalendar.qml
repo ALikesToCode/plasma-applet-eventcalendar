@@ -181,26 +181,42 @@ ConfigPage {
 			Repeater {
 				model: calendarsModel
 				delegate: CheckBox {
+					Layout.fillWidth: true
 					text: model.name
 					checked: model.show
 					style: CheckBoxStyle {
-						label: RowLayout {
-							Rectangle {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								color: model.backgroundColor
-							}
-							Label {
-								id: labelText
-								text: control.text
-							}
-							LockIcon {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								visible: model.isReadOnly
+						spacing: Kirigami.Units.smallSpacing
+						label: Item {
+							width: Math.max(0, control.width - Kirigami.Units.gridUnit * 2 - spacing)
+							implicitWidth: row.implicitWidth
+							implicitHeight: row.implicitHeight
+							clip: true
+
+							RowLayout {
+								id: row
+								anchors.fill: parent
+								spacing: Kirigami.Units.smallSpacing
+
+								Rectangle {
+									Layout.alignment: Qt.AlignVCenter
+									implicitWidth: Kirigami.Units.iconSizes.smallMedium
+									implicitHeight: Kirigami.Units.iconSizes.smallMedium
+									color: model.backgroundColor
+								}
+								Label {
+									id: labelText
+									text: control.text
+									Layout.fillWidth: true
+									elide: Text.ElideRight
+								}
+								LockIcon {
+									Layout.alignment: Qt.AlignVCenter
+									implicitWidth: Kirigami.Units.iconSizes.smallMedium
+									implicitHeight: Kirigami.Units.iconSizes.smallMedium
+									visible: model.isReadOnly
+								}
 							}
 						}
-						
 					}
 
 					onClicked: {
@@ -264,26 +280,42 @@ ConfigPage {
 			Repeater {
 				model: tasklistsModel
 				delegate: CheckBox {
+					Layout.fillWidth: true
 					text: model.name
 					checked: model.show
 					style: CheckBoxStyle {
-						label: RowLayout {
-							Rectangle {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								color: model.backgroundColor
-							}
-							Label {
-								id: labelText
-								text: control.text
-							}
-							LockIcon {
-								Layout.fillHeight: true
-								Layout.preferredWidth: height
-								visible: model.isReadOnly
+						spacing: Kirigami.Units.smallSpacing
+						label: Item {
+							width: Math.max(0, control.width - Kirigami.Units.gridUnit * 2 - spacing)
+							implicitWidth: row.implicitWidth
+							implicitHeight: row.implicitHeight
+							clip: true
+
+							RowLayout {
+								id: row
+								anchors.fill: parent
+								spacing: Kirigami.Units.smallSpacing
+
+								Rectangle {
+									Layout.alignment: Qt.AlignVCenter
+									implicitWidth: Kirigami.Units.iconSizes.smallMedium
+									implicitHeight: Kirigami.Units.iconSizes.smallMedium
+									color: model.backgroundColor
+								}
+								Label {
+									id: labelText
+									text: control.text
+									Layout.fillWidth: true
+									elide: Text.ElideRight
+								}
+								LockIcon {
+									Layout.alignment: Qt.AlignVCenter
+									implicitWidth: Kirigami.Units.iconSizes.smallMedium
+									implicitHeight: Kirigami.Units.iconSizes.smallMedium
+									visible: model.isReadOnly
+								}
 							}
 						}
-						
 					}
 
 					onClicked: {
