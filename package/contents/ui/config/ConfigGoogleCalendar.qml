@@ -341,7 +341,9 @@ ConfigPage {
 			closeButtonVisible: false
 			text: googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
 				? ""
-				: i18n("The built-in Google OAuth client is often blocked. Provide your own client ID (and secret if required) to enable Google sync.")
+				: page.configBridge.read("latestClientSecret", "")
+					? i18n("Using a previously stored Google OAuth client for compatibility. If login still fails, add your own client ID and client secret.")
+					: i18n("The built-in Google OAuth client is currently rejected by Google because it requires a client secret. Provide your own client ID and client secret to enable Google sync.")
 		}
 		Label {
 			Layout.fillWidth: true

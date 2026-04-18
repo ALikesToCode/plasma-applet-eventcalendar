@@ -44,8 +44,16 @@ QtObject {
 		}
 		var customClientId = normalizedClientValue(readConfig("customClientId", ""))
 		var customClientSecret = normalizedClientValue(readConfig("customClientSecret", ""))
+		var latestClientId = normalizedClientValue(readConfig("latestClientId", ""))
+		var latestClientSecret = normalizedClientValue(readConfig("latestClientSecret", ""))
 		if (account.sessionClientId === customClientId) {
 			return customClientSecret
+		}
+		if (account.sessionClientId === latestClientId && latestClientSecret) {
+			return latestClientSecret
+		}
+		if (account.sessionClientSecret) {
+			return normalizedClientValue(account.sessionClientSecret)
 		}
 		if (account.sessionClientId === defaultClientId) {
 			return ""

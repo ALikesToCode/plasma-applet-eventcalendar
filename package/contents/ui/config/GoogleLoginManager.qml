@@ -134,11 +134,17 @@ Item {
 
 	function refreshClientCredentials() {
 		migrateDefaultClientIfNeeded()
+		var useDesktopClient = readConfig("useDesktopClient", false)
 		var customId = normalizedClientValue(readConfig("customClientId", ""))
 		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
+		var latestId = normalizedClientValue(readConfig("latestClientId", ""))
+		var latestSecret = normalizedClientValue(readConfig("latestClientSecret", ""))
 		if (customId) {
 			effectiveClientId = customId
 			effectiveClientSecret = customSecret
+		} else if (!useDesktopClient && latestId) {
+			effectiveClientId = latestId
+			effectiveClientSecret = latestSecret
 		} else {
 			effectiveClientId = defaultClientId
 			effectiveClientSecret = ""
@@ -146,16 +152,22 @@ Item {
 	}
 
 	function migrateDefaultClientIfNeeded() {
-		if (!normalizedClientValue(readConfig("customClientId", ""))
-			&& readConfig("useDesktopClient", false) !== true
-		) {
-			writeConfig("useDesktopClient", true)
+		var customId = normalizedClientValue(readConfig("customClientId", ""))
+		if (customId) {
+			return
 		}
-		if (readConfig("latestClientId", "") !== defaultClientId) {
+		var latestId = normalizedClientValue(readConfig("latestClientId", ""))
+		var latestSecret = normalizedClientValue(readConfig("latestClientSecret", ""))
+		if (!latestId) {
 			writeConfig("latestClientId", defaultClientId)
+			latestId = defaultClientId
 		}
-		if (readConfig("latestClientSecret", "")) {
-			writeConfig("latestClientSecret", "")
+		if (latestSecret) {
+			if (readConfig("useDesktopClient", false) !== false) {
+				writeConfig("useDesktopClient", false)
+			}
+		} else if (readConfig("useDesktopClient", false) !== true) {
+			writeConfig("useDesktopClient", true)
 		}
 	}
 
@@ -186,7 +198,6 @@ Item {
 	function buildAuthContext(modeOverride) {
 		var mode = typeof modeOverride === "string" ? modeOverride : redirectMode
 		var usePkce = !effectiveClientSecret
-		ensureAuthState()
 		return {
 			clientId: effectiveClientId,
 			clientSecret: effectiveClientSecret,
@@ -281,6 +292,30 @@ Item {
 		return trimmed
 	}
 
+	function describeAuthError(ctx, data, fallbackErr) {
+		var errorDescription = data && data.error_description
+			? String(data.error_description)
+			: ""
+		if (data && data.error === "invalid_request"
+			&& errorDescription.toLowerCase().indexOf("client_secret is missing") !== -1
+		) {
+			if (!ctx.clientSecret && ctx.clientId === defaultClientId) {
+				return "Google rejected the built-in login because this client now requires a client secret. Add your own Google OAuth client ID and client secret, or switch back to a previously stored secret-based client."
+			}
+			return errorDescription
+		}
+		if (errorDescription) {
+			return errorDescription
+		}
+		if (data && data.error && data.error.message) {
+			return String(data.error.message)
+		}
+		if (data && data.error) {
+			return String(data.error)
+		}
+		return fallbackErr || "Google authentication failed."
+	}
+
 	function fetchAccessToken(args, callback) {
 		var ctx = currentAuthContext()
 		var authCode = extractAuthorizationCode(args.authorizationCode)
@@ -326,9 +361,10 @@ Item {
 				}
 			}
 			if (err) {
-				handleError(err, parsed || data)
+				var requestError = describeAuthError(ctx, parsed, err)
+				handleError(requestError, null)
 				if (typeof callback === "function") {
-					callback(err)
+					callback(requestError)
 				}
 				return
 			}
@@ -340,9 +376,10 @@ Item {
 				return
 			}
 			if (parsed && parsed.error) {
-				handleError(err, parsed)
+				var parsedError = describeAuthError(ctx, parsed, err)
+				handleError(parsedError, null)
 				if (typeof callback === "function") {
-					callback(parsed.error_description || parsed.error || err || 'Token exchange failed.')
+					callback(parsedError)
 				}
 				return
 			}
