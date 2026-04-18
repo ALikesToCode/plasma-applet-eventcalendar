@@ -232,7 +232,7 @@ Item {
 	}
 	Connections {
 		target: eventModel
-		function onError() {
+		function onError(msg, errorType) {
 			logic.currentErrorMessage = msg
 			logic.currentErrorType = errorType
 			if (popup) popup.showError(logic.currentErrorMessage)
