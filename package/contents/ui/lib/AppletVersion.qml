@@ -21,7 +21,7 @@ Item {
 	}
 
 	Component.onCompleted: {
-		executable.exec([
+		executable.execArgv([
 			"python3",
 			"-c",
 			"import json,sys; print(json.load(open(sys.argv[1]))['KPlugin']['Version'])",

@@ -41,7 +41,7 @@ CalendarManager {
 			startDate,
 			endDate,
 		]
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+		executable.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (exitCode) {
 				logger.log('ical.stderr', stderr)
 				return callback(stderr)

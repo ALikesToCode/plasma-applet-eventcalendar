@@ -437,7 +437,7 @@ Item {
 			return
 		}
 		var readyFile = generateTempFilePath("eventcalendar-secret-store")
-		secretExec.exec([
+		secretExec.execArgv([
 			"python3",
 			secretStorePath,
 			"store-once",
@@ -482,7 +482,7 @@ Item {
 	}
 
 	function loadRefreshToken(accountId, callback) {
-		secretExec.exec([
+		secretExec.execArgv([
 			"python3",
 			secretStorePath,
 			"read",
@@ -503,7 +503,7 @@ Item {
 	}
 
 	function clearRefreshToken(accountId, callback) {
-		secretExec.exec([
+		secretExec.execArgv([
 			"python3",
 			secretStorePath,
 			"clear",

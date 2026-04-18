@@ -27,7 +27,7 @@ QtObject {
 		var sanitizedBody = executable.sanitizeString(args.body)
 		cmd.push(sanitizedSummary)
 		cmd.push(sanitizedBody)
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+		executable.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (exitCode !== 0) {
 				logger.log('notify-send failed', exitCode, stderr)
 			}
@@ -71,7 +71,7 @@ QtObject {
 		var sanitizedBody = executable.sanitizeString(args.body)
 		cmd.push(sanitizedSummary)
 		cmd.push(sanitizedBody)
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+		executable.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (exitCode !== 0) {
 				logger.log('notification.py failed, falling back to notify-send', exitCode, stderr)
 				notifyWithNotifySend(args, callback)

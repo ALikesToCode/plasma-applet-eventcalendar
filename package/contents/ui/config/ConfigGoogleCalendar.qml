@@ -114,30 +114,27 @@ ConfigPage {
 		}
 		return ""
 	}
-	function parseTokenInput(text) {
-		if (!text) {
-			return null
+	function submitAuthorization(accountId) {
+		if (!authorizationCodeInput.text) {
+			startAutoLogin(accountId || "")
+			return
 		}
-		var trimmed = text.trim()
-		if (!trimmed || trimmed[0] !== '{') {
-			return null
+		if (autoLoginInProgress) {
+			autoLoginCancelled = true
+			autoLoginInProgress = false
 		}
-		var parsed = null
-		try {
-			parsed = JSON.parse(trimmed)
-		} catch (e) {
-			return null
-		}
-		if (!parsed || !parsed.access_token) {
-			return null
-		}
-		if (!parsed.expires_in) {
-			parsed.expires_in = 3600
-		}
-		if (!parsed.token_type) {
-			parsed.token_type = "Bearer"
-		}
-		return parsed
+		googleLoginManager.refreshClientCredentials()
+		googleLoginManager.fetchAccessToken({
+			authorizationCode: authorizationCodeInput.text,
+			accountId: accountId || "",
+		}, function(err) {
+			if (err) {
+				messageWidget.err(i18n("Login failed: %1", err))
+				return
+			}
+			authorizationCodeInput.text = ""
+			messageWidget.success(i18n("Login complete."))
+		})
 	}
 
 	function startAutoLogin(accountId, openBrowser) {
@@ -165,7 +162,7 @@ ConfigPage {
 			cmd.push('--state')
 			cmd.push(authContext.state)
 		}
-		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+		callbackListener.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (autoLoginCancelled) {
 				autoLoginInProgress = false
 				return
@@ -504,73 +501,21 @@ ConfigPage {
 				Layout.fillWidth: true
 
 				placeholderText: i18n("Paste the authorization code or redirect URL here")
+				echoMode: TextInput.Password
+				Accessible.name: i18n("Google authorization code or redirect URL")
+				Accessible.description: i18n("Paste the Google authorization code or the full redirect URL from the browser")
 				text: ""
 			}
-				Button {
-					text: googleLoginManager.isLoggedIn ? i18n("Add Account") : i18n("Submit")
-					enabled: !autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text
-					onClicked: {
-						if (authorizationCodeInput.text) {
-							if (autoLoginInProgress) {
-								autoLoginCancelled = true
-								autoLoginInProgress = false
-							}
-							var tokenData = parseTokenInput(authorizationCodeInput.text)
-							if (tokenData) {
-								googleLoginManager.updateAccessToken(tokenData)
-								authorizationCodeInput.text = ""
-								messageWidget.success(i18n("Token accepted."))
-								return
-							}
-							googleLoginManager.refreshClientCredentials()
-							googleLoginManager.fetchAccessToken({
-								authorizationCode: authorizationCodeInput.text,
-							}, function(err) {
-								if (err) {
-									messageWidget.err(i18n("Login failed: %1", err))
-									return
-								}
-								authorizationCodeInput.text = ""
-								messageWidget.success(i18n("Login complete."))
-							})
-					} else {
-						startAutoLogin("")
-					}
-				}
+			Button {
+				text: googleLoginManager.isLoggedIn ? i18n("Add Account") : i18n("Submit")
+				enabled: !autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text
+				onClicked: submitAuthorization("")
 			}
-				Button {
-					visible: googleLoginManager.isLoggedIn
-					text: i18n("Update Selected")
-					enabled: !autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text
-					onClicked: {
-						if (authorizationCodeInput.text) {
-							if (autoLoginInProgress) {
-								autoLoginCancelled = true
-								autoLoginInProgress = false
-							}
-							var tokenData = parseTokenInput(authorizationCodeInput.text)
-							if (tokenData) {
-								googleLoginManager.updateAccessToken(tokenData, googleLoginManager.activeAccountId)
-								authorizationCodeInput.text = ""
-								messageWidget.success(i18n("Token accepted."))
-								return
-							}
-							googleLoginManager.refreshClientCredentials()
-							googleLoginManager.fetchAccessToken({
-								authorizationCode: authorizationCodeInput.text,
-								accountId: googleLoginManager.activeAccountId,
-						}, function(err) {
-							if (err) {
-								messageWidget.err(i18n("Login failed: %1", err))
-								return
-							}
-							authorizationCodeInput.text = ""
-							messageWidget.success(i18n("Login complete."))
-						})
-					} else {
-						startAutoLogin(googleLoginManager.activeAccountId)
-					}
-				}
+			Button {
+				visible: googleLoginManager.isLoggedIn
+				text: i18n("Update Selected")
+				enabled: !autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text
+				onClicked: submitAuthorization(googleLoginManager.activeAccountId)
 			}
 		}
 		
@@ -813,7 +758,7 @@ ConfigPage {
 				onClicked: {
 					var cmd = ['echo', 'Hello World']
 					debugOutput.text = "Running: echo Hello World\n"
-					callbackListener.exec(cmd, function(c, code, status, out, err) {
+					callbackListener.execArgv(cmd, function(c, code, status, out, err) {
 						debugOutput.text += "Result: " + out + " (Code: " + code + ")\n"
 					})
 				}
@@ -824,7 +769,7 @@ ConfigPage {
 					var path = localFilePath(Qt.resolvedUrl("../../scripts/google_redirect.py"))
 					debugOutput.text = "Script Path: " + path + "\n"
 					var cmd = ['python3', '--version']
-					callbackListener.exec(cmd, function(c, code, status, out, err) {
+					callbackListener.execArgv(cmd, function(c, code, status, out, err) {
 						debugOutput.text += "Python Version: " + out + " " + err + "\n"
 					})
 				}
@@ -845,7 +790,7 @@ ConfigPage {
 						cmd.push('--state')
 						cmd.push(authContext.state)
 					}
-					callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+					callbackListener.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 						debugOutput.text += "Listener Finished.\nExit: " + exitCode + "\nStdout: " + stdout + "\nStderr: " + stderr + "\n"
 					})
 				}
