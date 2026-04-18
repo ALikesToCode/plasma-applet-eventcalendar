@@ -146,7 +146,13 @@ ConfigPage {
 		}
 		autoLoginCancelled = false
 		autoLoginInProgress = true
-		googleLoginManager.prepareAuthorization()
+		try {
+			googleLoginManager.prepareAuthorization()
+		} catch (e) {
+			autoLoginInProgress = false
+			messageWidget.err(i18n("Could not prepare Google login: %1", String(e)))
+			return
+		}
 		var authContext = googleLoginManager.currentAuthContext()
 		messageWidget.info(localRedirect
 			? i18n("Waiting for browser callback...")
@@ -213,7 +219,10 @@ ConfigPage {
 			})
 		})
 		if (openBrowser) {
-			Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+			var browserRequested = Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+			if (!browserRequested) {
+				messageWidget.err(i18n("The desktop could not open the browser automatically. Use the login link below instead."))
+			}
 		}
 	}
 
@@ -322,6 +331,7 @@ ConfigPage {
 		text: i18n("Client Credentials")
 	}
 	ColumnLayout {
+		id: credentialsSection
 		Layout.fillWidth: true
 		property bool credentialsReady: false
 		Component.onCompleted: credentialsReady = true
@@ -345,7 +355,7 @@ ConfigPage {
 			visible: !googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
 			text: i18n("Try desktop built-in client (no secret)")
 			onCheckedChanged: {
-				if (!credentialsReady) {
+				if (!credentialsSection.credentialsReady) {
 					return
 				}
 				googleLoginManager.refreshClientCredentials()
@@ -424,9 +434,15 @@ ConfigPage {
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 			onLinkActivated: function(link) {
-				googleLoginManager.prepareAuthorization()
-				googleLoginManager.maybeUseLegacyForLocal()
-				Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)
+				try {
+					googleLoginManager.prepareAuthorization()
+					googleLoginManager.maybeUseLegacyForLocal()
+					if (!Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)) {
+						messageWidget.err(i18n("The desktop could not open the browser automatically."))
+					}
+				} catch (e) {
+					messageWidget.err(i18n("Could not prepare Google login: %1", String(e)))
+				}
 			}
 
 			// Tooltip

@@ -29,7 +29,7 @@ Plasma5Support.DataSource {
 
 	property var listeners: ({}) // Empty Map
 	property string argvRunnerPath: {
-		var resolved = Qt.resolvedUrl("../../scripts/run_argv.py")
+		var resolved = String(Qt.resolvedUrl("../../scripts/run_argv.py"))
 		return resolved.indexOf("file://") === 0 ? resolved.slice(7) : resolved
 	}
 

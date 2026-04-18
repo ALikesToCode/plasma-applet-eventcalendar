@@ -13,7 +13,7 @@ Item {
 
 	property var configBridge: null
 	property string secretStorePath: {
-		var resolved = Qt.resolvedUrl("../../scripts/secret_store.py")
+		var resolved = String(Qt.resolvedUrl("../../scripts/secret_store.py"))
 		return resolved.indexOf("file://") === 0 ? resolved.slice(7) : resolved
 	}
 

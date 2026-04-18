@@ -170,7 +170,7 @@ Item {
 		pkceChallenge = Pkce.challengeFromVerifier(pkceVerifier)
 	}
 	function generateAuthState() {
-		return String(Qt.createUuid()).replace(/[{}\-]/g, "")
+		return Pkce.generateOpaqueToken(32)
 	}
 	function ensureAuthState() {
 		if (!authState) {
