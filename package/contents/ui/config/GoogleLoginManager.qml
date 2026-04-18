@@ -440,6 +440,16 @@ Item {
 			if (label && !activeAccount.label) {
 				patch.label = label
 			}
+			if (!activeAccount.calendarSelectionInitialized
+				&& (!activeAccount.calendarIdList || !activeAccount.calendarIdList.length)
+				&& accountsStore.defaultCalendarIdList
+			) {
+				var defaultList = accountsStore.defaultCalendarIdList(data.items)
+				if (defaultList.length) {
+					patch.calendarIdList = defaultList
+					patch.calendarSelectionInitialized = true
+				}
+			}
 			accountsStore.updateAccount(activeAccountId, patch)
 		})
 	}

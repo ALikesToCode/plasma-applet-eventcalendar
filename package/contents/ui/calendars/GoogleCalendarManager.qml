@@ -30,6 +30,9 @@ CalendarManager {
 		if (!account) {
 			return []
 		}
+		if (accountsStore && accountId && accountsStore.ensureCalendarSelection) {
+			return accountsStore.ensureCalendarSelection(accountId)
+		}
 		var list = account.calendarIdList || []
 		if (account.calendarSelectionInitialized) {
 			return list
@@ -84,9 +87,70 @@ CalendarManager {
 	}
 
 	function fetchGoogleAccountData() {
-		if (session.accessToken) {
-			fetchGoogleAccountEvents(getCalendarIdList())
+		if (!session.accessToken) {
+			return
 		}
+		var account = getAccount()
+		if (!account) {
+			return
+		}
+		if (!account.calendarList || !account.calendarList.length) {
+			fetchGoogleCalendarList()
+			return
+		}
+		fetchGoogleAccountEvents(getCalendarIdList())
+	}
+
+	function fetchGoogleCalendarList() {
+		googleCalendarManager.asyncRequests += 1
+		withAccessToken(function() {
+			fetchGCalCalendars({
+				accessToken: session.accessToken,
+			}, function(err, data, xhr) {
+				if (err || (data && data.error)) {
+					googleCalendarManager.asyncRequestsDone += 1
+					handleError(err || 'fetchGCalCalendars error', data, xhr)
+					return
+				}
+				var account = getAccount()
+				var patch = {
+					calendarList: data.items,
+				}
+				if (accountsStore && accountId && account
+					&& !account.calendarSelectionInitialized
+					&& (!account.calendarIdList || !account.calendarIdList.length)
+					&& accountsStore.defaultCalendarIdList
+				) {
+					var defaultList = accountsStore.defaultCalendarIdList(data.items)
+					if (defaultList.length) {
+						patch.calendarIdList = defaultList
+						patch.calendarSelectionInitialized = true
+					}
+				}
+				if (accountsStore && accountId) {
+					accountsStore.updateAccount(accountId, patch)
+				}
+				fetchGoogleAccountEvents(getCalendarIdList())
+				googleCalendarManager.asyncRequestsDone += 1
+			})
+		}, function(err) {
+			handleAuthError(err, true)
+		})
+	}
+
+	function fetchGCalCalendars(args, callback) {
+		var url = 'https://www.googleapis.com/calendar/v3/users/me/calendarList'
+		Requests.getJSON({
+			url: url,
+			headers: {
+				"Authorization": "Bearer " + args.accessToken,
+			}
+		}, function(err, data, xhr) {
+			if (!err && data && data.error) {
+				return callback('fetchGCalCalendars error', data, xhr)
+			}
+			callback(err, data, xhr)
+		})
 	}
 
 	//-------------------------

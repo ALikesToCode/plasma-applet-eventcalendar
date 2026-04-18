@@ -179,6 +179,52 @@ Item {
 		return []
 	}
 
+	function defaultCalendarIdList(calendarList) {
+		if (!Array.isArray(calendarList)) {
+			return []
+		}
+		for (var i = 0; i < calendarList.length; i++) {
+			var calendar = calendarList[i]
+			if (calendar && calendar.primary) {
+				return ["primary"]
+			}
+		}
+		for (var j = 0; j < calendarList.length; j++) {
+			var fallbackCalendar = calendarList[j]
+			if (fallbackCalendar && fallbackCalendar.id) {
+				return [fallbackCalendar.id]
+			}
+		}
+		return []
+	}
+
+	function ensureCalendarSelection(accountId, calendarListOverride) {
+		var account = getAccount(accountId)
+		if (!account) {
+			return []
+		}
+		var currentList = ensureStringArray(account.calendarIdList)
+		if (account.calendarSelectionInitialized) {
+			return currentList
+		}
+		if (currentList.length) {
+			updateAccount(accountId, {
+				calendarSelectionInitialized: true,
+			})
+			return currentList
+		}
+		var sourceList = Array.isArray(calendarListOverride) ? calendarListOverride : account.calendarList
+		var defaultList = defaultCalendarIdList(sourceList)
+		if (defaultList.length) {
+			updateAccount(accountId, {
+				calendarIdList: defaultList,
+				calendarSelectionInitialized: true,
+			})
+			return defaultList
+		}
+		return []
+	}
+
 	function serializeAccount(account) {
 		return {
 			id: account.id,
