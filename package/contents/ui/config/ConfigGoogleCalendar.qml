@@ -174,6 +174,10 @@ ConfigPage {
 			cmd.push('--code_verifier')
 			cmd.push(authContext.pkceVerifier)
 		}
+		if (authContext.state) {
+			cmd.push('--state')
+			cmd.push(authContext.state)
+		}
 		callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (autoLoginCancelled) {
 				autoLoginInProgress = false
@@ -183,7 +187,11 @@ ConfigPage {
 			debugOutput.text += "Exit: " + exitCode + "\nStdout: " + stdout + "\nStderr: " + stderr + "\n"
 			if (exitCode !== 0) {
 				console.error('google_redirect.py failed:', exitCode, stderr)
-				messageWidget.err(i18n("Auto login failed. See logs for details."))
+				if ((stderr || "").indexOf("State mismatch") !== -1) {
+					messageWidget.err(i18n("Google login failed because the browser returned an unexpected state token. Please retry the login."))
+				} else {
+					messageWidget.err(i18n("Auto login failed. See logs for details."))
+				}
 				return
 			}
 			console.log('google_redirect.py stdout:', stdout)
@@ -828,6 +836,10 @@ ConfigPage {
 						cmd.push(authContext.clientSecret)
 					}
 					debugOutput.text = "Manually starting listener...\nCommand: " + JSON.stringify(redactCmd(cmd)) + "\n"
+					if (authContext.state) {
+						cmd.push('--state')
+						cmd.push(authContext.state)
+					}
 					callbackListener.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 						debugOutput.text += "Listener Finished.\nExit: " + exitCode + "\nStdout: " + stdout + "\nStderr: " + stderr + "\n"
 					})

@@ -58,6 +58,7 @@ Item {
 	property string effectiveClientSecret: ""
 	property string pkceVerifier: ""
 	property string pkceChallenge: ""
+	property string authState: ""
 	property var pendingAuthContext: null
 
 	Connections {
@@ -181,18 +182,31 @@ Item {
 		pkceVerifier = Pkce.generateVerifier()
 		pkceChallenge = Pkce.challengeFromVerifier(pkceVerifier)
 	}
+	function generateAuthState() {
+		return String(Qt.createUuid()).replace(/[{}\-]/g, "")
+	}
+	function ensureAuthState() {
+		if (!authState) {
+			authState = generateAuthState()
+		}
+	}
+	function resetAuthState() {
+		authState = generateAuthState()
+	}
 	function redirectUriForMode(mode) {
 		return normalizedRedirectMode(mode) === "hosted" ? hostedRedirectUri : localRedirectUri
 	}
 	function buildAuthContext(modeOverride) {
 		var mode = typeof modeOverride === "string" ? modeOverride : redirectMode
 		var usePkce = !effectiveClientSecret
+		ensureAuthState()
 		return {
 			clientId: effectiveClientId,
 			clientSecret: effectiveClientSecret,
 			redirectUri: redirectUriForMode(mode),
 			pkceVerifier: usePkce ? pkceVerifier : "",
 			pkceChallenge: usePkce ? pkceChallenge : "",
+			state: authState,
 		}
 	}
 	function currentAuthContext() {
@@ -212,6 +226,7 @@ Item {
 			pkceVerifier = ""
 			pkceChallenge = ""
 		}
+		resetAuthState()
 		pendingAuthContext = buildAuthContext(mode)
 	}
 	function switchToLegacyClient() {
@@ -235,6 +250,7 @@ Item {
 		return true
 	}
 	function clearAuthorizationContext() {
+		authState = ""
 		pendingAuthContext = null
 	}
 	function buildAuthorizationUrl(ctx) {
@@ -245,6 +261,9 @@ Item {
 		url += '&access_type=offline'
 		url += '&prompt=consent'
 		url += '&client_id=' + encodeURIComponent(ctx.clientId)
+		if (ctx.state) {
+			url += '&state=' + encodeURIComponent(ctx.state)
+		}
 		if (ctx.pkceChallenge) {
 			url += '&code_challenge=' + encodeURIComponent(ctx.pkceChallenge)
 			url += '&code_challenge_method=S256'

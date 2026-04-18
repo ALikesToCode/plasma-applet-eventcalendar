@@ -36,13 +36,13 @@
         return;
     }
 
-    function extractCode(value) {
+    function extractParam(value, name) {
         if (!value) return "";
 
         const trimmed = value.trim();
 
-        // Try regex match for ?code=... or &code=...
-        const match = /[?&]code=([^&]+)/.exec(trimmed);
+        const matcher = new RegExp("[?&]" + name + "=([^&]+)");
+        const match = matcher.exec(trimmed);
         if (match && match[1]) {
             return decodeURIComponent(match[1].replace(/\+/g, " "));
         }
@@ -50,19 +50,20 @@
         // Try URL parsing
         try {
             const parsed = new URL(trimmed);
-            const code = parsed.searchParams.get("code");
-            if (code) return code;
+            const param = parsed.searchParams.get(name);
+            if (param) return param;
         } catch (err) {
-            // Not a valid URL, treat entire string as potential code if it looks like one?
-            // For now, fall back to returning trimmed value as the original script did.
+            // Not a valid URL, fall back to returning the raw input only for the code field.
         }
 
-        return trimmed;
+        return name === "code" ? trimmed : "";
     }
 
     function updateFromInput() {
-        const code = extractCode(elements.urlInput.value);
+        const code = extractParam(elements.urlInput.value, "code");
+        const state = extractParam(elements.urlInput.value, "state");
         elements.codeOutput.value = code;
+        elements.codeOutput.dataset.state = state;
 
         if (code) {
             elements.status.innerHTML = CONSTANTS.statusExtracted;
@@ -73,7 +74,7 @@
         }
     }
 
-    async function sendToWidget(code) {
+    async function sendToWidget(code, state) {
         if (!code) {
             elements.status.textContent = CONSTANTS.statusNoCode;
             return;
@@ -85,7 +86,7 @@
             const response = await fetch(CONSTANTS.localEndpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code }),
+                body: JSON.stringify({ code, state }),
                 mode: "cors",
             });
 
@@ -135,6 +136,7 @@
         elements.clearBtn.addEventListener("click", () => {
             elements.urlInput.value = "";
             elements.codeOutput.value = "";
+            elements.codeOutput.dataset.state = "";
             elements.status.textContent = CONSTANTS.statusWait;
         });
     }
@@ -143,7 +145,7 @@
 
     if (elements.sendBtn) {
         elements.sendBtn.addEventListener("click", () => {
-            sendToWidget(elements.codeOutput.value);
+            sendToWidget(elements.codeOutput.value, elements.codeOutput.dataset.state || "");
         });
     }
 
@@ -151,11 +153,12 @@
     function initFromPage() {
         const params = new URLSearchParams(window.location.search);
         const code = params.get("code");
+        const state = params.get("state") || "";
         if (code) {
             // Start flow automatically
             elements.urlInput.value = window.location.href;
             updateFromInput();
-            sendToWidget(code);
+            sendToWidget(code, state);
         }
     }
 

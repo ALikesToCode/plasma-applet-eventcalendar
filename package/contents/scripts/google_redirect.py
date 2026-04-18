@@ -22,7 +22,7 @@ logging.basicConfig(
 )
 logging.info("Script started")
 
-client_id = client_secret = listen_port = redirect_uri = code_verifier = None
+client_id = client_secret = listen_port = redirect_uri = code_verifier = expected_state = None
 exit_code = 0
 asset_dir = os.path.join(os.path.dirname(__file__), "oauth_assets")
 success_template_path = os.path.join(asset_dir, "success.html")
@@ -135,11 +135,52 @@ class OAuthRedirectHandler(BaseHTTPRequestHandler):
                 return params["code"][0]
         return text
 
-    def _handle_code(self, code, html_response):
+    def _extract_state(self, value):
+        if not value:
+            return ""
+        text = value.strip()
+        parsed = urlparse(text)
+        if parsed.query:
+            params = parse_qs(parsed.query)
+            if "state" in params:
+                return params["state"][0]
+        if "state=" in text:
+            params = parse_qs(text.split("?", 1)[-1])
+            if "state" in params:
+                return params["state"][0]
+        return ""
+
+    def _fail_request(self, message, stderr_message, html_response=False):
+        logging.error(stderr_message)
+        print(stderr_message, file=sys.stderr)
+        sys.stderr.flush()
+        self._set_exit_code(1)
+        self._send_headers(400, "text/html" if html_response else "text/plain")
+        self.wfile.write(message)
+        self._shutdown()
+
+    def _validate_state(self, received_state, html_response):
+        if not expected_state:
+            return True
+        if received_state == expected_state:
+            return True
+        self._fail_request(
+            b"State mismatch in redirect. Please retry the login.",
+            "State mismatch in OAuth redirect (expected={}, received={})".format(
+                mask_value(expected_state),
+                mask_value(received_state),
+            ),
+            html_response=html_response,
+        )
+        return False
+
+    def _handle_code(self, code, received_state, html_response):
         logging.info("Handling code (code=%s)", mask_value(code))
         if not code:
             self._send_headers(400, "text/plain")
             self.wfile.write(b"Missing code parameter in redirect.")
+            return
+        if not self._validate_state(received_state, html_response):
             return
         try:
             token_data = exchange_code_for_token(code)
@@ -189,7 +230,8 @@ class OAuthRedirectHandler(BaseHTTPRequestHandler):
         query = urlparse(self.path).query
         params = parse_qs(query)
         code = params.get("code", [""])[0]
-        self._handle_code(self._extract_code(code), html_response=True)
+        state = params.get("state", [""])[0]
+        self._handle_code(self._extract_code(code), self._extract_state(state), html_response=True)
 
     def do_POST(self):
         logging.info("POST %s from %s", self.path, self.client_address)
@@ -197,16 +239,23 @@ class OAuthRedirectHandler(BaseHTTPRequestHandler):
         raw_body = self.rfile.read(content_length).decode("utf-8") if content_length else ""
         content_type = self.headers.get("Content-Type", "")
         code = ""
+        state = ""
         if "application/json" in content_type:
             try:
                 payload = json.loads(raw_body) if raw_body else {}
                 code = payload.get("code", "")
+                state = payload.get("state", "")
             except json.JSONDecodeError:
                 code = ""
         else:
             params = parse_qs(raw_body)
             code = params.get("code", [""])[0]
-        self._handle_code(self._extract_code(code), html_response=False)
+            state = params.get("state", [""])[0]
+        self._handle_code(
+            self._extract_code(code),
+            self._extract_state(state),
+            html_response=False,
+        )
 
 
 if __name__ == "__main__":
@@ -216,12 +265,14 @@ if __name__ == "__main__":
     parser.add_argument("--listen_port", required=True, type=int)
     parser.add_argument("--redirect_uri", default="")
     parser.add_argument("--code_verifier", default="")
+    parser.add_argument("--state", default="")
     args = parser.parse_args()
     client_id = args.client_id
     client_secret = args.client_secret
     listen_port = args.listen_port
     redirect_uri = args.redirect_uri or "http://127.0.0.1:{}/".format(listen_port)
     code_verifier = args.code_verifier
+    expected_state = args.state
 
     server_address = ("127.0.0.1", listen_port)
     try:
