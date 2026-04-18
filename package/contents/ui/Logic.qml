@@ -241,7 +241,7 @@ Item {
 	}
 	Connections {
 		target: eventModel
-		function onError(errorType, msg) {
+		function onError(msg, errorType) {
 			logic.currentErrorMessage = msg
 			logic.currentErrorType = errorType
 			if (popup) popup.showError(logic.currentErrorMessage)
