@@ -117,7 +117,29 @@ MouseArea {
 	}
 
 
-	property int eventCount: model.events ? model.events.length : 0
+	function eventsLength(events) {
+		if (!events) {
+			return 0
+		}
+		if (typeof events.count === "number") {
+			return events.count
+		}
+		if (typeof events.length === "number") {
+			return events.length
+		}
+		return 0
+	}
+	function eventAt(events, index) {
+		if (!events) {
+			return null
+		}
+		if (typeof events.get === "function") {
+			return events.get(index)
+		}
+		return events[index]
+	}
+
+	property int eventCount: eventsLength(model.events)
 	property var eventColors: []
 	property bool useHightlightColor: eventColors.length === 0
 
@@ -125,8 +147,8 @@ MouseArea {
 	function updateEventColors() {
 		var set = {}
 		for (var i = 0; i < eventCount; i++) {
-			var eventItem = model.events[i]
-			if (eventItem.backgroundColor) {
+			var eventItem = eventAt(model.events, i)
+			if (eventItem && eventItem.backgroundColor) {
 				set[eventItem.backgroundColor] = true
 			}
 		}
@@ -162,7 +184,7 @@ MouseArea {
 			sourceComponent: badgeComponent
 
 			readonly property var modelEvents: model.events
-			readonly property int modelEventsCount: modelEvents ? modelEvents.length : 0
+			readonly property int modelEventsCount: dayStyle.eventsLength(modelEvents)
 			property alias dayStyle: dayStyle // aka DayDelegate
 		}
 	}
@@ -217,12 +239,15 @@ MouseArea {
 		mainText: containsMouse ? Qt.formatDate(thisDate, Qt.locale().dateFormat(Locale.LongFormat)) : ""
 		subText: containsMouse ? tooltipBody() : ""
 		function tooltipBody() {
-			if (!model.events) {
+			if (!eventsLength(model.events)) {
 				return ''
 			}
 			var lines = []
-			for (var i = 0; i < model.events.length; i++) {
-				var eventItem = model.events[i]
+			for (var i = 0; i < eventsLength(model.events); i++) {
+				var eventItem = eventAt(model.events, i)
+				if (!eventItem) {
+					continue
+				}
 				var line = ''
 				var eventBullet = '■'
 				if(new Date(eventItem.end.dateTime) < new Date()) {

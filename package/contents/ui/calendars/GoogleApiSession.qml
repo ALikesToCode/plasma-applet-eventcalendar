@@ -53,6 +53,9 @@ QtObject {
 	function checkAccessToken(callback) {
 		logger.debug("checkAccessToken")
 		if (!plasmoid.configuration.accessToken || plasmoid.configuration.accessTokenExpiresAt < Date.now() + 5000) {
+			if (!plasmoid.configuration.accessToken) {
+				logger.log("checkAccessToken", "No access token in memory")
+			}
 			updateAccessToken(callback)
 		} else {
 			callback(null)
@@ -93,7 +96,11 @@ QtObject {
 
 				callback(null)
 			})
-		})
+			})
+		} else {
+			logger.log("updateAccessToken", "No refresh token")
+			callback("No refresh token. Cannot update access token.")
+		}
 	}
 
 	signal accessTokenError(string msg)
