@@ -139,7 +139,7 @@ LinkRect {
 				wrapMode: Text.Wrap // See warning at taskTitle.wrapMode
 
 				linkColor: PlasmaCore.ColorScope.highlightColor
-				onLinkActivated: Qt.openUrlExternally(link)
+				onLinkActivated: Shared.openExternalUrl(link)
 				MouseArea {
 					anchors.fill: parent
 					acceptedButtons: Qt.NoButton // we don't want to eat clicks on the Text
@@ -212,7 +212,7 @@ LinkRect {
 		menuItem.icon = "internet-web-browser"
 		menuItem.enabled = !!task.htmlLink
 		menuItem.clicked.connect(function() {
-			Qt.openUrlExternally(task.htmlLink)
+			Shared.openExternalUrl(task.htmlLink)
 		})
 		contextMenu.addMenuItem(menuItem)
 	}

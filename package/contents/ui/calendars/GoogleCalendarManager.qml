@@ -4,6 +4,7 @@ import "../ErrorType.js" as ErrorType
 import "../Shared.js" as Shared
 import "../lib/Async.js" as Async
 import "../lib/Requests.js" as Requests
+import "../lib/SafeConfig.js" as SafeConfig
 import "../code/ColorIdMap.js" as ColorIdMap
 
 // import "./GoogleCalendarTests.js" as GoogleCalendarTests
@@ -582,7 +583,13 @@ CalendarManager {
 	//--- CalendarManager
 	function getCalendarList() {
 		if (session.accessToken && plasmoid.configuration.calendarList) {
-			var calendarList = JSON.parse(Qt.atob(plasmoid.configuration.calendarList))
+			var calendarList
+			try {
+				calendarList = SafeConfig.parseBase64Json(plasmoid.configuration.calendarList, [])
+			} catch (err) {
+				logger.log('Failed to parse calendarList', err)
+				return []
+			}
 			for (var i = 0; i < calendarList.length; i++) {
 				var calendar = calendarList[i]
 				calendar.isTasklist = false

@@ -1,5 +1,33 @@
 .pragma library
 
+function escapeHtml(text) {
+	if (typeof text === "undefined" || text === null) {
+		return ""
+	}
+	return ("" + text)
+		.replace(/\&/g, "&amp;")
+		.replace(/\</g, "&lt;")
+		.replace(/\>/g, "&gt;")
+		.replace(/\"/g, "&quot;")
+		.replace(/\'/g, "&#39;")
+}
+
+function isSafeExternalUrl(url) {
+	if (typeof url !== "string") {
+		return false
+	}
+	return /^(https?):\/\/[^\s]+$/i.test(url.trim())
+}
+
+function openExternalUrl(url) {
+	if (!isSafeExternalUrl(url)) {
+		console.warn("[eventcalendar] Refusing to open unsafe URL", url)
+		return false
+	}
+	Qt.openUrlExternally(url.trim())
+	return true
+}
+
 function openGoogleCalendarNewEventUrl(date) {
 	function dateString(year, month, day) {
 		var s = '' + year
@@ -14,7 +42,7 @@ function openGoogleCalendarNewEventUrl(date) {
 	var startDate = dateString(date.getFullYear(), date.getMonth() + 1, date.getDate())
 	var endDate = dateString(nextDay.getFullYear(), nextDay.getMonth() + 1, nextDay.getDate())
 	url += '&dates=' + startDate + '/' + endDate
-	Qt.openUrlExternally(url)
+	openExternalUrl(url)
 }
 
 function isSameDate(a, b) {
@@ -49,40 +77,30 @@ function isValidDate(d) {
 }
 
 function renderText(text) {
-	// console.log('renderText')
 	if (typeof text === 'undefined') {
 		return ''
 	}
-	var out = text
-	// text && console.log('renderText', text)
-	
-	// Render links
-	// Google doesn't auto-convert links to anchor tags when you paste a link in the description.
-	// However, we should treat it as a link. This simple regex replacement works when we're not
-	// dealing with HTML. So if we see an HTML anchor tag, skip it and assume the link has been
-	// formatted.
-	if (out.indexOf('<a href') === -1) {
-		var rUrl = /(http|https):\/\/[\w-]+(\.[\w-]+)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?/gi
-		out = out.replace(rUrl, function(m) {
-			// Google replaces ampersands with HTML the entity in the url text.
-			var encodedUrl = m.replace(/\&/g, '&amp;')
-
-			// console.log('        m', m)
-			// console.log('      enc', encodedUrl)
-
-			// Add extra space at the end to prevent styling entire text as a link when ending with a link.
-			return '<a href="' + m + '">' + encodedUrl + '</a>' + '&nbsp;'
-		})
+	var rawText = "" + text
+	var rUrl = /(https?:\/\/[^\s<]+)/gi
+	var out = ''
+	var lastIndex = 0
+	var match
+	while ((match = rUrl.exec(rawText)) !== null) {
+		out += escapeHtml(rawText.slice(lastIndex, match.index))
+		var href = match[0]
+		if (!isSafeExternalUrl(href)) {
+			out += escapeHtml(href)
+		} else {
+			out += '<a href="' + escapeHtml(href) + '">' + escapeHtml(href) + '</a>' + '&nbsp;'
+		}
+		lastIndex = match.index + href.length
 	}
-	// text && console.log('    Links', out)
-
-	// Render new lines
-	// out = out.replace(/\n/g, '<br>')
-	// text && console.log('    Newlines', out)
+	out += escapeHtml(rawText.slice(lastIndex))
 
 	// Remove leading new line, as Google sometimes adds them.
+	out = out.replace(/\r\n?/g, '\n')
+	out = out.replace(/\n/g, '<br>')
 	out = out.replace(/^(\<br\>)+/, '')
-	// text && console.log('    LeadingBR', out)
 
 	return out
 }

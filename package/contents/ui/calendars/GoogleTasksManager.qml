@@ -4,6 +4,7 @@ import org.kde.plasma.core 2.0 as PlasmaCore
 import "../Shared.js" as Shared
 import "../lib/Async.js" as Async
 import "../lib/Requests.js" as Requests
+import "../lib/SafeConfig.js" as SafeConfig
 
 // import "./GoogleCalendarTests.js" as GoogleCalendarTests
 
@@ -67,7 +68,13 @@ CalendarManager {
 	// CalendarManager
 	function getCalendarList() {
 		if (session.accessToken && plasmoid.configuration.tasklistList) {
-			var tasklistList = JSON.parse(Qt.atob(plasmoid.configuration.tasklistList))
+			var tasklistList
+			try {
+				tasklistList = SafeConfig.parseBase64Json(plasmoid.configuration.tasklistList, [])
+			} catch (err) {
+				logger.log('Failed to parse tasklistList', err)
+				return []
+			}
 			var calendarList = []
 			for (var i = 0; i < tasklistList.length; i++) {
 				var tasklist = tasklistList[i]

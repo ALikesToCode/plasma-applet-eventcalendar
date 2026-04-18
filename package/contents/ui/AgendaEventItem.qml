@@ -193,7 +193,7 @@ LinkRect {
 				elide: Text.ElideRight
 
 				linkColor: PlasmaCore.ColorScope.highlightColor
-				onLinkActivated: Qt.openUrlExternally(link)
+				onLinkActivated: Shared.openExternalUrl(link)
 				MouseArea {
 					anchors.fill: parent
 					acceptedButtons: Qt.NoButton // we don't want to eat clicks on the Text
@@ -242,7 +242,7 @@ LinkRect {
 						color: eventItemInPast ? PlasmaCore.ColorScope.disabledTextColor : (eventItemInProgress ? inProgressColor : PlasmaCore.ColorScope.textColor)
 					}
 					icon.source: plasmoid.file("", "icons/Hangouts_2018.svg")
-					onClicked: Qt.openUrlExternally(externalLink)
+					onClicked: Shared.openExternalUrl(externalLink)
 					flat: eventItemInPast
 
 				}
@@ -261,7 +261,7 @@ LinkRect {
 			upcomingEvents.sendEventStartingNotification(model)
 		} else {
 			// agenda_event_clicked == "browser_viewevent"
-			Qt.openUrlExternally(model.htmlLink)
+			Shared.openExternalUrl(model.htmlLink)
 		}
 	}
 
@@ -299,7 +299,7 @@ LinkRect {
 		menuItem.icon = "internet-web-browser"
 		menuItem.enabled = !!event.htmlLink
 		menuItem.clicked.connect(function() {
-			Qt.openUrlExternally(event.htmlLink)
+			Shared.openExternalUrl(event.htmlLink)
 		})
 		contextMenu.addMenuItem(menuItem)
 	}

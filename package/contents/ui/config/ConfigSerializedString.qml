@@ -1,4 +1,5 @@
 import QtQuick 2.0
+import "../lib/SafeConfig.js" as SafeConfig
 
 QtObject {
 	id: obj
@@ -8,11 +9,20 @@ QtObject {
 	property var defaultValue: ({}) // Empty Map
 
 	function serialize() {
-		plasmoid.configuration[configKey] = Qt.btoa(JSON.stringify(value))
+		try {
+			plasmoid.configuration[configKey] = SafeConfig.serializeBase64Json(value)
+		} catch (err) {
+			console.warn('[eventcalendar] Failed to serialize config', configKey, err)
+		}
 	}
 
 	function deserialize() {
-		value = configValue ? JSON.parse(Qt.atob(configValue)) : defaultValue
+		try {
+			value = SafeConfig.parseBase64Json(configValue, defaultValue)
+		} catch (err) {
+			console.warn('[eventcalendar] Failed to parse config', configKey, err)
+			value = defaultValue
+		}
 	}
 
 	onConfigKeyChanged: deserialize()

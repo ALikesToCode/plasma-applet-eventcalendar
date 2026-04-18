@@ -5,6 +5,7 @@ import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.0
 import QtQuick.Layouts 1.0
 import org.kde.kirigami 2.0 as Kirigami
+import "SafeConfig.js" as SafeConfig
 
 ColumnLayout {
 	id: page
@@ -94,8 +95,12 @@ ColumnLayout {
 				TextArea {
 					text: {
 						if (modelValue) {
-							var data = JSON.parse(Qt.atob(modelValue))
-							return JSON.stringify(data, null, '  ')
+							try {
+								var data = SafeConfig.parseBase64Json(modelValue, {})
+								return JSON.stringify(data, null, '  ')
+							} catch (err) {
+								return '<invalid base64json: ' + err + '>'
+							}
 						} else {
 							return ''
 						}

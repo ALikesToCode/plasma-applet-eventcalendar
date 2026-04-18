@@ -12,11 +12,6 @@ CalendarManager {
 	// property var eventsData: { "items": [] }
 
 	property var calendarList: [
-		{
-			url: "/home/chris/Code/icsjson/basic.ics",
-			backgroundColor: '#ff0',
-			isTasklist: false,
-		}
 	]
 
 	function getCalendar(calendarId) {
@@ -31,20 +26,26 @@ CalendarManager {
 
 	function fetchEvents(calendarData, startTime, endTime, callback) {
 		logger.debug('ical.fetchEvents', calendarData.url)
-		var cmd = 'python3 ' + plasmoid.file("", "scripts/icsjson.py")
-		cmd += ' --url "' + calendarData.url + '"' // TODO proper argument wrapping
-		cmd += ' query'
-		cmd += ' ' + startTime.getFullYear() + '-' + (startTime.getMonth()+1) + '-' + startTime.getDate()
-		cmd += ' ' + endTime.getFullYear() + '-' + (endTime.getMonth()+1) + '-' + endTime.getDate()
+		var cmd = [
+			'python3',
+			plasmoid.file("", "scripts/icsjson.py"),
+			'--url',
+			calendarData.url,
+			'query',
+			startTime.getFullYear() + '-' + (startTime.getMonth()+1) + '-' + startTime.getDate(),
+			endTime.getFullYear() + '-' + (endTime.getMonth()+1) + '-' + endTime.getDate(),
+		]
 		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (exitCode) {
 				logger.log('ical.stderr', stderr)
 				return callback(stderr)
 			}
-			var data = JSON.parse(stdout)
-			// console.log(cmd)
-			// console.log(str)
-			callback(null, data)
+			try {
+				callback(null, JSON.parse(stdout))
+			} catch (err) {
+				logger.log('ical.parseError', err, stdout)
+				callback(err.toString())
+			}
 		})
 	}
 

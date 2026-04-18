@@ -10,6 +10,8 @@ gi.require_version('GLib', '2.0')
 gi.require_version('Notify', '0.7')
 from gi.repository import GLib, Notify
 
+ALLOWED_SOUND_FILE_EXTENSIONS = {'.wav', '.mp3', '.oga', '.ogg'}
+
 
 
 #---
@@ -109,6 +111,11 @@ def playSound(args):
 		args.sound = args.sound[len('file://'):]
 
 	if args.sound.startswith('/'):
+		_, extension = os.path.splitext(args.sound)
+		if extension.lower() not in ALLOWED_SOUND_FILE_EXTENSIONS:
+			raise ValueError('Unsupported sound file type')
+		if not os.path.isfile(args.sound):
+			raise ValueError('Sound file not found')
 		canberra.playFile(args.sound, *props)
 	else:
 		canberra.playEvent(args.sound, *props)
@@ -202,5 +209,4 @@ def test():
 if __name__ == '__main__':
 	main()
 	# test()
-
 

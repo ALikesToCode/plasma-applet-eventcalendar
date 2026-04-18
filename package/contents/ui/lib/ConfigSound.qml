@@ -21,13 +21,24 @@ RowLayout {
 	// property var sfxTest: Qt.createQmlObject("import QtMultimedia 5.4; Audio {}", configSound)
 	property var sfxTest: null
 
+	function isAllowedSoundPath(path) {
+		if (!path) {
+			return false
+		}
+		var normalizedPath = ("" + path).trim()
+		if (normalizedPath.indexOf('file://') === 0) {
+			normalizedPath = normalizedPath.slice('file://'.length)
+		}
+		return normalizedPath.indexOf('/') === 0 && /\.(wav|mp3|oga|ogg)$/i.test(normalizedPath)
+	}
+
 	spacing: 0
 	ConfigCheckBox {
 		id: sfxEnabledCheckBox
 	}
 	Button {
 		iconName: "media-playback-start-symbolic"
-		enabled: sfxEnabled && !!sfxTest
+		enabled: sfxEnabled && !!sfxTest && isAllowedSoundPath(sfxPath.value)
 		onClicked: {
 			sfxTest.source = sfxPath.value
 			sfxTest.play()

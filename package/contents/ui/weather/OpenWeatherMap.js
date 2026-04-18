@@ -1,6 +1,7 @@
 .pragma library
 
 .import "../lib/Requests.js" as Requests
+.import "../Shared.js" as Shared
 
 function weatherIsSetup(config) {
 	return !!config.openWeatherMapCityId
@@ -9,7 +10,7 @@ function weatherIsSetup(config) {
 function openOpenWeatherMapCityUrl(cityId) {
 	var url = 'https://openweathermap.org/city/'
 	url += cityId
-	Qt.openUrlExternally(url)
+	Shared.openExternalUrl(url)
 }
 
 function fetchHourlyWeatherForecast(args, callback) {
@@ -98,7 +99,7 @@ function parseHourlyData(weatherData) {
 }
 
 function handleError(funcName, callback, err, data, xhr) {
-	console.error('[eventcalendar]', funcName + '.err', err, xhr && xhr.status, data)
+	console.error('[eventcalendar]', funcName + '.err', err, xhr && xhr.status)
 	return callback(err, data, xhr)
 }
 
