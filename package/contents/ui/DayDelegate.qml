@@ -117,7 +117,7 @@ MouseArea {
 	}
 
 
-	property int eventCount: model.events ? model.events.count : 0
+	property int eventCount: model.events ? model.events.length : 0
 	property var eventColors: []
 	property bool useHightlightColor: eventColors.length === 0
 
@@ -125,7 +125,7 @@ MouseArea {
 	function updateEventColors() {
 		var set = {}
 		for (var i = 0; i < eventCount; i++) {
-			var eventItem = model.events.get(i)
+			var eventItem = model.events[i]
 			if (eventItem.backgroundColor) {
 				set[eventItem.backgroundColor] = true
 			}
@@ -162,7 +162,7 @@ MouseArea {
 			sourceComponent: badgeComponent
 
 			readonly property var modelEvents: model.events
-			readonly property int modelEventsCount: modelEvents ? modelEvents.count : 0
+			readonly property int modelEventsCount: modelEvents ? modelEvents.length : 0
 			property alias dayStyle: dayStyle // aka DayDelegate
 		}
 	}
@@ -221,8 +221,8 @@ MouseArea {
 				return ''
 			}
 			var lines = []
-			for (var i = 0; i < model.events.count; i++) {
-				var eventItem = model.events.get(i)
+			for (var i = 0; i < model.events.length; i++) {
+				var eventItem = model.events[i]
 				var line = ''
 				var eventBullet = '■'
 				if(new Date(eventItem.end.dateTime) < new Date()) {

@@ -322,9 +322,8 @@ MouseArea {
 				// Clear event data since data contains events from all calendars, and this function
 				// is called every time a calendar is recieved.
 				for (var i = 0; i < monthView.daysModel.count; i++) {
-					var dayData = monthView.daysModel.get(i)
 					monthView.daysModel.setProperty(i, 'showEventBadge', false)
-					dayData.events.clear()
+					monthView.daysModel.setProperty(i, 'events', [])
 				}
 
 				var generation = ++monthView.parseGeneration
@@ -371,10 +370,10 @@ MouseArea {
 								return
 							}
 							var dayData = monthView.daysModel.get(dayIndex)
-							monthView.daysModel.setProperty(dayIndex, "showEventBadge", true)
-							var events = dayData.events || []
-							events.append(eventItem)
-							monthView.daysModel.setProperty(dayIndex, "events", events)
+							monthView.daysModel.setProperty(dayIndex, 'showEventBadge', true)
+							var events = dayData.events ? dayData.events.slice(0) : []
+							events.push(eventItem)
+							monthView.daysModel.setProperty(dayIndex, 'events', events)
 						}
 					}
 
