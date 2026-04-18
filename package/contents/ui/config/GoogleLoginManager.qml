@@ -7,6 +7,7 @@ Item {
 	id: session
 	ExecUtil { id: executable }
 	property int callbackListenPort: 8001
+	property string authState: ""
 
 	Logger {
 		id: logger
@@ -80,17 +81,26 @@ Item {
 		url += '&response_type=code'
 		url += '&redirect_uri=' + encodeURIComponent("http://127.0.0.1:" + callbackListenPort.toString() + "/")
 		url += '&client_id=' + encodeURIComponent(plasmoid.configuration.latestClientId)
+		if (authState) {
+			url += '&state=' + encodeURIComponent(authState)
+		}
 		return url
+	}
+
+	function generateAuthState() {
+		return String(Qt.createUuid()).replace(/[{}\-]/g, "")
 	}
 
 
 	function fetchAccessToken() {
+		authState = generateAuthState()
 		var cmd = [
 			'python3',
 			plasmoid.file("", "scripts/google_redirect.py"),
 			"--client_id", plasmoid.configuration.latestClientId,
 			"--client_secret", plasmoid.configuration.latestClientSecret,
 			"--listen_port", callbackListenPort.toString(),
+			"--state", authState,
 		]
 
 		Qt.openUrlExternally(authorizationCodeUrl);
@@ -99,6 +109,9 @@ Item {
 			if (exitCode) {
 				logger.log('fetchAccessToken.stderr', stderr)
 				logger.log('fetchAccessToken.stdout', stdout)
+				if ((stderr || "").indexOf("State mismatch") !== -1) {
+					handleError("Google login failed because the browser returned an unexpected state token. Please retry the login.", null)
+				}
 				return
 			}
 
@@ -115,6 +128,7 @@ Item {
 	}
 
 	function updateAccessToken(data) {
+		authState = ''
 		plasmoid.configuration.sessionClientId = plasmoid.configuration.latestClientId
 		plasmoid.configuration.sessionClientSecret = plasmoid.configuration.latestClientSecret
 		plasmoid.configuration.accessToken = data.access_token
