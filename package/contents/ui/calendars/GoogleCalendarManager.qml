@@ -17,14 +17,98 @@ CalendarManager {
 	property var session
 	readonly property var calendarIdList: plasmoid.configuration.calendarIdList ? plasmoid.configuration.calendarIdList.split(',') : []
 
+	function defaultCalendarIdList(calendarList) {
+		if (!calendarList || !calendarList.length) {
+			return []
+		}
+		for (var i = 0; i < calendarList.length; i++) {
+			var calendar = calendarList[i]
+			if (calendar && calendar.primary) {
+				return ["primary"]
+			}
+		}
+		for (var j = 0; j < calendarList.length; j++) {
+			var fallbackCalendar = calendarList[j]
+			if (fallbackCalendar && fallbackCalendar.id) {
+				return [fallbackCalendar.id]
+			}
+		}
+		return []
+	}
+
+	function getSelectedCalendarIdList(calendarListOverride) {
+		if (calendarIdList.length) {
+			return calendarIdList
+		}
+		var defaultList = defaultCalendarIdList(calendarListOverride)
+		if (defaultList.length) {
+			plasmoid.configuration.calendarIdList = defaultList.join(",")
+		}
+		return defaultList
+	}
+
 	onFetchAllCalendars: {
 		fetchGoogleAccountData()
 	}
 
 	function fetchGoogleAccountData() {
-		if (session.accessToken) {
-			fetchGoogleAccountEvents(calendarIdList)
+		if (!session.accessToken) {
+			return
 		}
+		var storedCalendarList = getCalendarList()
+		if (!storedCalendarList.length) {
+			fetchGoogleCalendarList()
+			return
+		}
+		var selectedCalendarIdList = getSelectedCalendarIdList(storedCalendarList)
+		if (selectedCalendarIdList.length) {
+			fetchGoogleAccountEvents(selectedCalendarIdList)
+		}
+	}
+
+	function fetchGoogleCalendarList() {
+		googleCalendarManager.asyncRequests += 1
+		session.checkAccessToken(function(err) {
+			if (err) {
+				googleCalendarManager.asyncRequestsDone += 1
+				googleCalendarManager.error(i18n("Google authentication failed: %1", err), ErrorType.ClientError)
+				return
+			}
+			fetchGCalCalendars({
+				accessToken: session.accessToken,
+			}, function(err, data, xhr) {
+				if (err || (data && data.error)) {
+					googleCalendarManager.asyncRequestsDone += 1
+					handleError(err || 'fetchGCalCalendars error', data, xhr)
+					return
+				}
+				try {
+					plasmoid.configuration.calendarList = SafeConfig.serializeBase64Json(data.items || [])
+				} catch (serializeErr) {
+					logger.log("Failed to serialize calendarList", serializeErr)
+				}
+				var selectedCalendarIdList = getSelectedCalendarIdList(data.items || [])
+				googleCalendarManager.asyncRequestsDone += 1
+				if (selectedCalendarIdList.length) {
+					fetchGoogleAccountEvents(selectedCalendarIdList)
+				}
+			})
+		})
+	}
+
+	function fetchGCalCalendars(args, callback) {
+		var url = 'https://www.googleapis.com/calendar/v3/users/me/calendarList'
+		Requests.getJSON({
+			url: url,
+			headers: {
+				"Authorization": "Bearer " + args.accessToken,
+			}
+		}, function(err, data, xhr) {
+			if (!err && data && data.error) {
+				return callback('fetchGCalCalendars error', data, xhr)
+			}
+			callback(err, data, xhr)
+		})
 	}
 
 	//-------------------------

@@ -56,6 +56,25 @@ Item {
 		return value ? String(value).trim() : ""
 	}
 
+	function defaultCalendarIdList(calendarItems) {
+		if (!calendarItems || !calendarItems.length) {
+			return []
+		}
+		for (var i = 0; i < calendarItems.length; i++) {
+			var calendar = calendarItems[i]
+			if (calendar && calendar.primary) {
+				return ["primary"]
+			}
+		}
+		for (var j = 0; j < calendarItems.length; j++) {
+			var fallbackCalendar = calendarItems[j]
+			if (fallbackCalendar && fallbackCalendar.id) {
+				return [fallbackCalendar.id]
+			}
+		}
+		return []
+	}
+
 	function refreshClientCredentials() {
 		var latestId = normalizedClientValue(plasmoid.configuration.latestClientId)
 		var latestSecret = normalizedClientValue(plasmoid.configuration.latestClientSecret)
@@ -89,7 +108,7 @@ Item {
 			plasmoid.configuration[configKey] = value.join(",")
 		}
 		function deserialize() {
-			value = configValue.split(",")
+			value = configValue ? configValue.split(",") : []
 		}
 	}
 	property alias calendarIdList: m_calendarIdList.value
@@ -110,7 +129,7 @@ Item {
 			plasmoid.configuration[configKey] = value.join(",")
 		}
 		function deserialize() {
-			value = configValue.split(",")
+			value = configValue ? configValue.split(",") : []
 		}
 	}
 	property alias tasklistIdList: m_tasklistIdList.value
@@ -441,6 +460,12 @@ Item {
 				return
 			}
 			m_calendarList.value = data.items
+			if (!m_calendarIdList.value.length) {
+				var defaultList = defaultCalendarIdList(data.items)
+				if (defaultList.length) {
+					m_calendarIdList.value = defaultList
+				}
+			}
 		})
 	}
 
