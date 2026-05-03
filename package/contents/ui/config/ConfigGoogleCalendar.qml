@@ -76,7 +76,11 @@ ConfigPage {
 		if (!account) {
 			return i18n("Google Account")
 		}
-		return account.label || i18n("Google Account %1", index + 1)
+		var derivedLabel = ""
+		if (!account.label && googleLoginManager && googleLoginManager.deriveLabelFromCalendars) {
+			derivedLabel = googleLoginManager.deriveLabelFromCalendars(account.calendarList || [])
+		}
+		return account.label || derivedLabel || i18n("Google Account %1", index + 1)
 	}
 	function rebuildAccountsModel() {
 		accountsModel.clear()
@@ -215,7 +219,6 @@ ConfigPage {
 					return
 				}
 				messageWidget.success(i18n("Login complete."))
-				googleLoginManager.updateCalendarList()
 			})
 		})
 		if (openBrowser) {

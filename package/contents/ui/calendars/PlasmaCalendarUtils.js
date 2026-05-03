@@ -131,6 +131,24 @@ function getPluginRuntimeIdentifier(eventPluginsManager, pluginFilenameA) {
 	return null
 }
 
+function getModelPluginFilename(eventPluginsManager, rowIndex, rowData) {
+	if (rowData) {
+		if (rowData.pluginId) {
+			return getStoredPluginFilename(rowData.pluginId)
+		}
+		if (rowData.pluginPath) {
+			return getStoredPluginFilename(rowData.pluginPath)
+		}
+	}
+
+	var pluginId = getModelRoleValue(eventPluginsManager, rowIndex, 'pluginId')
+	if (pluginId) {
+		return getStoredPluginFilename(pluginId)
+	}
+
+	return getStoredPluginFilename(getModelRoleValue(eventPluginsManager, rowIndex, 'pluginPath'))
+}
+
 function pluginFilenameToPathList(eventPluginsManager, pluginFilenameList) {
 	// console.log('eventPluginsManager', eventPluginsManager)
 	// console.log('eventPluginsManager.model', eventPluginsManager.model)

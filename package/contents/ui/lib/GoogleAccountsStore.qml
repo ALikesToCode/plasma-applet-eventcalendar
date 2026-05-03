@@ -44,6 +44,21 @@ Item {
 		migrateLegacyAccountIfNeeded()
 	}
 
+	Connections {
+		target: !configBridge && typeof plasmoid !== "undefined" && plasmoid.configuration
+			? plasmoid.configuration
+			: null
+		function onGoogleAccountsChanged() {
+			store.syncFromConfig()
+		}
+		function onGoogleActiveAccountIdChanged() {
+			store.syncFromConfig()
+		}
+		function onDebuggingChanged() {
+			store.syncFromConfig()
+		}
+	}
+
 	onConfigBridgeChanged: {
 		syncFromConfig()
 		loadAccounts()
@@ -342,6 +357,112 @@ Item {
 		}
 	}
 
+	function inspectStoredRefreshTokens(callback) {
+		var statuses = []
+		function inspectIndex(index) {
+			if (index >= accounts.length) {
+				if (typeof callback === "function") {
+					callback(statuses)
+				}
+				return
+			}
+			var account = accounts[index]
+			if (!account || !account.id) {
+				inspectIndex(index + 1)
+				return
+			}
+			loadRefreshToken(account.id, function(err, refreshToken) {
+				statuses.push({
+					accountId: account.id,
+					hasStoredRefreshToken: !err && !!refreshToken,
+					isInitialized: !!(account.label
+						|| (account.calendarList && account.calendarList.length)
+						|| (account.tasklistList && account.tasklistList.length)),
+				})
+				inspectIndex(index + 1)
+			})
+		}
+		inspectIndex(0)
+	}
+
+	function findReusableAccount(callback) {
+		inspectStoredRefreshTokens(function(statuses) {
+			var reusableId = ""
+			var missingIds = []
+			var incompleteIds = []
+			for (var i = statuses.length - 1; i >= 0; i--) {
+				var status = statuses[i]
+				if (!status.hasStoredRefreshToken) {
+					missingIds.unshift(status.accountId)
+					reusableId = status.accountId
+					break
+				}
+				if (!status.isInitialized) {
+					incompleteIds.unshift(status.accountId)
+					if (!reusableId) {
+						reusableId = status.accountId
+					}
+				}
+			}
+			logger.debugJSON("findReusableAccount.result", {
+				reusableId: reusableId,
+				missingIds: missingIds,
+				incompleteIds: incompleteIds,
+			})
+			if (typeof callback === "function") {
+				callback(reusableId)
+			}
+		})
+	}
+
+	function pruneDeadAccounts(exceptAccountId, callback) {
+		inspectStoredRefreshTokens(function(statuses) {
+			var removedIds = []
+			for (var i = 0; i < statuses.length; i++) {
+				var status = statuses[i]
+				if (status.accountId === exceptAccountId || status.hasStoredRefreshToken) {
+					continue
+				}
+				removedIds.push(status.accountId)
+			}
+			for (var j = 0; j < removedIds.length; j++) {
+				removeAccount(removedIds[j])
+			}
+			logger.debugJSON("pruneDeadAccounts.result", {
+				exceptAccountId: exceptAccountId || "",
+				removedIds: removedIds,
+			})
+			if (typeof callback === "function") {
+				callback(removedIds)
+			}
+		})
+	}
+
+	function pruneReusableAccounts(exceptAccountId, callback) {
+		inspectStoredRefreshTokens(function(statuses) {
+			var removedIds = []
+			for (var i = 0; i < statuses.length; i++) {
+				var status = statuses[i]
+				if (status.accountId === exceptAccountId) {
+					continue
+				}
+				if (!status.hasStoredRefreshToken || !status.isInitialized) {
+					removedIds.push(status.accountId)
+				}
+			}
+			for (var j = 0; j < removedIds.length; j++) {
+				removeAccount(removedIds[j])
+			}
+			logger.debugJSON("pruneReusableAccounts.result", {
+				exceptAccountId: exceptAccountId || "",
+				removedIds: removedIds,
+			})
+			if (typeof callback === "function") {
+				callback(removedIds)
+			}
+		})
+	}
+
 	function setActiveAccountId(accountId) {
 		if (configBridge) {
 			activeAccountId = accountId
@@ -434,29 +555,30 @@ Item {
 	}
 
 	function waitForReadyFile(readyFile, callback, attemptsLeft) {
-		if (attemptsLeft === undefined) {
-			attemptsLeft = 50
-		}
-		Requests.getFile(localFileUrl(readyFile), function(err, data) {
+		var timeoutSeconds = attemptsLeft !== undefined ? attemptsLeft : 5
+		secretExec.execArgv([
+			"python3",
+			secretStorePath,
+			"wait-ready",
+			"--ready-file",
+			readyFile,
+			"--timeout",
+			String(timeoutSeconds),
+		], function(cmd, exitCode, exitStatus, stdout, stderr) {
 			var payload = null
-			if (!err && data) {
+			var trimmed = (stdout || "").trim()
+			if (trimmed) {
 				try {
-					payload = JSON.parse(data)
+					payload = JSON.parse(trimmed)
 				} catch (e) {
 					payload = null
 				}
 			}
-			if (payload && payload.port && payload.token) {
+			if (exitCode === 0 && payload && payload.port && payload.token) {
 				callback(null, payload)
 				return
 			}
-			if (attemptsLeft <= 0) {
-				callback("Timed out waiting for secret storage helper.")
-				return
-			}
-			delay(100, function() {
-				waitForReadyFile(readyFile, callback, attemptsLeft - 1)
-			})
+			callback((stderr || stdout || "").trim() || "Timed out waiting for secret storage helper.")
 		})
 	}
 

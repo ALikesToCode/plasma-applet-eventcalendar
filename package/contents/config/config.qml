@@ -90,7 +90,7 @@ ConfigModel {
 			name: model.display
 			icon: model.decoration
 			source: model.configUi
-			readonly property string pluginFilename: PlasmaCalendarUtils.getPluginFilename(model.pluginPath)
+			readonly property string pluginFilename: PlasmaCalendarUtils.getModelPluginFilename(eventPluginsManager, index, model)
 			visible: hasPlasmoidConfig
 				&& effectiveEnabledCalendarPlugins.indexOf(pluginFilename) > -1
 		}

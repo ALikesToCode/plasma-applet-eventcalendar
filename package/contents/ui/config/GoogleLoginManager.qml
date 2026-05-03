@@ -78,7 +78,7 @@ Item {
 			}
 		}
 		function onActiveAccountIdChanged() {
-			session.refreshActiveAccount()
+			session.refreshActiveAccount(accountsStore.activeAccountId)
 		}
 	}
 
@@ -119,7 +119,8 @@ Item {
 	}
 
 	function refreshActiveAccount() {
-		activeAccount = accountsStore.getAccount(activeAccountId)
+		var targetAccountId = arguments.length > 0 ? arguments[0] : activeAccountId
+		activeAccount = accountsStore.getAccount(targetAccountId)
 		if (activeAccount) {
 			calendarList = activeAccount.calendarList || []
 			calendarIdList = activeAccount.calendarIdList || []
@@ -132,6 +133,8 @@ Item {
 			tasklistIdList = []
 		}
 	}
+
+	onActiveAccountIdChanged: refreshActiveAccount(activeAccountId)
 
 	function refreshClientCredentials() {
 		migrateDefaultClientIfNeeded()
@@ -432,49 +435,90 @@ Item {
 			}
 
 			// Ready
-			updateAccessToken(parsed, args.accountId)
-			if (typeof callback === "function") {
-				callback(null, parsed)
-			}
+			updateAccessToken(parsed, args.accountId, function(updateErr) {
+				if (typeof callback === "function") {
+					callback(updateErr || null, updateErr ? null : parsed)
+				}
+			})
 		})
 	}
 
-	function updateAccessToken(data, accountId) {
-		var account = accountId ? accountsStore.getAccount(accountId) : null
-		var targetId = accountId
-		var createdAccount = false
-		if (!account) {
+	function resolveLoginTargetAccount(accountId, callback) {
+		var existingAccount = accountId ? accountsStore.getAccount(accountId) : null
+		if (existingAccount) {
+			callback({
+				account: existingAccount,
+				targetId: existingAccount.id,
+				createdAccount: false,
+				reusedDeadAccount: false,
+			})
+			return
+		}
+		accountsStore.findReusableAccount(function(reusableId) {
+			if (reusableId) {
+				callback({
+					account: accountsStore.getAccount(reusableId),
+					targetId: reusableId,
+					createdAccount: false,
+					reusedDeadAccount: true,
+				})
+				return
+			}
 			var created = accountsStore.addAccount({
 				label: '',
 				skipDefaultCalendarSelection: true,
 			})
-			targetId = created.id
-			createdAccount = true
-		}
-		logger.debugJSON("updateAccessToken", {
-			requestedAccountId: accountId || "",
-			targetId: targetId,
-			createdAccount: createdAccount,
-			clientIdSuffix: clientIdSuffix(effectiveClientId),
-			sessionUsesPkce: !effectiveClientSecret,
-			hasAccessToken: !!data.access_token,
-			hasRefreshToken: !!data.refresh_token,
-			reusedExistingRefreshToken: !data.refresh_token && !!(account && account.refreshToken),
+			callback({
+				account: created,
+				targetId: created.id,
+				createdAccount: true,
+				reusedDeadAccount: false,
+			})
 		})
-		accountsStore.updateAccount(targetId, {
-			sessionClientId: effectiveClientId,
-			sessionUsesPkce: !effectiveClientSecret,
-			accessToken: data.access_token,
-			accessTokenType: data.token_type,
-			accessTokenExpiresAt: Date.now() + data.expires_in * 1000,
-			refreshToken: data.refresh_token || (account && account.refreshToken) || '',
-		})
-		accountsStore.setActiveAccountId(targetId)
-		newAccessToken()
-		clearAuthorizationContext()
 	}
 
-	onNewAccessToken: updateData()
+	function updateAccessToken(data, accountId, callback) {
+		resolveLoginTargetAccount(accountId, function(target) {
+			var account = target.account
+			var patch = {
+				sessionClientId: effectiveClientId,
+				sessionUsesPkce: !effectiveClientSecret,
+				accessToken: data.access_token,
+				accessTokenType: data.token_type,
+				accessTokenExpiresAt: Date.now() + data.expires_in * 1000,
+				refreshToken: data.refresh_token || (account && account.refreshToken) || '',
+			}
+			if (target.reusedDeadAccount) {
+				patch.label = ''
+				patch.calendarList = []
+				patch.calendarIdList = []
+				patch.calendarSelectionInitialized = false
+				patch.tasklistList = []
+				patch.tasklistIdList = []
+			}
+			logger.debugJSON("updateAccessToken", {
+				requestedAccountId: accountId || "",
+				targetId: target.targetId,
+				createdAccount: target.createdAccount,
+				reusedDeadAccount: target.reusedDeadAccount,
+				clientIdSuffix: clientIdSuffix(effectiveClientId),
+				sessionUsesPkce: !effectiveClientSecret,
+				hasAccessToken: !!data.access_token,
+				hasRefreshToken: !!data.refresh_token,
+				reusedExistingRefreshToken: !data.refresh_token && !!(account && account.refreshToken),
+			})
+			accountsStore.updateAccount(target.targetId, patch)
+			accountsStore.setActiveAccountId(target.targetId)
+			accountsStore.pruneReusableAccounts(target.targetId)
+			newAccessToken()
+			clearAuthorizationContext()
+			if (typeof callback === "function") {
+				callback(null, target.targetId)
+			}
+		})
+	}
+
+	onNewAccessToken: Qt.callLater(updateData)
 
 	function updateData() {
 		updateCalendarList()

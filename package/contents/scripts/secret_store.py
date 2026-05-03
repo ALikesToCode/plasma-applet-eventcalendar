@@ -203,6 +203,21 @@ def parse_store_payload(raw_body: str) -> str:
     return value
 
 
+def load_ready_payload(path: str) -> dict | None:
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    port = payload.get("port")
+    token = payload.get("token")
+    if not isinstance(port, int) or not isinstance(token, str) or not token:
+        return None
+    return payload
+
+
 class StoreOnceHandler(BaseHTTPRequestHandler):
     server_version = "SecretStore/1.0"
 
@@ -243,7 +258,7 @@ class StoreOnceHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"ok": True})
             self.server.result = 0
         self.server.shutdown_requested = True
-        self.server.shutdown()
+        self.close_connection = True
 
 
 class StoreOnceServer(HTTPServer):
@@ -296,6 +311,17 @@ def run_store_once(args: argparse.Namespace) -> int:
     return server.result
 
 
+def run_wait_ready(args: argparse.Namespace) -> int:
+    deadline = time.monotonic() + args.timeout
+    while time.monotonic() < deadline:
+        payload = load_ready_payload(args.ready_file)
+        if payload:
+            print(json.dumps(payload))
+            return 0
+        time.sleep(0.1)
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -317,6 +343,10 @@ def build_parser() -> argparse.ArgumentParser:
     store_once_cmd.add_argument("--ready-file", required=True)
     store_once_cmd.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
 
+    wait_ready_cmd = subparsers.add_parser("wait-ready")
+    wait_ready_cmd.add_argument("--ready-file", required=True)
+    wait_ready_cmd.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
+
     return parser
 
 
@@ -329,6 +359,8 @@ def main() -> int:
         return run_clear(args)
     if args.command == "store-once":
         return run_store_once(args)
+    if args.command == "wait-ready":
+        return run_wait_ready(args)
     parser.error("Unknown command.")
     return 1
 
