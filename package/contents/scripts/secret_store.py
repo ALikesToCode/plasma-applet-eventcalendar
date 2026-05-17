@@ -261,6 +261,35 @@ class StoreOnceHandler(BaseHTTPRequestHandler):
         self.close_connection = True
 
 
+class ReadOnceHandler(BaseHTTPRequestHandler):
+    server_version = "SecretStore/1.0"
+
+    def log_message(self, format: str, *args) -> None:
+        return
+
+    def _send_json(self, status: int, payload: dict) -> None:
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self) -> None:
+        if self.path != "/read":
+            self._send_json(404, {"error": "Not found."})
+            return
+        expected_auth = "Bearer " + self.server.secret_token
+        if self.headers.get("Authorization", "") != expected_auth:
+            self._send_json(403, {"error": "Forbidden."})
+            return
+        found, value = lookup_secret(self.server.attributes)
+        self._send_json(200, {"found": found, "value": value if found else ""})
+        self.server.result = 0
+        self.server.shutdown_requested = True
+        self.close_connection = True
+
+
 class StoreOnceServer(HTTPServer):
     def __init__(self, server_address, request_handler_class, *, attributes, label, secret_token):
         super().__init__(server_address, request_handler_class)
@@ -271,13 +300,21 @@ class StoreOnceServer(HTTPServer):
         self.shutdown_requested = False
 
 
+class ReadOnceServer(HTTPServer):
+    def __init__(self, server_address, request_handler_class, *, attributes, secret_token):
+        super().__init__(server_address, request_handler_class)
+        self.attributes = attributes
+        self.secret_token = secret_token
+        self.result = 1
+        self.shutdown_requested = False
+
+
 def run_read(args: argparse.Namespace) -> int:
-    found, value = lookup_secret(build_attributes(args))
+    found, _ = lookup_secret(build_attributes(args))
     if not found:
-        print("")
         return 1
-    print(value)
-    return 0
+    print("Refusing to write a stored secret to stdout; use read-once.", file=sys.stderr)
+    return 1
 
 
 def run_clear(args: argparse.Namespace) -> int:
@@ -290,6 +327,31 @@ def run_store_once(args: argparse.Namespace) -> int:
     label = "{} {} {}".format(APP_ID, args.scope, args.key)
     token = secrets.token_urlsafe(24)
     server = StoreOnceServer(("127.0.0.1", 0), StoreOnceHandler, attributes=attributes, label=label, secret_token=token)
+    ready_payload = {
+        "port": server.server_address[1],
+        "token": token,
+    }
+    atomic_write_json(args.ready_file, ready_payload)
+    deadline = time.monotonic() + args.timeout
+    server.timeout = 1
+    try:
+        while not server.shutdown_requested and time.monotonic() < deadline:
+            server.handle_request()
+    finally:
+        server.server_close()
+        try:
+            os.unlink(args.ready_file)
+        except OSError:
+            pass
+    if not server.shutdown_requested:
+        return 1
+    return server.result
+
+
+def run_read_once(args: argparse.Namespace) -> int:
+    attributes = build_attributes(args)
+    token = secrets.token_urlsafe(24)
+    server = ReadOnceServer(("127.0.0.1", 0), ReadOnceHandler, attributes=attributes, secret_token=token)
     ready_payload = {
         "port": server.server_address[1],
         "token": token,
@@ -335,6 +397,11 @@ def build_parser() -> argparse.ArgumentParser:
     read_cmd = subparsers.add_parser("read")
     add_shared_arguments(read_cmd)
 
+    read_once_cmd = subparsers.add_parser("read-once")
+    add_shared_arguments(read_once_cmd)
+    read_once_cmd.add_argument("--ready-file", required=True)
+    read_once_cmd.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
+
     clear_cmd = subparsers.add_parser("clear")
     add_shared_arguments(clear_cmd)
 
@@ -355,6 +422,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.command == "read":
         return run_read(args)
+    if args.command == "read-once":
+        return run_read_once(args)
     if args.command == "clear":
         return run_clear(args)
     if args.command == "store-once":

@@ -109,6 +109,23 @@ ConfigPage {
 	property bool autoLoginCancelled: false
 	readonly property bool localRedirect: googleLoginManager.redirectMode === "local"
 	readonly property bool showDebug: page.configBridge.read("debugging", false)
+	readonly property string authConfigurationMessage: credentialAuthConfigurationMessage()
+
+	function credentialAuthConfigurationMessage() {
+		var customId = googleLoginManager.normalizedClientValue(customClientIdInput.text)
+		var customSecret = googleLoginManager.normalizedClientValue(customClientSecretInput.text)
+		var latestId = googleLoginManager.normalizedClientValue(page.configBridge.read("latestClientId", ""))
+		var latestSecret = googleLoginManager.normalizedClientValue(page.configBridge.read("latestClientSecret", ""))
+		var clientId = customId ? customId : (!useDesktopClientToggle.checked && latestId ? latestId : googleLoginManager.defaultClientId)
+		var clientSecret = customId ? customSecret : (!useDesktopClientToggle.checked && latestId ? latestSecret : "")
+		return googleLoginManager.authConfigurationErrorFor(clientId, clientSecret)
+	}
+
+	function syncCredentialInputs() {
+		page.configBridge.write("customClientId", customClientIdInput.text)
+		page.configBridge.write("customClientSecret", customClientSecretInput.text)
+		googleLoginManager.refreshClientCredentials()
+	}
 
 	function extractJson(text) {
 		var start = text.indexOf('{')
@@ -127,7 +144,7 @@ ConfigPage {
 			autoLoginCancelled = true
 			autoLoginInProgress = false
 		}
-		googleLoginManager.refreshClientCredentials()
+		syncCredentialInputs()
 		googleLoginManager.fetchAccessToken({
 			authorizationCode: authorizationCodeInput.text,
 			accountId: accountId || "",
@@ -151,6 +168,7 @@ ConfigPage {
 		autoLoginCancelled = false
 		autoLoginInProgress = true
 		try {
+			syncCredentialInputs()
 			googleLoginManager.prepareAuthorization()
 		} catch (e) {
 			autoLoginInProgress = false
@@ -342,7 +360,9 @@ ConfigPage {
 		MessageWidget {
 			messageType: MessageWidget.MessageType.Warning
 			closeButtonVisible: false
-			text: googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
+			text: authConfigurationMessage
+				? authConfigurationMessage
+				: googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
 				? ""
 				: page.configBridge.read("latestClientSecret", "")
 					? i18n("Using a previously stored Google OAuth client for compatibility. If login still fails, add your own client ID and client secret.")
@@ -350,7 +370,7 @@ ConfigPage {
 		}
 		Label {
 			Layout.fillWidth: true
-			text: i18n("Leave these empty to use the default credentials. Custom credentials require a Google Cloud OAuth client with the redirect URI set to %1.", googleLoginManager.redirectUri)
+			text: i18n("Provide a Google Cloud OAuth Desktop client ID, or a Web client ID and secret with the redirect URI set to %1. Leaving these empty only works if a previously stored secret-based client is available.", googleLoginManager.redirectUri)
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 		}
@@ -372,6 +392,7 @@ ConfigPage {
 				text: i18n("Client ID")
 			}
 			ConfigString {
+				id: customClientIdInput
 				configKey: "customClientId"
 				Layout.fillWidth: true
 				placeholderText: i18n("Optional")
@@ -388,6 +409,7 @@ ConfigPage {
 				text: i18n("Client Secret")
 			}
 			ConfigString {
+				id: customClientSecretInput
 				configKey: "customClientSecret"
 				Layout.fillWidth: true
 				placeholderText: i18n("Optional")
@@ -424,7 +446,7 @@ ConfigPage {
 			Layout.fillWidth: true
 			Button {
 				text: googleLoginManager.isLoggedIn ? i18n("Login (Auto) - Add Account") : i18n("Login (Auto)")
-				enabled: !autoLoginInProgress
+				enabled: !autoLoginInProgress && !authConfigurationMessage
 				onClicked: {
 					authorizationCodeInput.text = ""
 					startAutoLogin("")
@@ -438,8 +460,9 @@ ConfigPage {
 				: i18n("Click Login (Auto) to open <a href=\"%1\">%2</a>. After you grant access, the browser redirects to the helper page and will try to send the code back automatically. If it fails, copy the code and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
-			onLinkActivated: function(link) {
+				onLinkActivated: function(link) {
 				try {
+					syncCredentialInputs()
 					googleLoginManager.prepareAuthorization()
 					googleLoginManager.maybeUseLegacyForLocal()
 					if (!Qt.openUrlExternally(googleLoginManager.authorizationCodeUrl)) {
@@ -529,13 +552,13 @@ ConfigPage {
 			}
 			Button {
 				text: googleLoginManager.isLoggedIn ? i18n("Add Account") : i18n("Submit")
-				enabled: !autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text
+				enabled: !authConfigurationMessage && (!autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text)
 				onClicked: submitAuthorization("")
 			}
 			Button {
 				visible: googleLoginManager.isLoggedIn
 				text: i18n("Update Selected")
-				enabled: !autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text
+				enabled: !authConfigurationMessage && (!autoLoginInProgress || !localRedirect || !!authorizationCodeInput.text)
 				onClicked: submitAuthorization(googleLoginManager.activeAccountId)
 			}
 		}

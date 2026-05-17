@@ -1,6 +1,7 @@
 import QtQuick
 
 import "../lib"
+import "../lib/GoogleOAuthConfig.js" as GoogleOAuthConfig
 import "../lib/Pkce.js" as Pkce
 import "../lib/ConfigUtils.js" as ConfigUtils
 import "../lib/Requests.js" as Requests
@@ -216,6 +217,11 @@ Item {
 	}
 	function prepareAuthorization() {
 		refreshClientCredentials()
+		var configError = authConfigurationError()
+		if (configError) {
+			error(configError)
+			throw new Error(configError)
+		}
 		var mode = normalizedRedirectMode(redirectMode)
 		if (!effectiveClientSecret) {
 			resetPkce()
@@ -228,6 +234,12 @@ Item {
 	}
 	function maybeUseLegacyForLocal() {
 		return false
+	}
+	function authConfigurationError() {
+		return authConfigurationErrorFor(effectiveClientId, effectiveClientSecret)
+	}
+	function authConfigurationErrorFor(clientId, clientSecret) {
+		return GoogleOAuthConfig.authConfigurationError(clientId, clientSecret, defaultClientId)
 	}
 	function clearAuthorizationContext() {
 		authState = ""
@@ -386,8 +398,6 @@ Item {
 			url: url,
 			data: payload,
 		}, function(err, data, xhr) {
-			logger.debug('/oauth2/v4/token Response', data)
-
 			var parsed = null
 			if (data) {
 				try {
@@ -569,7 +579,11 @@ Item {
 			if (!err && data && data.error) {
 				return callback('fetchGCalCalendars error', data, xhr)
 			}
-			logger.debugJSON('fetchGCalCalendars.response.data', data)
+			logger.debugJSON('fetchGCalCalendars.responseSummary', {
+				status: xhr ? xhr.status : 0,
+				err: err || "",
+				count: data && data.items ? data.items.length : 0,
+			})
 			callback(err, data, xhr)
 		})
 	}
@@ -599,11 +613,14 @@ Item {
 				"Authorization": "Bearer " + args.accessToken,
 			}
 		}, function(err, data, xhr) {
-			console.log('fetchGoogleTasklistList.response', err, data, xhr && xhr.status)
 			if (!err && data && data.error) {
 				return callback('fetchGoogleTasklistList error', data, xhr)
 			}
-			logger.debugJSON('fetchGoogleTasklistList.response.data', data)
+			logger.debugJSON('fetchGoogleTasklistList.responseSummary', {
+				status: xhr ? xhr.status : 0,
+				err: err || "",
+				count: data && data.items ? data.items.length : 0,
+			})
 			callback(err, data, xhr)
 		})
 	}

@@ -4,6 +4,7 @@ import org.kde.plasma.workspace.calendar as PlasmaCalendar
 
 import "../lib"
 import "../Shared.js" as Shared
+import "../calendars/PlasmaCalendarEventState.js" as PlasmaCalendarEventState
 import "../calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 
 CalendarManager {
@@ -302,36 +303,8 @@ CalendarManager {
 		}
 		// logger.debugJSON(items)
 
-		// We need to filter out the repeated items for multi-day events as Plasma creates a new "event item"
-		// for each day of the event.
-		for (var i = 0; i < items.length; i++) {
-			var itemA = items[i]
-
-			// Check every event before this one.
-			for (var j = 0; j < i; j++) {
-				var itemB = items[j]
-				if (itemA.eventId == itemB.eventId) {
-					// There's a conflict, TODO: generate a better eventIds
-
-					if (itemA.start.date == itemB.start.date
-						&& itemA.start.dateTime == itemB.start.dateTime
-						&& itemA.end.date == itemB.end.date
-						&& itemA.end.dateTime == itemB.end.dateTime
-						&& itemA.summary == itemB.summary
-					) {
-						// Same event.
-
-						// logger.debug('itemA == itemB, removing')
-						// logger.debugJSON('\titemA', itemA)
-						// logger.debugJSON('\titemB', itemB)
-
-						items.splice(i, 1) // remove this event item
-						i -= 1 // start this index again
-						break // exit j/itemB loop
-					}
-				}
-			}
-		}
+		// Plasma may return the same parsed item more than once for multi-day/plugin events.
+		items = PlasmaCalendarEventState.dedupeParsedEvents(items)
 
 		return items
 	}

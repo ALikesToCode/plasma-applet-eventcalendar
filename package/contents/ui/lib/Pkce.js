@@ -1,5 +1,7 @@
 .pragma library
 
+.import "Base64Compat.js" as Base64Compat
+
 var fallbackCounter = 0
 
 function generateOpaqueToken(length) {
@@ -31,12 +33,8 @@ function generateVerifier() {
 }
 
 function base64UrlEncode(bytes) {
-    var binary = ""
-    for (var i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i])
-    }
-    var b64 = Qt.btoa(binary)
-    return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+	var b64 = Base64Compat.base64EncodeBytes(bytes)
+	return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
 }
 
 function sha256(ascii) {

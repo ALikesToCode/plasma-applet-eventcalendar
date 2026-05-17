@@ -3,6 +3,8 @@
 import QtQuick
 import org.kde.plasma.plasma5support as Plasma5Support
 
+import "Base64Compat.js" as Base64Compat
+
 Plasma5Support.DataSource {
 	id: executable
 	engine: "executable"
@@ -58,7 +60,7 @@ Plasma5Support.DataSource {
 	}
 
 	function encodeArgvPayload(argv) {
-		var payload = Qt.btoa(JSON.stringify(argv))
+		var payload = Base64Compat.base64EncodeString(JSON.stringify(argv))
 		payload = payload.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 		return payload
 	}

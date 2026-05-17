@@ -1,6 +1,7 @@
 import QtQuick
 import "./ErrorType.js" as ErrorType
 import "./weather/WeatherApi.js" as WeatherApi
+import "./lib/GoogleOAuthConfig.js" as GoogleOAuthConfig
 import "./lib/SafeConfig.js" as SafeConfig
 
 Item {
@@ -132,7 +133,9 @@ Item {
 		logger.debug('updateDailyWeather', lastForecastAt, Date.now())
 		WeatherApi.updateDailyWeather(plasmoid.configuration, function(err, data, xhr) {
 			if (err) return handleWeatherError('updateDailyWeather', err, data, xhr)
-			logger.debugJSON('updateDailyWeather.response', data)
+			logger.debugJSON('updateDailyWeather.responseSummary', {
+				count: data && data.list ? data.list.length : 0,
+			})
 
 			logic.lastForecastAt = Date.now()
 			logic.lastForecastErr = null
@@ -145,7 +148,9 @@ Item {
 		logger.debug('updateHourlyWeather', lastForecastAt, Date.now())
 		WeatherApi.updateHourlyWeather(plasmoid.configuration, function(err, data, xhr) {
 			if (err) return handleWeatherError('updateHourlyWeather', err, data, xhr)
-			logger.debugJSON('updateHourlyWeather.response', data)
+			logger.debugJSON('updateHourlyWeather.responseSummary', {
+				count: data && data.list ? data.list.length : 0,
+			})
 
 			logic.lastForecastAt = Date.now()
 			logic.lastForecastErr = null
@@ -196,12 +201,17 @@ Item {
 	function normalizedConfigValue(value) {
 		return value ? String(value).trim() : ""
 	}
+	function currentGoogleCredentials() {
+		return GoogleOAuthConfig.effectiveClientCredentials(
+			plasmoid.configuration,
+			"352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
+		)
+	}
 	function currentGoogleClientId() {
-		var customClientId = normalizedConfigValue(plasmoid.configuration.customClientId)
-		return customClientId || "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
+		return currentGoogleCredentials().clientId
 	}
 	function currentGoogleUsesPkce() {
-		return !normalizedConfigValue(plasmoid.configuration.customClientSecret)
+		return !currentGoogleCredentials().clientSecret
 	}
 	function parseGoogleAccounts() {
 		var raw = plasmoid.configuration.googleAccounts
@@ -222,10 +232,13 @@ Item {
 		var accounts = parseGoogleAccounts()
 		for (var i = 0; i < accounts.length; i++) {
 			var account = accounts[i]
-			if (account.sessionClientId
-				&& (account.sessionClientId !== currentGoogleClientId()
-					|| account.sessionUsesPkce !== currentGoogleUsesPkce())
-			) {
+			if (account.sessionUsesPkce === false) {
+				continue
+			}
+			if (account.sessionClientId && account.sessionClientId !== currentGoogleClientId()) {
+				return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
+			}
+			if (account.sessionUsesPkce === true && currentGoogleUsesPkce() === false) {
 				return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
 			}
 		}

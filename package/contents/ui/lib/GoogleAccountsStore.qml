@@ -1,6 +1,7 @@
 import QtQuick
 
 import "ConfigUtils.js" as ConfigUtils
+import "GoogleAccountState.js" as GoogleAccountState
 import "Requests.js" as Requests
 import "SafeConfig.js" as SafeConfig
 
@@ -86,6 +87,7 @@ Item {
 	function loadAccounts() {
 		var parsed = normalizeAccounts(parseAccounts(accountsConfigValue))
 		var needsSecretMigration = accountsNeedSecretMigration(parsed)
+		GoogleAccountState.preserveRuntimeCredentialsForAccounts(parsed, accounts)
 		if (hasSameAccountIds(accounts, parsed)) {
 			for (var i = 0; i < parsed.length; i++) {
 				accounts[i] = parsed[i]
@@ -95,8 +97,13 @@ Item {
 			accounts = parsed
 		}
 		if (needsSecretMigration) {
-			migrateSecretsToSecretStore(parsed)
-			serialize()
+			migrateSecretsToSecretStore(parsed, function(err) {
+				if (err) {
+					logger.log('Could not migrate Google account secrets:', err)
+					return
+				}
+				serialize()
+			})
 		}
 		loadStoredSecrets()
 		ensureActiveAccount()
@@ -266,7 +273,7 @@ Item {
 
 	function serialize() {
 		var safeAccounts = (accounts || []).map(serializeAccount)
-		var payload = Qt.btoa(JSON.stringify(safeAccounts))
+		var payload = SafeConfig.serializeBase64Json(safeAccounts)
 		if (configBridge) {
 			accountsConfigValue = payload
 		}
@@ -299,6 +306,7 @@ Item {
 	function addAccount(account) {
 		var normalized = normalizeAccount(account || {})
 		var skipDefaultSelection = account && account.skipDefaultCalendarSelection === true
+		var skipSecretStorage = account && account.skipSecretStorage === true
 		if (!normalized.calendarIdList.length && !skipDefaultSelection) {
 			normalized.calendarIdList = ["primary"]
 			normalized.calendarSelectionInitialized = true
@@ -306,8 +314,11 @@ Item {
 		var nextAccounts = accounts.slice(0)
 		nextAccounts.push(normalized)
 		accounts = nextAccounts
-		if (normalized.refreshToken) {
+		if (!skipSecretStorage && normalized.refreshToken) {
 			storeRefreshToken(normalized.id, normalized.refreshToken)
+		}
+		if (!skipSecretStorage && normalized.sessionClientSecret) {
+			storeSessionClientSecret(normalized.id, normalized.sessionClientSecret)
 		}
 		serialize()
 		if (!activeAccountId) {
@@ -338,6 +349,14 @@ Item {
 			})
 			storeRefreshToken(accountId, patch.refreshToken || "")
 		}
+		if (patch.sessionClientSecret !== undefined) {
+			logger.debugJSON("updateAccount.sessionClientSecret", {
+				accountId: accountId,
+				action: patch.sessionClientSecret ? "store" : "clear",
+				length: (patch.sessionClientSecret || "").length,
+			})
+			storeSessionClientSecret(accountId, patch.sessionClientSecret || "")
+		}
 		serialize()
 		accountUpdated(accountId)
 	}
@@ -351,6 +370,7 @@ Item {
 		nextAccounts.splice(index, 1)
 		accounts = nextAccounts
 		clearRefreshToken(accountId)
+		clearSessionClientSecret(accountId)
 		serialize()
 		if (activeAccountId === accountId) {
 			setActiveAccountId(accounts.length ? accounts[0].id : "")
@@ -524,12 +544,33 @@ Item {
 		return false
 	}
 
-	function migrateSecretsToSecretStore(list) {
+	function migrateSecretsToSecretStore(list, callback) {
+		var pending = 0
+		var firstError = ""
+		function migrated(err) {
+			if (err && !firstError) {
+				firstError = err
+			}
+			pending -= 1
+			if (pending === 0 && typeof callback === "function") {
+				callback(firstError || null)
+			}
+		}
+		function storeMigrationSecret(storeFunction, accountId, value) {
+			pending += 1
+			storeFunction(accountId, value, migrated)
+		}
 		for (var i = 0; i < list.length; i++) {
 			var account = list[i]
 			if (account && account.refreshToken) {
-				storeRefreshToken(account.id, account.refreshToken)
+				storeMigrationSecret(storeRefreshToken, account.id, account.refreshToken)
 			}
+			if (account && account.sessionClientSecret) {
+				storeMigrationSecret(storeSessionClientSecret, account.id, account.sessionClientSecret)
+			}
+		}
+		if (pending === 0 && typeof callback === "function") {
+			callback(null)
 		}
 	}
 
@@ -595,21 +636,30 @@ Item {
 		accountUpdated(accountId)
 	}
 
-	function storeRefreshToken(accountId, refreshToken, callback) {
-		if (!accountId) {
-			if (typeof callback === "function") {
-				callback("Missing account id.")
+	function storeAccountSecret(accountId, key, value, callback) {
+		var finished = false
+		function finish(err) {
+			if (finished) {
+				return
 			}
+			finished = true
+			if (typeof callback === "function") {
+				callback(err || null)
+			}
+		}
+		if (!accountId) {
+			finish("Missing account id.")
 			return
 		}
-		if (!refreshToken) {
-			clearRefreshToken(accountId, callback)
+		if (!value) {
+			clearAccountSecret(accountId, key, callback)
 			return
 		}
 		var readyFile = generateTempFilePath("eventcalendar-secret-store")
-		logger.debugJSON("storeRefreshToken.start", {
+		logger.debugJSON("storeAccountSecret.start", {
 			accountId: accountId,
-			length: refreshToken.length,
+			key: key,
+			length: value.length,
 			readyFile: readyFile,
 		})
 		secretExec.execArgv([
@@ -619,34 +669,34 @@ Item {
 			"--scope",
 			"google-account",
 			"--key",
-			"refresh_token",
+			key,
 			"--account-id",
 			accountId,
 			"--ready-file",
 			readyFile,
 		], function(cmd, exitCode, exitStatus, stdout, stderr) {
-			logger.debugJSON("storeRefreshToken.helperExit", {
+			logger.debugJSON("storeAccountSecret.helperExit", {
 				accountId: accountId,
+				key: key,
 				exitCode: exitCode,
 				exitStatus: exitStatus,
 				stdout: (stdout || "").trim(),
 				stderr: (stderr || "").trim(),
 			})
-			if (exitCode !== 0 && typeof callback === "function") {
-				callback((stderr || stdout || "").trim() || "Failed to store refresh token.")
+			if (exitCode !== 0) {
+				finish((stderr || stdout || "").trim() || "Failed to store account secret.")
 			}
 		})
 		waitForReadyFile(readyFile, function(err, payload) {
-			logger.debugJSON("storeRefreshToken.readyFile", {
+			logger.debugJSON("storeAccountSecret.readyFile", {
 				accountId: accountId,
+				key: key,
 				err: err || "",
 				hasPayload: !!payload,
 				port: payload && payload.port ? payload.port : 0,
 			})
 			if (err) {
-				if (typeof callback === "function") {
-					callback(err)
-				}
+				finish(err)
 				return
 			}
 			Requests.postJSON({
@@ -655,56 +705,88 @@ Item {
 					"Authorization": "Bearer " + payload.token,
 				},
 				data: {
-					value: refreshToken,
+					value: value,
 				},
 			}, function(postErr, data, xhr) {
-				logger.debugJSON("storeRefreshToken.postResult", {
+				logger.debugJSON("storeAccountSecret.postResult", {
 					accountId: accountId,
+					key: key,
 					err: postErr || "",
 					status: xhr ? xhr.status : 0,
 					ok: !!(data && data.ok === true),
 					error: data && data.error ? data.error : "",
 				})
-				if (typeof callback === "function") {
-					if (postErr || !data || data.ok !== true) {
-						callback(postErr || (data && data.error) || "Failed to store refresh token.")
-					} else {
-						callback(null)
-					}
+				if (postErr || !data || data.ok !== true) {
+					finish(postErr || (data && data.error) || "Failed to store account secret.")
+				} else {
+					finish(null)
 				}
 			})
 		})
 	}
 
-	function loadRefreshToken(accountId, callback) {
+	function loadAccountSecret(accountId, key, callback) {
+		var readyFile = generateTempFilePath("eventcalendar-secret-read")
+		logger.debugJSON("loadAccountSecret.start", {
+			accountId: accountId,
+			key: key,
+			readyFile: readyFile,
+		})
 		secretExec.execArgv([
 			"python3",
 			secretStorePath,
-			"read",
+			"read-once",
 			"--scope",
 			"google-account",
 			"--key",
-			"refresh_token",
+			key,
 			"--account-id",
 			accountId,
+			"--ready-file",
+			readyFile,
 		], function(cmd, exitCode, exitStatus, stdout, stderr) {
-			var value = (stdout || "").replace(/\n+$/g, "")
-			logger.debugJSON("loadRefreshToken.result", {
+			logger.debugJSON("loadAccountSecret.helperExit", {
 				accountId: accountId,
+				key: key,
 				exitCode: exitCode,
 				exitStatus: exitStatus,
-				length: value.length,
+				stdout: (stdout || "").trim(),
 				stderr: (stderr || "").trim(),
 			})
-			if (exitCode !== 0 && !value) {
+		})
+		waitForReadyFile(readyFile, function(err, payload) {
+			logger.debugJSON("loadAccountSecret.readyFile", {
+				accountId: accountId,
+				key: key,
+				err: err || "",
+				hasPayload: !!payload,
+				port: payload && payload.port ? payload.port : 0,
+			})
+			if (err) {
 				callback(null, "")
 				return
 			}
-			callback(null, value)
+			Requests.getJSON({
+				url: "http://127.0.0.1:" + payload.port + "/read",
+				headers: {
+					"Authorization": "Bearer " + payload.token,
+				},
+			}, function(readErr, data, xhr) {
+				var value = (!readErr && data && data.found && data.value) ? data.value : ""
+				logger.debugJSON("loadAccountSecret.result", {
+					accountId: accountId,
+					key: key,
+					err: readErr || "",
+					status: xhr ? xhr.status : 0,
+					found: !!(data && data.found),
+					length: value.length,
+				})
+				callback(null, value)
+			})
 		})
 	}
 
-	function clearRefreshToken(accountId, callback) {
+	function clearAccountSecret(accountId, key, callback) {
 		secretExec.execArgv([
 			"python3",
 			secretStorePath,
@@ -712,7 +794,7 @@ Item {
 			"--scope",
 			"google-account",
 			"--key",
-			"refresh_token",
+			key,
 			"--account-id",
 			accountId,
 		], function(cmd, exitCode, exitStatus, stdout, stderr) {
@@ -720,19 +802,52 @@ Item {
 				if (exitCode === 0) {
 					callback(null)
 				} else {
-					callback((stderr || stdout || "").trim() || "Failed to clear refresh token.")
+					callback((stderr || stdout || "").trim() || "Failed to clear account secret.")
 				}
 			}
 		})
+	}
+
+	function storeRefreshToken(accountId, refreshToken, callback) {
+		storeAccountSecret(accountId, "refresh_token", refreshToken, callback)
+	}
+
+	function loadRefreshToken(accountId, callback) {
+		loadAccountSecret(accountId, "refresh_token", callback)
+	}
+
+	function clearRefreshToken(accountId, callback) {
+		clearAccountSecret(accountId, "refresh_token", callback)
+	}
+
+	function storeSessionClientSecret(accountId, sessionClientSecret, callback) {
+		storeAccountSecret(accountId, "client_secret", sessionClientSecret, callback)
+	}
+
+	function loadSessionClientSecret(accountId, callback) {
+		loadAccountSecret(accountId, "client_secret", callback)
+	}
+
+	function clearSessionClientSecret(accountId, callback) {
+		clearAccountSecret(accountId, "client_secret", callback)
 	}
 
 	function loadStoredSecrets() {
 		for (var i = 0; i < accounts.length; i++) {
 			(function(accountId) {
 				loadRefreshToken(accountId, function(err, refreshToken) {
-					if (!err && refreshToken) {
+					var account = getAccount(accountId)
+					if (!err && GoogleAccountState.shouldApplyStoredRefreshToken(account, refreshToken)) {
 						updateAccountSecret(accountId, {
 							refreshToken: refreshToken,
+						})
+					}
+				})
+				loadSessionClientSecret(accountId, function(err, sessionClientSecret) {
+					var account = getAccount(accountId)
+					if (!err && GoogleAccountState.shouldApplyStoredSessionClientSecret(account, sessionClientSecret)) {
+						updateAccountSecret(accountId, {
+							sessionClientSecret: sessionClientSecret,
 						})
 					}
 				})
@@ -753,6 +868,7 @@ Item {
 		var account = {
 			id: generateId(),
 			label: deriveLabelFromCalendars(legacyCalendarList),
+			skipSecretStorage: true,
 			sessionClientId: readConfig("sessionClientId", ""),
 			sessionClientSecret: readConfig("sessionClientSecret", ""),
 			accessToken: readConfig("accessToken", ""),
@@ -764,11 +880,17 @@ Item {
 			tasklistList: legacyTasklistList,
 			tasklistIdList: parseLegacyList(readConfig("tasklistIdList", "")),
 		}
-		addAccount(account)
-		if (account.id) {
-			setActiveAccountId(account.id)
-		}
-		clearLegacyStandaloneConfig()
+		migrateSecretsToSecretStore([account], function(err) {
+			if (err) {
+				logger.log('Could not migrate legacy Google account secrets:', err)
+				return
+			}
+			addAccount(account)
+			if (account.id) {
+				setActiveAccountId(account.id)
+			}
+			clearLegacyStandaloneConfig()
+		})
 	}
 
 	function clearLegacyStandaloneConfig() {

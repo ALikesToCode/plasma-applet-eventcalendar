@@ -85,49 +85,71 @@ QtObject {
 	}
 
 	function updateAccessToken(callback) {
-		// logger.debug('accessTokenExpiresAt', plasmoid.configuration.accessTokenExpiresAt)
-		// logger.debug('                 now', Date.now())
-		// logger.debug('refreshToken', plasmoid.configuration.refreshToken)
 		var account = getAccount()
-		if (account && account.refreshToken) {
-			logger.debug('updateAccessToken')
-			fetchNewAccessToken(function(err, data, xhr) {
-				if (err) {
-					logger.log('Error when using refreshToken:', err, data)
-					return callback(err)
-				}
-
-				var parsed = null
-				try {
-					parsed = JSON.parse(data)
-				} catch (e) {
-					logger.log('Error parsing refresh response:', e, data)
-					return callback('Invalid refresh response.')
-				}
-
-				if (parsed && parsed.error) {
-					logger.log('Error when using refreshToken:', parsed)
-					return callback(parsed.error_description || parsed.error)
-				}
-				if (!parsed || !parsed.access_token) {
-					logger.log('Missing access token in refresh response:', parsed)
-					return callback('Missing access token.')
-				}
-
-				logger.debug('onAccessToken', parsed)
-				googleApiSession.applyAccessToken(parsed)
-
-				callback(null)
-			})
-		} else {
+		if (!(account && account.refreshToken)) {
 			logger.log('updateAccessToken', 'No refresh token', accountId)
 			callback('No refresh token. Cannot update access token.')
+			return
+		}
+		if (refreshInFlight) {
+			refreshCallbacks.push(callback)
+			return
+		}
+		refreshInFlight = true
+		refreshCallbacks = [callback]
+		logger.debug('updateAccessToken')
+		fetchNewAccessToken(function(err, data, xhr) {
+			if (err) {
+				logger.log('Error when using refreshToken:', err, data)
+				finishRefresh(err)
+				return
+			}
+
+			var parsed = null
+			try {
+				parsed = JSON.parse(data)
+			} catch (e) {
+				logger.log('Error parsing refresh response:', e, data)
+				finishRefresh('Invalid refresh response.')
+				return
+			}
+
+			if (parsed && parsed.error) {
+				logger.log('Error when using refreshToken:', parsed)
+				finishRefresh(parsed.error_description || parsed.error)
+				return
+			}
+			if (!parsed || !parsed.access_token) {
+				logger.log('Missing access token in refresh response:', parsed)
+				finishRefresh('Missing access token.')
+				return
+			}
+
+			logger.debugJSON('onAccessToken', {
+				tokenType: parsed.token_type || '',
+				expiresIn: parsed.expires_in || 0,
+				hasAccessToken: !!parsed.access_token,
+			})
+			googleApiSession.applyAccessToken(parsed)
+			finishRefresh(null)
+		})
+	}
+
+	function finishRefresh(err) {
+		var callbacks = refreshCallbacks.slice(0)
+		refreshCallbacks = []
+		refreshInFlight = false
+		for (var i = 0; i < callbacks.length; i++) {
+			callbacks[i](err)
 		}
 	}
 
 	signal accessTokenError(string msg)
 	signal newAccessToken()
 	signal transactionError(string msg)
+
+	property bool refreshInFlight: false
+	property var refreshCallbacks: []
 
 	onTransactionError: logger.log(msg)
 
