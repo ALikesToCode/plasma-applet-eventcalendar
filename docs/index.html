@@ -14,11 +14,15 @@
   <meta property="og:title" content="KDE Plasma Event Calendar Fork">
   <meta property="og:description"
     content="A KDE Plasma widget with agenda, weather, and Google Calendar sync. Includes an OAuth helper.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/toolbar/prism-toolbar.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/command-line/prism-command-line.min.css">
   <link rel="stylesheet" href="css/style.css">
   <script src="js/main.js" defer></script>
 </head>
 
-<body>
+<body data-prismjs-copy="Copy" data-prismjs-copy-error="Press Ctrl+C to copy" data-prismjs-copy-success="Copied"
+  data-prismjs-copy-timeout="1400">
 
   <!-- Top Navigation (Required for Compliance) -->
   <nav class="main-nav">
@@ -92,13 +96,13 @@
       <div class="card">
         <h3>Install via GitHub</h3>
         <p style="margin-bottom: 12px;">Run the following commands in your terminal:</p>
-        <pre class="code-block"><code>git clone -b plasma-6 https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
+        <pre class="code-block command-line" data-prompt="$"><code class="language-bash">git clone -b plasma-6 https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
 cd eventcalendar
 sh ./install</code></pre>
 
         <h3>Updating</h3>
         <p style="margin-bottom: 12px;">To update to the latest version:</p>
-        <pre class="code-block"><code>cd eventcalendar
+        <pre class="code-block command-line" data-prompt="$"><code class="language-bash">cd eventcalendar
 sh ./update</code></pre>
         <p class="status">Note: The install script will restart Plasmashell so you don't have to relog.</p>
       </div>
@@ -218,6 +222,12 @@ sh ./update</code></pre>
       <a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">GitHub Repository</a>
     </footer>
   </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/toolbar/prism-toolbar.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/command-line/prism-command-line.min.js"></script>
 
 </body>
 

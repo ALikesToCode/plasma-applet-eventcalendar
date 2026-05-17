@@ -9,6 +9,15 @@
     --muted: #64748b;
     --card-bg: #ffffff;
     --border: #e2e8f0;
+    --nav-bg: rgba(255, 255, 255, 0.95);
+    --nav-border: rgba(226, 232, 240, 0.95);
+    --nav-ink: #0f172a;
+    --nav-muted: #334155;
+    --code-bg: #08111f;
+    --code-surface: #0f172a;
+    --code-border: rgba(148, 163, 184, 0.28);
+    --code-text: #e2e8f0;
+    --code-muted: #94a3b8;
 
     --primary: #4f46e5;
     /* Indigo 600 */
@@ -60,6 +69,10 @@
         --card-bg: #1e293b;
         --border: #334155;
         /* Slate 700 */
+        --nav-bg: rgba(15, 23, 42, 0.95);
+        --nav-border: rgba(51, 65, 85, 0.95);
+        --nav-ink: #f8fafc;
+        --nav-muted: #cbd5e1;
 
         --primary: #6366f1;
         /* Indigo 500 */
@@ -530,19 +543,75 @@ footer a:hover {
 }
 
 /* Code Blocks */
-pre.code-block {
-    background: #1e1e1e;
-    /* Dark theme for code usually looks best */
-    color: #d4d4d4;
-    padding: 20px;
+div.code-toolbar {
+    margin: 0 0 24px 0;
+}
+
+pre.code-block,
+pre[class*="language-"].code-block {
+    position: relative;
+    background: linear-gradient(180deg, var(--code-surface), var(--code-bg));
+    color: var(--code-text);
+    padding: 46px 20px 22px 4.25em;
     border-radius: var(--radius-md);
     overflow-x: auto;
     font-family: var(--font-mono);
     font-size: 0.875rem;
-    line-height: 1.5;
-    margin: 0 0 24px 0;
-    border: 1px solid var(--border);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    line-height: 1.7;
+    margin: 0;
+    border: 1px solid var(--code-border);
+    box-shadow: 0 22px 44px -32px rgba(15, 23, 42, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    text-shadow: none;
+}
+
+pre.code-block::before {
+    content: "";
+    position: absolute;
+    top: 18px;
+    left: 20px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 18px 0 0 #f59e0b, 36px 0 0 #22c55e;
+}
+
+pre.code-block code,
+code[class*="language-"] {
+    color: var(--code-text);
+    background: transparent;
+    font-family: var(--font-mono);
+    text-shadow: none;
+}
+
+pre.command-line .command-line-prompt {
+    border-right-color: rgba(148, 163, 184, 0.26);
+    color: var(--code-muted);
+}
+
+div.code-toolbar > .toolbar {
+    top: 12px;
+    right: 12px;
+    opacity: 1;
+}
+
+div.code-toolbar > .toolbar > .toolbar-item > button.copy-to-clipboard-button {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.34);
+    border-radius: 999px;
+    color: var(--code-text);
+    padding: 6px 12px;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow: none;
+}
+
+div.code-toolbar > .toolbar > .toolbar-item > button.copy-to-clipboard-button:hover {
+    background: rgba(56, 189, 248, 0.22);
+    color: white;
+    transform: translateY(-1px);
 }
 
 /* Section Spacing */
@@ -604,9 +673,11 @@ h2.section-title::after {
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--nav-bg);
     backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--nav-border);
+    color: var(--nav-ink);
     padding: 16px 0;
     margin-bottom: -1px;
     /* overlap border */
@@ -641,7 +712,7 @@ h2.section-title::after {
 
 .nav-logo {
     font-weight: 700;
-    color: var(--ink);
+    color: var(--nav-ink);
     text-decoration: none;
     font-size: 1rem;
 }
@@ -652,7 +723,7 @@ h2.section-title::after {
 }
 
 .nav-links a {
-    color: var(--ink-light);
+    color: var(--nav-muted);
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 500;
