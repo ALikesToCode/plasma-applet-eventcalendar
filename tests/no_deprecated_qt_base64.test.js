@@ -3,6 +3,7 @@ const fs = require('fs')
 const path = require('path')
 
 const files = [
+	'../package/contents/ui/lib/Base64Compat.js',
 	'../package/contents/ui/lib/SafeConfig.js',
 	'../package/contents/ui/lib/GoogleAccountsStore.qml',
 	'../package/contents/ui/lib/ExecUtil.qml',

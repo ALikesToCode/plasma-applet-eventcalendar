@@ -1,6 +1,6 @@
 .pragma library
 
-var arrayLikeBase64Support = null
+var BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 function stringToUtf8Bytes(value) {
 	var stringValue = String(value)
@@ -88,18 +88,6 @@ function bytesToAsciiString(bytes) {
 	return text
 }
 
-function supportsArrayLikeBase64() {
-	if (arrayLikeBase64Support !== null) {
-		return arrayLikeBase64Support
-	}
-	try {
-		arrayLikeBase64Support = bytesToAsciiString(arrayLikeToBytes(Qt.btoa([65]))) === "QQ=="
-	} catch (e) {
-		arrayLikeBase64Support = false
-	}
-	return arrayLikeBase64Support
-}
-
 function arrayLikeToBytes(value) {
 	if (typeof value === "string") {
 		return asciiStringToBytes(value)
@@ -122,17 +110,48 @@ function arrayLikeToBytes(value) {
 }
 
 function base64EncodeBytes(bytes) {
-	if (!supportsArrayLikeBase64()) {
-		return Qt.btoa(bytesToAsciiString(bytes))
+	var normalized = arrayLikeToBytes(bytes)
+	var output = ""
+	for (var i = 0; i < normalized.length; i += 3) {
+		var b1 = normalized[i]
+		var hasB2 = i + 1 < normalized.length
+		var hasB3 = i + 2 < normalized.length
+		var b2 = hasB2 ? normalized[i + 1] : 0
+		var b3 = hasB3 ? normalized[i + 2] : 0
+		var triplet = (b1 << 16) | (b2 << 8) | b3
+
+		output += BASE64_ALPHABET[(triplet >> 18) & 0x3F]
+		output += BASE64_ALPHABET[(triplet >> 12) & 0x3F]
+		output += hasB2 ? BASE64_ALPHABET[(triplet >> 6) & 0x3F] : "="
+		output += hasB3 ? BASE64_ALPHABET[triplet & 0x3F] : "="
 	}
-	return bytesToAsciiString(arrayLikeToBytes(Qt.btoa(bytes)))
+	return output
 }
 
 function base64DecodeBytes(value) {
-	if (!supportsArrayLikeBase64()) {
-		return arrayLikeToBytes(Qt.atob(value))
+	var input = String(value).replace(/[\r\n\t ]/g, "")
+	var bytes = []
+	for (var i = 0; i < input.length; i += 4) {
+		var c1 = BASE64_ALPHABET.indexOf(input.charAt(i))
+		var c2 = BASE64_ALPHABET.indexOf(input.charAt(i + 1))
+		var c3Char = input.charAt(i + 2)
+		var c4Char = input.charAt(i + 3)
+		var c3 = c3Char === "=" ? 0 : BASE64_ALPHABET.indexOf(c3Char)
+		var c4 = c4Char === "=" ? 0 : BASE64_ALPHABET.indexOf(c4Char)
+		if (c1 < 0 || c2 < 0 || (c3Char !== "=" && c3 < 0) || (c4Char !== "=" && c4 < 0)) {
+			throw new Error("Invalid base64 data")
+		}
+
+		var triplet = (c1 << 18) | (c2 << 12) | (c3 << 6) | c4
+		bytes.push((triplet >> 16) & 0xFF)
+		if (c3Char !== "=") {
+			bytes.push((triplet >> 8) & 0xFF)
+		}
+		if (c4Char !== "=") {
+			bytes.push(triplet & 0xFF)
+		}
 	}
-	return arrayLikeToBytes(Qt.atob(asciiStringToBytes(value)))
+	return bytes
 }
 
 function base64EncodeString(value) {
