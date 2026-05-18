@@ -1,6 +1,7 @@
 import QtQuick
 import "./ErrorType.js" as ErrorType
 import "./weather/WeatherApi.js" as WeatherApi
+import "./lib/Base64Compat.js" as Base64Compat
 
 Item {
 	readonly property Item popup: root.fullRepresentationItem
@@ -202,7 +203,7 @@ Item {
 		}
 		var decoded = raw
 		try {
-			decoded = Qt.atob(raw)
+			decoded = Base64Compat.base64DecodeToString(raw)
 		} catch (e) {
 			decoded = raw
 		}

@@ -1,5 +1,6 @@
 import QtQuick
 
+import "Base64Compat.js" as Base64Compat
 import "ConfigUtils.js" as ConfigUtils
 
 Item {
@@ -112,7 +113,7 @@ Item {
 		}
 		var decoded = value
 		try {
-			decoded = Qt.atob(value)
+			decoded = Base64Compat.base64DecodeToString(value)
 		} catch (e) {
 			decoded = value
 		}
@@ -167,7 +168,7 @@ Item {
 	}
 
 	function serialize() {
-		var payload = Qt.btoa(JSON.stringify(accounts || []))
+		var payload = Base64Compat.base64EncodeString(JSON.stringify(accounts || []))
 		if (configBridge) {
 			accountsConfigValue = payload
 		}
@@ -268,7 +269,7 @@ Item {
 		}
 		var decoded = value
 		try {
-			decoded = Qt.atob(value)
+			decoded = Base64Compat.base64DecodeToString(value)
 		} catch (e) {
 			decoded = value
 		}

@@ -5,6 +5,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 
+import "Base64Compat.js" as Base64Compat
+
 ConfigPage {
 	id: page
 
@@ -138,7 +140,7 @@ ConfigPage {
 				TextArea {
 					text: {
 						if (modelValue) {
-							var data = JSON.parse(Qt.atob(modelValue))
+							var data = JSON.parse(Base64Compat.base64DecodeToString(modelValue))
 							return JSON.stringify(data, null, '  ')
 						} else {
 							return ''

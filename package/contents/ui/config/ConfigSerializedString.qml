@@ -1,5 +1,6 @@
 import QtQuick
 
+import "../lib/Base64Compat.js" as Base64Compat
 import "../lib/ConfigUtils.js" as ConfigUtils
 
 QtObject {
@@ -26,7 +27,7 @@ QtObject {
 	Component.onCompleted: configBridge = ConfigUtils.findBridge(obj)
 
 	function serialize() {
-		var payload = Qt.btoa(JSON.stringify(value))
+		var payload = Base64Compat.base64EncodeString(JSON.stringify(value))
 		if (configBridge) {
 			configBridge.write(configKey, payload)
 		} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
@@ -38,7 +39,7 @@ QtObject {
 	}
 
 	function deserialize() {
-		value = configValue ? JSON.parse(Qt.atob(configValue)) : defaultValue
+		value = configValue ? JSON.parse(Base64Compat.base64DecodeToString(configValue)) : defaultValue
 	}
 
 	onConfigKeyChanged: deserialize()
