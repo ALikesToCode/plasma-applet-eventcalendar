@@ -256,19 +256,7 @@ Item {
 	}
 
 	function serializeAccount(account) {
-		return {
-			id: account.id,
-			label: account.label,
-			sessionClientId: account.sessionClientId,
-			sessionUsesPkce: account.sessionUsesPkce === true,
-			accessTokenType: account.accessTokenType,
-			accessTokenExpiresAt: account.accessTokenExpiresAt,
-			calendarList: account.calendarList,
-			calendarIdList: account.calendarIdList,
-			calendarSelectionInitialized: account.calendarSelectionInitialized === true,
-			tasklistList: account.tasklistList,
-			tasklistIdList: account.tasklistIdList,
-		}
+		return GoogleAccountState.serializeAccountForConfig(account)
 	}
 
 	function serialize() {

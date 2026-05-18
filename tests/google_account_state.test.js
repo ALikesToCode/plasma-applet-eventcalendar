@@ -93,10 +93,71 @@ function testAppliesStoredSessionClientSecretOnlyWhenMemoryIsEmpty() {
 	)
 }
 
+function testSerializesAccountWithoutRecursiveApiPayloadsOrSecrets() {
+	const calendar = {
+		id: 'primary',
+		summary: 'Primary Calendar',
+		description: 'Personal calendar',
+		backgroundColor: '#2952a3',
+		foregroundColor: '#ffffff',
+		accessRole: 'owner',
+		primary: true,
+		timeZone: 'Etc/UTC',
+	}
+	calendar.self = calendar
+
+	const tasklist = {
+		id: 'tasks-1',
+		title: 'Tasks',
+		self: null,
+	}
+	tasklist.self = tasklist
+	const recursiveExpiresAt = {}
+	recursiveExpiresAt.self = recursiveExpiresAt
+
+	const serialized = state.serializeAccountForConfig({
+		id: 'acc_1',
+		label: 'primary@example.test',
+		sessionClientId: 'client-id',
+		sessionUsesPkce: true,
+		accessToken: 'ya29.secret',
+		accessTokenType: 'Bearer',
+		accessTokenExpiresAt: recursiveExpiresAt,
+		refreshToken: '1//secret',
+		sessionClientSecret: 'client-secret',
+		calendarList: [calendar],
+		calendarIdList: ['primary'],
+		calendarSelectionInitialized: true,
+		tasklistList: [tasklist],
+		tasklistIdList: ['tasks-1'],
+	})
+
+	assert.doesNotThrow(() => JSON.stringify(serialized))
+	assert.strictEqual(serialized.accessToken, undefined)
+	assert.strictEqual(serialized.refreshToken, undefined)
+	assert.strictEqual(serialized.sessionClientSecret, undefined)
+	assert.strictEqual(serialized.accessTokenExpiresAt, 0)
+	assert.deepStrictEqual(serialized.calendarList, [{
+		id: 'primary',
+		summary: 'Primary Calendar',
+		description: 'Personal calendar',
+		backgroundColor: '#2952a3',
+		foregroundColor: '#ffffff',
+		accessRole: 'owner',
+		primary: true,
+		timeZone: 'Etc/UTC',
+	}])
+	assert.deepStrictEqual(serialized.tasklistList, [{
+		id: 'tasks-1',
+		title: 'Tasks',
+	}])
+}
+
 testPreservesRuntimeCredentialsForSameAccount()
 testDoesNotCopyCredentialsAcrossAccounts()
 testKeepsNewerSerializedValues()
 testAppliesStoredRefreshTokenOnlyWhenMemoryIsEmpty()
 testAppliesStoredSessionClientSecretOnlyWhenMemoryIsEmpty()
+testSerializesAccountWithoutRecursiveApiPayloadsOrSecrets()
 
 console.log('PASS google_account_state')
