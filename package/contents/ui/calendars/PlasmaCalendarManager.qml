@@ -287,7 +287,10 @@ CalendarManager {
 		for (var day = new Date(dateMinUtc); day < dateMax; day.setDate(day.getDate() + 1)) {
 			var dayEvents = calendarBackend.daysModel.eventsForDate(day)
 			if (dayEvents.length) {
-				logger.debugJSON('PlasmaCalendar', day, dayEvents)
+				logger.debugJSON('PlasmaCalendar.dayEvents', {
+					date: day.toISOString(),
+					count: dayEvents.length,
+				})
 			}
 			items = items.concat(parseEventsForDate(day, dayEvents))
 		}
