@@ -23,6 +23,10 @@ Item {
 	property string activeAccountId: ""
 
 	property var accounts: []
+	property bool secretsLoaded: true
+	readonly property var fetchableAccounts: secretsLoaded
+		? accounts.filter(accountCanFetch)
+		: []
 
 	signal accountUpdated(string accountId)
 
@@ -88,6 +92,7 @@ Item {
 		var parsed = normalizeAccounts(parseAccounts(accountsConfigValue))
 		var needsSecretMigration = accountsNeedSecretMigration(parsed)
 		GoogleAccountState.preserveRuntimeCredentialsForAccounts(parsed, accounts)
+		secretsLoaded = !accountsNeedStoredSecretLoad(parsed)
 		if (hasSameAccountIds(accounts, parsed)) {
 			for (var i = 0; i < parsed.length; i++) {
 				accounts[i] = parsed[i]
@@ -105,7 +110,9 @@ Item {
 				serialize()
 			})
 		}
-		loadStoredSecrets()
+		loadStoredSecrets(function() {
+			secretsLoaded = true
+		})
 		ensureActiveAccount()
 	}
 
@@ -228,6 +235,10 @@ Item {
 		return []
 	}
 
+	function accountCanFetch(account) {
+		return !!(account && (account.refreshToken || account.accessToken))
+	}
+
 	function ensureCalendarSelection(accountId, calendarListOverride) {
 		var account = getAccount(accountId)
 		if (!account) {
@@ -268,6 +279,20 @@ Item {
 		writeConfig(accountsKey, payload)
 	}
 
+	function updateRequiresSerialize(patch) {
+		var runtimeOnlyKeys = {
+			accessToken: true,
+			accessTokenType: true,
+			accessTokenExpiresAt: true,
+		}
+		for (var key in patch) {
+			if (!runtimeOnlyKeys[key]) {
+				return true
+			}
+		}
+		return false
+	}
+
 	function generateId() {
 		var timePart = Date.now().toString(36)
 		var randPart = Math.floor(Math.random() * 1000000).toString(36)
@@ -295,6 +320,8 @@ Item {
 		var normalized = normalizeAccount(account || {})
 		var skipDefaultSelection = account && account.skipDefaultCalendarSelection === true
 		var skipSecretStorage = account && account.skipSecretStorage === true
+		var skipSerialize = account && account.skipSerialize === true
+		var skipSetActive = account && account.skipSetActive === true
 		if (!normalized.calendarIdList.length && !skipDefaultSelection) {
 			normalized.calendarIdList = ["primary"]
 			normalized.calendarSelectionInitialized = true
@@ -308,14 +335,16 @@ Item {
 		if (!skipSecretStorage && normalized.sessionClientSecret) {
 			storeSessionClientSecret(normalized.id, normalized.sessionClientSecret)
 		}
-		serialize()
-		if (!activeAccountId) {
+		if (!skipSerialize) {
+			serialize()
+		}
+		if (!skipSetActive && !activeAccountId) {
 			setActiveAccountId(normalized.id)
 		}
 		return normalized
 	}
 
-	function updateAccount(accountId, patch) {
+	function updateAccount(accountId, patch, callback) {
 		var index = getAccountIndex(accountId)
 		if (index < 0) {
 			return
@@ -329,13 +358,41 @@ Item {
 			next[patchKey] = patch[patchKey]
 		}
 		accounts[index] = normalizeAccount(next)
+		var pendingSecretWrites = 0
+		var firstError = ""
+		function finishUpdate(err) {
+			if (err) {
+				logger.log('Could not store Google account secret:', err)
+				if (typeof callback === "function") {
+					callback(err)
+				}
+				return
+			}
+			if (updateRequiresSerialize(patch)) {
+				serialize()
+			}
+			accountUpdated(accountId)
+			if (typeof callback === "function") {
+				callback(null)
+			}
+		}
+		function noteSecretStored(err) {
+			if (err && !firstError) {
+				firstError = err
+			}
+			pendingSecretWrites -= 1
+			if (pendingSecretWrites === 0) {
+				finishUpdate(firstError || null)
+			}
+		}
 		if (patch.refreshToken !== undefined) {
 			logger.debugJSON("updateAccount.refreshToken", {
 				accountId: accountId,
 				action: patch.refreshToken ? "store" : "clear",
 				length: (patch.refreshToken || "").length,
 			})
-			storeRefreshToken(accountId, patch.refreshToken || "")
+			pendingSecretWrites += 1
+			storeRefreshToken(accountId, patch.refreshToken || "", noteSecretStored)
 		}
 		if (patch.sessionClientSecret !== undefined) {
 			logger.debugJSON("updateAccount.sessionClientSecret", {
@@ -343,10 +400,12 @@ Item {
 				action: patch.sessionClientSecret ? "store" : "clear",
 				length: (patch.sessionClientSecret || "").length,
 			})
-			storeSessionClientSecret(accountId, patch.sessionClientSecret || "")
+			pendingSecretWrites += 1
+			storeSessionClientSecret(accountId, patch.sessionClientSecret || "", noteSecretStored)
 		}
-		serialize()
-		accountUpdated(accountId)
+		if (pendingSecretWrites === 0) {
+			finishUpdate(null)
+		}
 	}
 
 	function removeAccount(accountId) {
@@ -526,6 +585,22 @@ Item {
 		for (var i = 0; i < list.length; i++) {
 			var account = list[i]
 			if (account && (account.refreshToken || account.accessToken || account.sessionClientSecret)) {
+				return true
+			}
+		}
+		return false
+	}
+
+	function accountsNeedStoredSecretLoad(list) {
+		for (var i = 0; i < list.length; i++) {
+			var account = list[i]
+			if (!account) {
+				continue
+			}
+			if (!account.refreshToken) {
+				return true
+			}
+			if (account.sessionUsesPkce === false && !account.sessionClientSecret) {
 				return true
 			}
 		}
@@ -820,9 +895,23 @@ Item {
 		clearAccountSecret(accountId, "client_secret", callback)
 	}
 
-	function loadStoredSecrets() {
+	function loadStoredSecrets(callback) {
+		if (!accounts.length) {
+			if (typeof callback === "function") {
+				callback()
+			}
+			return
+		}
+		var pending = 0
+		function secretLoaded() {
+			pending -= 1
+			if (pending === 0 && typeof callback === "function") {
+				callback()
+			}
+		}
 		for (var i = 0; i < accounts.length; i++) {
 			(function(accountId) {
+				pending += 2
 				loadRefreshToken(accountId, function(err, refreshToken) {
 					var account = getAccount(accountId)
 					if (!err && GoogleAccountState.shouldApplyStoredRefreshToken(account, refreshToken)) {
@@ -830,6 +919,7 @@ Item {
 							refreshToken: refreshToken,
 						})
 					}
+					secretLoaded()
 				})
 				loadSessionClientSecret(accountId, function(err, sessionClientSecret) {
 					var account = getAccount(accountId)
@@ -838,6 +928,7 @@ Item {
 							sessionClientSecret: sessionClientSecret,
 						})
 					}
+					secretLoaded()
 				})
 			})(accounts[i].id)
 		}

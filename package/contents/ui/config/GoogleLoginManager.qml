@@ -477,6 +477,8 @@ Item {
 			var created = accountsStore.addAccount({
 				label: '',
 				skipDefaultCalendarSelection: true,
+				skipSerialize: true,
+				skipSetActive: true,
 			})
 			callback({
 				account: created,
@@ -517,14 +519,26 @@ Item {
 				hasRefreshToken: !!data.refresh_token,
 				reusedExistingRefreshToken: !data.refresh_token && !!(account && account.refreshToken),
 			})
-			accountsStore.updateAccount(target.targetId, patch)
-			accountsStore.setActiveAccountId(target.targetId)
-			accountsStore.pruneReusableAccounts(target.targetId)
-			newAccessToken()
-			clearAuthorizationContext()
-			if (typeof callback === "function") {
-				callback(null, target.targetId)
-			}
+			accountsStore.updateAccount(target.targetId, patch, function(updateErr) {
+				if (updateErr) {
+					if (target.createdAccount) {
+						accountsStore.removeAccount(target.targetId)
+					}
+					var saveError = "Could not save Google refresh token. Check that Secret Service or KWallet is available, then login again."
+					handleError(saveError, null)
+					if (typeof callback === "function") {
+						callback(updateErr)
+					}
+					return
+				}
+				accountsStore.setActiveAccountId(target.targetId)
+				accountsStore.pruneReusableAccounts(target.targetId)
+				newAccessToken()
+				clearAuthorizationContext()
+				if (typeof callback === "function") {
+					callback(null, target.targetId)
+				}
+			})
 		})
 	}
 

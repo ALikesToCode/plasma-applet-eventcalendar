@@ -130,8 +130,13 @@ QtObject {
 				expiresIn: parsed.expires_in || 0,
 				hasAccessToken: !!parsed.access_token,
 			})
+			var callbacks = refreshCallbacks.slice(0)
+			refreshCallbacks = []
+			refreshInFlight = false
 			googleApiSession.applyAccessToken(parsed)
-			finishRefresh(null)
+			for (var i = 0; i < callbacks.length; i++) {
+				callbacks[i](null)
+			}
 		})
 	}
 

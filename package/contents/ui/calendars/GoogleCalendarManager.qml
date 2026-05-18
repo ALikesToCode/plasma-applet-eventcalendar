@@ -2,6 +2,7 @@ import QtQuick
 
 import "../ErrorType.js" as ErrorType
 import "../Shared.js" as Shared
+import "../lib"
 import "../lib/Async.js" as Async
 import "../lib/Requests.js" as Requests
 import "../code/ColorIdMap.js" as ColorIdMap
@@ -17,6 +18,12 @@ CalendarManager {
 	property var accountsStore
 	property string accountId: ""
 	property string accountLabel: ""
+
+	Logger {
+		id: logger
+		name: 'eventcalendar-google-calendar'
+		showDebug: plasmoid.configuration.debugging
+	}
 
 	function getAccount() {
 		if (!accountsStore || !accountId) {

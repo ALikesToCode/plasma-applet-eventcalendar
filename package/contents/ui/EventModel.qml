@@ -150,7 +150,7 @@ CalendarManager {
 
 	Repeater {
 		id: googleAccountsRepeater
-		model: googleAccountsStore.accounts
+		model: googleAccountsStore.fetchableAccounts
 		delegate: Item {
 			id: googleAccountItem
 			property string accountId: modelData.id
@@ -202,6 +202,12 @@ CalendarManager {
 		function onAccountsChanged() {
 			eventModel.clear()
 			deferredUpdate.restart()
+		}
+		function onSecretsLoadedChanged() {
+			if (googleAccountsStore.secretsLoaded) {
+				eventModel.clear()
+				deferredUpdate.restart()
+			}
 		}
 	}
 
