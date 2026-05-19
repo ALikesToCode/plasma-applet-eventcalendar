@@ -699,6 +699,18 @@ Item {
 		accountUpdated(accountId)
 	}
 
+	function parseSecretStoreError(data) {
+		var payload = data
+		if (typeof payload === "string" && payload) {
+			try {
+				payload = JSON.parse(payload)
+			} catch (e) {
+				payload = null
+			}
+		}
+		return payload && payload.error ? payload.error : ""
+	}
+
 	function storeAccountSecret(accountId, key, value, callback) {
 		var finished = false
 		function finish(err) {
@@ -780,7 +792,7 @@ Item {
 					error: data && data.error ? data.error : "",
 				})
 				if (postErr || !data || data.ok !== true) {
-					finish(postErr || (data && data.error) || "Failed to store account secret.")
+					finish(parseSecretStoreError(data) || postErr || "Failed to store account secret.")
 				} else {
 					finish(null)
 				}

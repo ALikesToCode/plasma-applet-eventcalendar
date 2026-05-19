@@ -51,10 +51,10 @@ def secret_tool_path() -> str | None:
     return shutil.which("secret-tool")
 
 
-def store_with_secret_tool(attributes: list[tuple[str, str]], label: str, value: str) -> bool:
+def store_with_secret_tool(attributes: list[tuple[str, str]], label: str, value: str) -> tuple[bool, str]:
     secret_tool = secret_tool_path()
     if not secret_tool:
-        return False
+        return False, "secret-tool command not found; install libsecret-tools or configure KWallet."
     cmd = [secret_tool, "store", "--label={}".format(label)] + flatten_attributes(attributes)
     proc = subprocess.run(
         cmd,
@@ -62,7 +62,10 @@ def store_with_secret_tool(attributes: list[tuple[str, str]], label: str, value:
         text=True,
         capture_output=True,
     )
-    return proc.returncode == 0
+    if proc.returncode == 0:
+        return True, ""
+    detail = (proc.stderr or proc.stdout or "").strip()
+    return False, "secret-tool failed{}".format(": " + detail if detail else ".")
 
 
 def lookup_with_secret_tool(attributes: list[tuple[str, str]]) -> tuple[bool, str]:
@@ -101,13 +104,13 @@ def detect_kwallet_name(kwallet_query: str) -> str | None:
     return None
 
 
-def store_with_kwallet(attributes: list[tuple[str, str]], value: str) -> bool:
+def store_with_kwallet(attributes: list[tuple[str, str]], value: str) -> tuple[bool, str]:
     kwallet_query = kwallet_query_path()
     if not kwallet_query:
-        return False
+        return False, "kwallet-query command not found."
     wallet_name = detect_kwallet_name(kwallet_query)
     if not wallet_name:
-        return False
+        return False, "No supported KWallet is available or unlocked."
     cmd = [
         kwallet_query,
         "-f",
@@ -117,7 +120,10 @@ def store_with_kwallet(attributes: list[tuple[str, str]], value: str) -> bool:
         wallet_name,
     ]
     proc = subprocess.run(cmd, input=value, text=True, capture_output=True)
-    return proc.returncode == 0
+    if proc.returncode == 0:
+        return True, ""
+    detail = (proc.stderr or proc.stdout or "").strip()
+    return False, "kwallet-query failed{}".format(": " + detail if detail else ".")
 
 
 def lookup_with_kwallet(attributes: list[tuple[str, str]]) -> tuple[bool, str]:
@@ -160,8 +166,22 @@ def clear_with_kwallet(attributes: list[tuple[str, str]]) -> bool:
     return proc.returncode == 0
 
 
-def store_secret(attributes: list[tuple[str, str]], label: str, value: str) -> bool:
-    return store_with_secret_tool(attributes, label, value) or store_with_kwallet(attributes, value)
+def store_secret(attributes: list[tuple[str, str]], label: str, value: str) -> tuple[bool, str]:
+    errors = []
+    ok, error = store_with_secret_tool(attributes, label, value)
+    if ok:
+        return True, ""
+    if error:
+        errors.append(error)
+    ok, error = store_with_kwallet(attributes, value)
+    if ok:
+        return True, ""
+    if error:
+        errors.append(error)
+    message = "Secret storage backend unavailable."
+    if errors:
+        message += " " + " ".join(errors)
+    return False, message
 
 
 def lookup_secret(attributes: list[tuple[str, str]]) -> tuple[bool, str]:
@@ -250,9 +270,9 @@ class StoreOnceHandler(BaseHTTPRequestHandler):
         except (json.JSONDecodeError, ValueError) as exc:
             self._send_json(400, {"error": str(exc)})
             return
-        ok = store_secret(self.server.attributes, self.server.label, value)
+        ok, error = store_secret(self.server.attributes, self.server.label, value)
         if not ok:
-            self._send_json(500, {"error": "Secret storage backend unavailable."})
+            self._send_json(500, {"error": error or "Secret storage backend unavailable."})
             self.server.result = 1
         else:
             self._send_json(200, {"ok": True})

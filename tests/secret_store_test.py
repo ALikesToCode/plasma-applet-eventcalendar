@@ -64,6 +64,20 @@ class SecretStoreTests(unittest.TestCase):
         self.assertTrue(server.shutdown_requested)
         self.assertEqual(server.result, 0)
 
+    def test_store_secret_reports_missing_backends(self):
+        self.secret_store.secret_tool_path = lambda: None
+        self.secret_store.kwallet_query_path = lambda: None
+
+        ok, error = self.secret_store.store_secret(
+            [("app", "test")],
+            "Test Secret",
+            "stored-refresh-token",
+        )
+
+        self.assertFalse(ok)
+        self.assertIn("secret-tool", error)
+        self.assertIn("kwallet-query", error)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -235,6 +235,7 @@ install_requirements() {
             core_packages=(
                 "python3"
                 "python3-gi"
+                "libsecret-tools"
                 "gir1.2-notify-0.7"
                 "libnotify-bin"
                 "libcanberra0"
@@ -261,6 +262,7 @@ install_requirements() {
             core_packages=(
                 "python"
                 "python-gobject"
+                "libsecret"
                 "libnotify"
                 "libcanberra"
             )
@@ -286,6 +288,7 @@ install_requirements() {
             core_packages=(
                 "python3"
                 "python3-gobject"
+                "libsecret"
                 "libnotify"
                 "libcanberra"
             )

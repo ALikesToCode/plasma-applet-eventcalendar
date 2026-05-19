@@ -71,6 +71,16 @@ assert.ok(
 )
 
 assert.ok(
+	source.includes('function parseSecretStoreError(data)'),
+	'GoogleAccountsStore must parse secret helper error bodies instead of reporting only HTTP 500'
+)
+
+assert.ok(
+	source.includes('finish(parseSecretStoreError(data) || postErr'),
+	'GoogleAccountsStore must prefer the secret helper error message over a generic HTTP status'
+)
+
+assert.ok(
 	loginManagerSource.includes('skipSerialize: true'),
 	'GoogleLoginManager must not serialize a placeholder account before token storage succeeds'
 )
