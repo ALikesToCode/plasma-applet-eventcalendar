@@ -2,7 +2,7 @@
 
 Thanks for helping keep Event Calendar alive.
 
-The Plasma 6 work lives on the `plasma-6` branch. If you are not sure which
+The Plasma 6 work lives on the `master` branch. If you are not sure which
 branch your change should target, open an issue first.
 
 ## Quick start
@@ -11,7 +11,7 @@ branch your change should target, open an issue first.
 2. Clone the branch you want to work on:
 
 ```
-git clone -b plasma-6 https://github.com/ALikesToCode/plasma-applet-eventcalendar.git
+git clone -b master https://github.com/ALikesToCode/plasma-applet-eventcalendar.git
 cd plasma-applet-eventcalendar
 ```
 
@@ -48,8 +48,16 @@ or full redirect URLs. Redact them before sharing.
 
 ## Testing
 
-There are no automated tests. Please include manual test steps in your PR.
-At minimum:
+Run the automated checks that cover your change:
+
+```
+node --test tests/*.test.js
+python3 -m unittest discover -s tests -p '*_test.py' -v
+find package/contents/ui -name '*.qml' -exec qmllint {} +
+shellcheck --severity=warning install update build package/translate/build package/translate/merge
+```
+
+Please also include manual test steps in your PR. At minimum:
 
 - Open the widget settings.
 - Toggle your change and verify it applies after clicking Apply/OK.
@@ -62,4 +70,3 @@ Include:
 - What changed and why.
 - Screenshots for UI changes.
 - Plasma version tested on.
-
