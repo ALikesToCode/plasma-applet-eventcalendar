@@ -282,7 +282,7 @@ msgstr "MMMM, yyyy"
 
 #: ../contents/ui/NewEventForm.qml
 msgid "Eg: 9am-5pm Work"
-msgstr "Ex: 9am-5pm Ouvré"
+msgstr "Ex: 9am-5pm Travail"
 
 #: ../contents/ui/PopupView.qml
 msgid ""

@@ -224,7 +224,7 @@ msgstr "Não foi possível conectar"
 
 #: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml ../contents/ui/calendars/GoogleTasksManager.qml
 msgid "HTTP Error %1: %2"
-msgstr "HTTP Erro %1: %2"
+msgstr "Erro HTTP %1: %2"
 
 #: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml ../contents/ui/calendars/GoogleTasksManager.qml
 msgid "Will try again soon."

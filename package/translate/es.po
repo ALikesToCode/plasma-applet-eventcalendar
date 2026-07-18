@@ -16,7 +16,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: ../contents/config/config.qml
 msgid "General"
@@ -247,7 +247,7 @@ msgstr "El widget se ha actualizado. Por favor cierra y vuelve a iniciar sesión
 
 #: ../contents/ui/Logic.qml
 msgid "Logged out of Google. Please login again."
-msgstr "Sesión cerrada en Google. Por favor vuelva a iniciar sessión."
+msgstr "Sesión cerrada en Google. Por favor vuelva a iniciar sesión."
 
 #: ../contents/ui/MeteogramView.qml
 #, c-format

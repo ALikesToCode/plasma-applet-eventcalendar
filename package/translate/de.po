@@ -261,7 +261,7 @@ msgstr ""
 
 #: ../contents/ui/Logic.qml
 msgid "Logged out of Google. Please login again."
-msgstr "Von Googel abgemeldet. Bitte erneut anmelden."
+msgstr "Von Google abgemeldet. Bitte erneut anmelden."
 
 #: ../contents/ui/MeteogramView.qml
 #, c-format

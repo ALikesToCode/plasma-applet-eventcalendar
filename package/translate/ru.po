@@ -235,7 +235,7 @@ msgstr "Невозможно установить соединение"
 #: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
 #: ../contents/ui/calendars/GoogleTasksManager.qml
 msgid "HTTP Error %1: %2"
-msgstr "Ошибка соединения %1: %2"
+msgstr "Ошибка HTTP %1: %2"
 
 #: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
 #: ../contents/ui/calendars/GoogleTasksManager.qml

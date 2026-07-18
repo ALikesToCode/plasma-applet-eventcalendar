@@ -283,7 +283,7 @@ msgstr "yyyy년 MMMM"
 
 #: ../contents/ui/NewEventForm.qml
 msgid "Eg: 9am-5pm Work"
-msgstr "예: 오전 9시 - 오전 5시 직장"
+msgstr "예: 오전 9시 - 오후 5시 근무"
 
 #: ../contents/ui/PopupView.qml
 msgid ""

@@ -176,7 +176,7 @@ msgstr "&Prekliči"
 
 #: ../contents/ui/EditTaskForm.qml
 msgid "Add due date"
-msgstr "Dodaj obdobje trajanja"
+msgstr "Dodaj rok"
 
 #: ../contents/ui/LocaleFuncs.js
 msgctxt "event time on the hour (24 hour clock)"

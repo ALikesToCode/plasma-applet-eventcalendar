@@ -287,7 +287,7 @@ msgstr ""
 
 #: ../contents/ui/PopupView.qml
 msgid "Error fetching weather."
-msgstr "Virhe säätietojen jaussa."
+msgstr "Virhe säätietojen haussa."
 
 #: ../contents/ui/TimerInputView.qml
 msgid "&Start"
@@ -303,7 +303,7 @@ msgstr "Ajastin lopetti."
 
 #: ../contents/ui/TimerModel.qml
 msgid "%1 has passed"
-msgstr "%1 on hyväksytty"
+msgstr "%1 on kulunut"
 
 #: ../contents/ui/TimerModel.qml ../contents/ui/TimerView.qml
 msgid "Repeat"

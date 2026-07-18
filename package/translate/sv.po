@@ -15,7 +15,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: ../contents/config/config.qml
 msgid "General"
@@ -151,7 +151,7 @@ msgstr "Titel Händelse"
 
 #: ../contents/ui/EditEventForm.qml ../contents/ui/LocaleFuncs.js
 msgid "All Day"
-msgstr "Alla dagar"
+msgstr "Hela dagen"
 
 #: ../contents/ui/EditEventForm.qml
 msgid "Add location"
@@ -358,7 +358,7 @@ msgstr ""
 #: ../contents/ui/calendars/CalendarManager.qml
 msgctxt "event with no summary"
 msgid "(No title)"
-msgstr "(Ingen title)"
+msgstr "(Ingen titel)"
 
 #: ../contents/ui/calendars/GoogleCalendarManager.qml ../contents/ui/calendars/GoogleTasksManager.qml
 msgid "Too many web requests. Will try again soon."
