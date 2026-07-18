@@ -1,6 +1,7 @@
 import QtQuick
 
 import "../lib/Requests.js" as Requests
+import "../lib/GoogleOAuthToken.js" as GoogleOAuthToken
 
 QtObject {
 	id: googleApiSession
@@ -42,6 +43,9 @@ QtObject {
 		if (!account || account.sessionUsesPkce === true) {
 			return ""
 		}
+		if (account.sessionClientSecret) {
+			return normalizedClientValue(account.sessionClientSecret)
+		}
 		var customClientId = normalizedClientValue(readConfig("customClientId", ""))
 		var customClientSecret = normalizedClientValue(readConfig("customClientSecret", ""))
 		var latestClientId = normalizedClientValue(readConfig("latestClientId", ""))
@@ -51,9 +55,6 @@ QtObject {
 		}
 		if (account.sessionClientId === latestClientId && latestClientSecret) {
 			return latestClientSecret
-		}
-		if (account.sessionClientSecret) {
-			return normalizedClientValue(account.sessionClientSecret)
 		}
 		if (account.sessionClientId === defaultClientId) {
 			return ""
@@ -68,6 +69,12 @@ QtObject {
 		if (!account) {
 			logger.log('checkAccessToken', 'No Google account', accountId)
 			return callback('No Google account.')
+		}
+		if (account.reauthRequired) {
+			return callback(GoogleOAuthToken.refreshErrorMessage(null, {
+				error: "invalid_grant",
+				error_subtype: account.reauthReason || "",
+			}))
 		}
 		if (!account.accessToken && account.refreshToken) {
 			updateAccessToken(callback)
@@ -99,27 +106,29 @@ QtObject {
 		refreshCallbacks = [callback]
 		logger.debug('updateAccessToken')
 		fetchNewAccessToken(function(err, data, xhr) {
-			if (err) {
-				logger.log('Error when using refreshToken:', err, data)
-				finishRefresh(err)
+			var parsed = GoogleOAuthToken.parseTokenResponse(data)
+			if (err || (parsed && parsed.error)) {
+				var refreshError = GoogleOAuthToken.refreshErrorMessage(err, parsed)
+				var summary = GoogleOAuthToken.errorSummary(parsed)
+				logger.logJSON('Error when using refreshToken:', {
+					status: xhr ? xhr.status : 0,
+					error: summary.error,
+					errorSubtype: summary.errorSubtype,
+					hasDescription: summary.hasDescription,
+				})
+				finishRefresh(refreshError)
+				if (GoogleOAuthToken.requiresReauthorization(parsed)) {
+					markReauthorizationRequired(summary.errorSubtype || summary.error)
+				}
 				return
 			}
 
-			var parsed = null
-			try {
-				parsed = JSON.parse(data)
-			} catch (e) {
-				logger.log('Error parsing refresh response:', e, data)
+			if (!parsed) {
+				logger.log('Error parsing Google token refresh response.')
 				finishRefresh('Invalid refresh response.')
 				return
 			}
-
-			if (parsed && parsed.error) {
-				logger.log('Error when using refreshToken:', parsed)
-				finishRefresh(parsed.error_description || parsed.error)
-				return
-			}
-			if (!parsed || !parsed.access_token) {
+			if (!parsed.access_token) {
 				logger.log('Missing access token in refresh response:', parsed)
 				finishRefresh('Missing access token.')
 				return
@@ -137,6 +146,16 @@ QtObject {
 			for (var i = 0; i < callbacks.length; i++) {
 				callbacks[i](null)
 			}
+		})
+	}
+
+	function markReauthorizationRequired(reason) {
+		if (!accountsStore || !accountId) {
+			return
+		}
+		accountsStore.updateAccount(accountId, {
+			reauthRequired: true,
+			reauthReason: reason || "invalid_grant",
 		})
 	}
 
@@ -162,11 +181,15 @@ QtObject {
 		if (!accountsStore || !accountId) {
 			return
 		}
-		accountsStore.updateAccount(accountId, {
+		var patch = {
 			accessToken: data.access_token,
 			accessTokenType: data.token_type,
 			accessTokenExpiresAt: Date.now() + data.expires_in * 1000,
-		})
+		}
+		if (data.refresh_token) {
+			patch.refreshToken = data.refresh_token
+		}
+		accountsStore.updateAccount(accountId, patch)
 		newAccessToken()
 	}
 

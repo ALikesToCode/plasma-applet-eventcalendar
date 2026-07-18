@@ -120,6 +120,8 @@ function testSerializesAccountWithoutRecursiveApiPayloadsOrSecrets() {
 		label: 'primary@example.test',
 		sessionClientId: 'client-id',
 		sessionUsesPkce: true,
+		reauthRequired: true,
+		reauthReason: 'invalid_rapt',
 		accessToken: 'ya29.secret',
 		accessTokenType: 'Bearer',
 		accessTokenExpiresAt: recursiveExpiresAt,
@@ -137,6 +139,8 @@ function testSerializesAccountWithoutRecursiveApiPayloadsOrSecrets() {
 	assert.strictEqual(serialized.refreshToken, undefined)
 	assert.strictEqual(serialized.sessionClientSecret, undefined)
 	assert.strictEqual(serialized.accessTokenExpiresAt, 0)
+	assert.strictEqual(serialized.reauthRequired, true)
+	assert.strictEqual(serialized.reauthReason, 'invalid_rapt')
 	assert.deepStrictEqual(serialized.calendarList, [{
 		id: 'primary',
 		summary: 'Primary Calendar',

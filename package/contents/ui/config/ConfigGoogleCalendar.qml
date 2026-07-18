@@ -344,7 +344,9 @@ ConfigPage {
 		}
 		MessageWidget {
 			visible: googleLoginManager.needsRelog
-			text: i18n("Widget has been updated. Please logout and login to Google Calendar again.")
+			text: googleLoginManager.activeAccount && googleLoginManager.activeAccount.reauthRequired
+				? i18n("Google access for this account expired or was revoked. Use Update Selected below to reconnect it without removing the account.")
+				: i18n("Widget has been updated. Please logout and login to Google Calendar again.")
 		}
 	}
 
@@ -371,6 +373,12 @@ ConfigPage {
 		Label {
 			Layout.fillWidth: true
 			text: i18n("Provide a Google Cloud OAuth Desktop client ID, or a Web client ID and secret with the redirect URI set to %1. Leaving these empty only works if a previously stored secret-based client is available.", googleLoginManager.redirectUri)
+			color: readableNegativeTextColor
+			wrapMode: Text.Wrap
+		}
+		Label {
+			Layout.fillWidth: true
+			text: i18n("For a custom OAuth client, publish the OAuth consent screen to Production. Google expires refresh tokens for external apps left in Testing after seven days; Workspace session controls can also require reauthorization.")
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 		}

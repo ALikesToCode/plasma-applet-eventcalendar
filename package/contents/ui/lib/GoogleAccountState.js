@@ -124,6 +124,8 @@ function serializeAccountForConfig(account) {
 		label: primitiveString(account && account.label),
 		sessionClientId: primitiveString(account && account.sessionClientId),
 		sessionUsesPkce: !!(account && account.sessionUsesPkce === true),
+		reauthRequired: !!(account && account.reauthRequired === true),
+		reauthReason: primitiveString(account && account.reauthReason),
 		accessTokenType: primitiveString(account && account.accessTokenType),
 		accessTokenExpiresAt: primitiveNumber(account && account.accessTokenExpiresAt),
 		calendarList: serializableList(account && account.calendarList, serializableCalendar),

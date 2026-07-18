@@ -194,6 +194,8 @@ Item {
 		normalized.sessionUsesPkce = account.sessionUsesPkce !== undefined
 			? account.sessionUsesPkce === true
 			: !normalized.sessionClientSecret
+		normalized.reauthRequired = account.reauthRequired === true
+		normalized.reauthReason = account.reauthReason || ""
 		normalized.accessToken = account.accessToken || ""
 		normalized.accessTokenType = account.accessTokenType || ""
 		normalized.accessTokenExpiresAt = account.accessTokenExpiresAt || 0
