@@ -121,13 +121,18 @@ Plasma5Support.DataSource {
 	function runCommand(cmd, callback) {
 		if (typeof callback === 'function') {
 			if (listeners[cmd]) { // Our implementation only allows 1 callback per command.
-				exited.disconnect(listeners[cmd])
+				// Stale listener from a run that never called back (e.g. the
+				// process hung or died across suspend/resume). It was stored in
+				// the map but never connected to the `exited` signal, so calling
+				// exited.disconnect() on it throws and aborts runCommand —
+				// silently breaking every subsequent run of the same cmd.
 				delete listeners[cmd]
 			}
 			var listener = execCallback.bind(executable, callback)
 			listeners[cmd] = listener
 		}
 		// console.log('cmd', cmd)
+		disconnectSource(cmd) // clear any stuck source so an identical cmd re-executes
 		connectSource(cmd)
 	}
 

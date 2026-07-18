@@ -10,6 +10,11 @@ import urllib.request
 
 from icalendar import Calendar
 
+try:
+	import recurring_ical_events  # expands RRULE/EXDATE/RECURRENCE-ID into occurrences
+except ImportError:
+	recurring_ical_events = None
+
 debugging = False
 MAX_ICS_BYTES = 10 * 1024 * 1024
 REQUEST_TIMEOUT = 15
@@ -108,7 +113,11 @@ def events_to_json(event_list=None, indent=4):
 
 def ensure_date_time(dt):
 	if isinstance(dt, datetime.date) and not isinstance(dt, datetime.datetime):
-		return datetime.datetime.combine(dt, datetime.time.min)
+		dt = datetime.datetime.combine(dt, datetime.time.min)
+	if isinstance(dt, datetime.datetime) and dt.tzinfo is not None:
+		# ICS feeds (eg. Outlook) mix tz-aware timed events with naive all-day
+		# dates; comparing them against the naive query bounds raises TypeError.
+		dt = dt.astimezone().replace(tzinfo=None)
 	return dt
 
 
@@ -212,6 +221,12 @@ class CalendarManager:
 		return self.cal.walk("vevent")
 
 	def query(self, start_time, end_time):
+		if recurring_ical_events is not None:
+			# Expand recurring series into individual occurrences (RRULE, EXDATE,
+			# RECURRENCE-ID overrides). Without this, recurring meetings only
+			# match on their series start date and every other occurrence is lost.
+			yield from recurring_ical_events.of(self.cal).between(start_time, end_time)
+			return
 		for event in self.events:
 			if event_within(event, start_time, end_time):
 				start_date, end_date = get_event_bounds(event)
