@@ -2,13 +2,14 @@
 if [ -z "${BASH_VERSION:-}" ]; then
 	exec /usr/bin/env bash "$0" "$@"
 fi
+set -euo pipefail
 # Version: 7
 
 # This script will convert the *.po files to *.mo files, rebuilding the package/contents/locale folder.
 # Feature discussion: https://phabricator.kde.org/D5209
 # Eg: contents/locale/fr_CA/LC_MESSAGES/plasma_applet_org.kde.plasma.eventcalendar.mo
 
-DIR=`cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd`
+DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 metadataFile="$DIR/../metadata.json"
 read_metadata() {
 	python3 - "$metadataFile" "$1" <<'PY'
@@ -69,27 +70,27 @@ fi
 echoGray "[translate/build] Compiling messages"
 
 function relativePath() {
-	basePath=`realpath -- "$1"`
-	longerPath=`realpath -- "$2"`
+	basePath=$(realpath -- "$1")
+	longerPath=$(realpath -- "$2")
 	echo "${longerPath#${basePath}*}"
 }
-catalogs=`find . -name '*.po' | sort`
+catalogs=$(find . -name '*.po' | sort)
 for cat in $catalogs; do
-	catLocale=`basename ${cat%.*}`
+	catLocale=$(basename "${cat%.*}")
 	moFilename="${catLocale}.mo"
 	installPath="${packageRoot}/contents/locale/${catLocale}/LC_MESSAGES/${projectName}.mo"
-	installPath=`realpath -- "$installPath"`
-	relativeInstallPath=`relativePath "${packageRoot}" "${installPath}"`
+	mkdir -p "$(dirname "$installPath")"
+	installPath=$(realpath -- "$installPath")
+	relativeInstallPath=$(relativePath "${packageRoot}" "${installPath}")
 	relativeInstallPath="${relativeInstallPath#/*}"
 	echoGray "[translate/build] Converting '${cat}' => '${relativeInstallPath}'"
 	msgfmt -o "${moFilename}" "${cat}"
-	mkdir -p "$(dirname "$installPath")"
 	mv "${moFilename}" "${installPath}"
 done
 
 echoGreen "[translate/build] Done building messages"
 
-if [ "$1" = "--restartplasma" ]; then
+if [ "${1:-}" = "--restartplasma" ]; then
 	echo "[translate/build] ${TC_Bold}Restarting plasmashell${TC_Reset}"
 	killall plasmashell
 	kstart5 plasmashell

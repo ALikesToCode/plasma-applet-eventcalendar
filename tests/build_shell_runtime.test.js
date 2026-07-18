@@ -17,6 +17,10 @@ assert.ok(
 	rootBuild.includes('python3 -m zipfile -c "$filename" ./*'),
 	'packaging must fall back to Python when the external zip command is unavailable'
 )
+assert.ok(
+	rootBuild.includes('if ! (cd package/translate && bash ./build); then'),
+	'translation compilation failures must stop packaging'
+)
 
 for (const helper of ['package/translate/build', 'package/translate/merge']) {
 	const source = read(helper)
@@ -26,5 +30,16 @@ for (const helper of ['package/translate/build', 'package/translate/merge']) {
 		`${helper} must recover when a user invokes it through sh`
 	)
 }
+
+const translationBuild = read('package/translate/build')
+assert.ok(
+	translationBuild.includes('set -euo pipefail'),
+	'translation compilation must fail on command errors'
+)
+assert.ok(
+	translationBuild.indexOf('mkdir -p "$(dirname "$installPath")"')
+		< translationBuild.indexOf('installPath=$(realpath -- "$installPath")'),
+	'translation destination directories must exist before canonicalization'
+)
 
 console.log('PASS build_shell_runtime')

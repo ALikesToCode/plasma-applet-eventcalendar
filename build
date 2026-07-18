@@ -75,16 +75,19 @@ check_qml_versions() {
 handle_translations() {
         if [ -d "package/translate" ]; then
                 echoGray "[build] translate dir found, running merge."
-                (cd package/translate && bash ./merge)
-                (cd package/translate && bash ./build)
-                if type "git" > /dev/null; then
-                        if [ "$(git diff --stat package/translate)" != "" ]; then
-                                echoRed "[build] Changed detected. Cancelling build."
-                                git diff --stat .
-                                exit 1
-                        fi
-                else
-                        echoGray "[build] Git not found, skipping translation diff check."
+                if ! (cd package/translate && bash ./merge); then
+                        echoRed "[build] Translation extraction failed."
+                        exit 1
+                fi
+                if ! (cd package/translate && bash ./build); then
+                        echoRed "[build] Translation compilation failed."
+                        exit 1
+                fi
+                if git rev-parse --is-inside-work-tree > /dev/null 2>&1 \
+                        && ! git diff --quiet -- package/translate; then
+                        echoRed "[build] Translation changes detected. Cancelling build."
+                        git diff --stat -- package/translate
+                        exit 1
                 fi
         fi
 }
