@@ -62,6 +62,43 @@ class IcsJsonTests(unittest.TestCase):
 			icsjson.event_within(event, start, start + datetime.timedelta(seconds=1))
 		)
 
+	def test_all_day_event_without_end_defaults_to_one_day(self):
+		calendar = parse_calendar(
+			"BEGIN:VEVENT\r\n"
+			"UID:all-day-test\r\n"
+			"DTSTART;VALUE=DATE:20260703\r\n"
+			"SUMMARY:All-day test\r\n"
+			"END:VEVENT\r\n"
+		)
+		event = calendar.walk("vevent")[0]
+		payload = json.loads(icsjson.events_to_json([event]))
+
+		self.assertEqual(payload["items"][0]["start"], {"date": "2026-07-03"})
+		self.assertEqual(payload["items"][0]["end"], {"date": "2026-07-04"})
+
+	def test_duration_description_and_cancelled_status_are_respected(self):
+		calendar = parse_calendar(
+			"BEGIN:VEVENT\r\n"
+			"UID:duration-test\r\n"
+			"DTSTART:20260703T100000Z\r\n"
+			"DURATION:PT90M\r\n"
+			"DESCRIPTION:Useful details\r\n"
+			"SUMMARY:Duration test\r\n"
+			"END:VEVENT\r\n"
+			"BEGIN:VEVENT\r\n"
+			"UID:cancelled-test\r\n"
+			"DTSTART:20260703T120000Z\r\n"
+			"DTEND:20260703T130000Z\r\n"
+			"STATUS:CANCELLED\r\n"
+			"SUMMARY:Cancelled test\r\n"
+			"END:VEVENT\r\n"
+		)
+		payload = json.loads(icsjson.events_to_json(calendar.walk("vevent")))
+
+		self.assertEqual(len(payload["items"]), 1)
+		self.assertEqual(payload["items"][0]["end"], {"dateTime": "2026-07-03T11:30:00+00:00"})
+		self.assertEqual(payload["items"][0]["description"], "Useful details")
+
 	def test_query_delegates_expansion_to_recurring_ical_events(self):
 		calendar = parse_calendar(
 			"BEGIN:VEVENT\r\n"
