@@ -29,6 +29,9 @@ Item {
 		if (!activeAccount) {
 			return false
 		}
+		if (activeAccount.reauthRequired) {
+			return true
+		}
 		if (activeAccount.sessionClientId && activeAccount.sessionClientId != effectiveClientId) {
 			return true
 		}
@@ -434,9 +437,14 @@ Item {
 				}
 				return
 			}
-			if (!parsed.refresh_token && !(existingAccount && existingAccount.refreshToken)) {
+			var canReuseRefreshToken = !!(existingAccount
+				&& existingAccount.refreshToken
+				&& !existingAccount.reauthRequired)
+			if (!parsed.refresh_token && !canReuseRefreshToken) {
 				logger.debugJSON("fetchAccessToken.missingRefreshToken", summarizeTokenResponse(parsed, ctx, args.accountId, existingAccount))
-				var refreshTokenError = "Google login completed, but no refresh token was returned. Revoke the app's Google access and login again."
+				var refreshTokenError = existingAccount && existingAccount.reauthRequired
+					? "Google login completed, but no replacement refresh token was returned. Revoke the app's Google access and reconnect this account."
+					: "Google login completed, but no refresh token was returned. Revoke the app's Google access and login again."
 				handleError(refreshTokenError, null)
 				if (typeof callback === "function") {
 					callback(refreshTokenError)
@@ -494,7 +502,10 @@ Item {
 			var account = target.account
 			var patch = {
 				sessionClientId: effectiveClientId,
+				sessionClientSecret: effectiveClientSecret,
 				sessionUsesPkce: !effectiveClientSecret,
+				reauthRequired: false,
+				reauthReason: '',
 				accessToken: data.access_token,
 				accessTokenType: data.token_type,
 				accessTokenExpiresAt: Date.now() + data.expires_in * 1000,

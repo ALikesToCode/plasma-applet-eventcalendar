@@ -232,6 +232,9 @@ Item {
 		var accounts = parseGoogleAccounts()
 		for (var i = 0; i < accounts.length; i++) {
 			var account = accounts[i]
+			if (account.reauthRequired) {
+				return i18n("Google authorization expired or was revoked. Open Event Calendar Settings, select the account, and use Update Selected to reconnect it.")
+			}
 			if (account.sessionUsesPkce === false) {
 				continue
 			}

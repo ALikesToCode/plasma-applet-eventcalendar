@@ -17,4 +17,19 @@ assert.ok(
 	'GoogleApiSession must capture and clear refresh callbacks before applying a refreshed token'
 )
 
+assert.ok(
+	source.includes('var parsed = GoogleOAuthToken.parseTokenResponse(data)\n\t\t\tif (err || (parsed && parsed.error))'),
+	'GoogleApiSession must parse Google error bodies even when the request has an HTTP error'
+)
+
+assert.ok(
+	source.includes('markReauthorizationRequired(summary.errorSubtype || summary.error)'),
+	'GoogleApiSession must persist terminal invalid_grant state instead of retrying forever'
+)
+
+assert.ok(
+	source.includes('patch.refreshToken = data.refresh_token'),
+	'GoogleApiSession must retain a replacement refresh token when Google returns one'
+)
+
 console.log('PASS google_api_session_refresh')

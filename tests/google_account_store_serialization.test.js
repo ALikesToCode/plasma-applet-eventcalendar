@@ -91,6 +91,22 @@ assert.ok(
 )
 
 assert.ok(
+	loginManagerSource.includes('sessionClientSecret: effectiveClientSecret'),
+	'GoogleLoginManager must store the client secret that originally issued each refresh token'
+)
+
+assert.ok(
+	loginManagerSource.includes("reauthRequired: false")
+		&& loginManagerSource.includes("reauthReason: ''"),
+	'GoogleLoginManager must clear a terminal refresh error when the selected account reconnects'
+)
+
+assert.ok(
+	loginManagerSource.includes('&& !existingAccount.reauthRequired'),
+	'GoogleLoginManager must not reuse a refresh token that Google has already rejected'
+)
+
+assert.ok(
 	source.includes('property bool secretsLoaded'),
 	'GoogleAccountsStore must expose whether async account secrets have loaded'
 )
