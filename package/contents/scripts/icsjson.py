@@ -5,8 +5,16 @@ import ipaddress
 import json
 import os
 import socket
+import sys
 import urllib.parse
 import urllib.request
+
+LOCAL_DATA_DIR = os.path.realpath(
+	os.path.expanduser("~/.local/share/plasma_org.kde.plasma.eventcalendar")
+)
+LOCAL_PYTHON_DIR = os.path.join(LOCAL_DATA_DIR, "python")
+if os.path.isdir(LOCAL_PYTHON_DIR) and LOCAL_PYTHON_DIR not in sys.path:
+	sys.path.insert(0, LOCAL_PYTHON_DIR)
 
 from icalendar import Calendar
 
@@ -20,9 +28,7 @@ MAX_ICS_BYTES = 10 * 1024 * 1024
 REQUEST_TIMEOUT = 15
 ALLOWED_URL_SCHEMES = {"file", "http", "https"}
 SAFE_REMOTE_SCHEMES = {"http", "https"}
-LOCAL_ICS_DIR = os.path.realpath(
-	os.path.expanduser("~/.local/share/plasma_org.kde.plasma.eventcalendar")
-)
+LOCAL_ICS_DIR = LOCAL_DATA_DIR
 
 
 def debug(*args):
@@ -130,7 +136,9 @@ def event_within(event, start_time, end_time):
 	event_end = ensure_date_time(event_end_date.dt)
 	start_time = ensure_date_time(start_time)
 	end_time = ensure_date_time(end_time)
-	return event_start <= end_time and event_end >= start_time
+	if event_start == event_end:
+		return start_time <= event_start < end_time
+	return event_start < end_time and start_time < event_end
 
 
 def validate_remote_host(parsed_url):
@@ -260,7 +268,7 @@ if __name__ == "__main__":
 
 	query = subparsers.add_parser("query")
 	query.add_argument("startTime", type=argparse_date, help="Inclusive starting date in YYYY-MM-DD format")
-	query.add_argument("endTime", type=argparse_date, help="Inclusive ending date in YYYY-MM-DD format")
+	query.add_argument("endTime", type=argparse_date, help="Exclusive ending date in YYYY-MM-DD format")
 
 	subparsers.add_parser("add")
 	subparsers.add_parser("delete")
