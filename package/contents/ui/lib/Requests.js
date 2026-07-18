@@ -6,23 +6,44 @@ function request(opt, callback) {
 		opt = { url: opt }
 	}
 	var req = new XMLHttpRequest()
+	var completed = false
+	function responseText() {
+		try {
+			return req.responseText || null
+		} catch (e) {
+			return null
+		}
+	}
+	function finish(err, data) {
+		if (completed) {
+			return
+		}
+		completed = true
+		callback(err, data, req)
+	}
+	function finishFromResponse() {
+		if (200 <= req.status && req.status < 400) {
+			finish(null, responseText())
+			return
+		}
+		if (req.status === 0) {
+			console.log('HTTP 0 Headers: \n' + req.getAllResponseHeaders())
+		}
+		finish("HTTP Error " + req.status, responseText())
+	}
 	req.onerror = function() {
 		// Network Error / No Connection
 		console.log('XMLHttpRequest.onerror', req.status)
-		var msg = "HTTP Error " + req.status
-		callback(msg, null, req)
+		if (req.readyState !== XMLHttpRequest.DONE && req.status !== 0) {
+			// Some Qt versions emit error before exposing the HTTP response body.
+			// Let the final ready-state event complete the request in that case.
+			return
+		}
+		finishFromResponse()
 	}
 	req.onreadystatechange = function() {
 		if (req.readyState === XMLHttpRequest.DONE) { // https://xhr.spec.whatwg.org/#dom-xmlhttprequest-done
-			if (200 <= req.status && req.status < 400) {
-				callback(null, req.responseText, req)
-			} else {
-				if (req.status === 0) {
-					console.log('HTTP 0 Headers: \n' + req.getAllResponseHeaders())
-				}
-				var msg = "HTTP Error " + req.status
-				callback(msg, req.responseText, req)
-			}
+			finishFromResponse()
 		}
 	}
 	req.open(opt.method || "GET", opt.url, true)
