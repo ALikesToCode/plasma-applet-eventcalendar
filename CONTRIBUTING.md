@@ -10,14 +10,14 @@ branch your change should target, open an issue first.
 1. Fork the repo.
 2. Clone the branch you want to work on:
 
-```
+```bash
 git clone -b master https://github.com/ALikesToCode/plasma-applet-eventcalendar.git
 cd plasma-applet-eventcalendar
 ```
 
 3. Install the widget locally:
 
-```
+```bash
 ./install
 ```
 
@@ -50,7 +50,7 @@ or full redirect URLs. Redact them before sharing.
 
 Run the automated checks that cover your change:
 
-```
+```bash
 node --test tests/*.test.js
 python3 -m unittest discover -s tests -p '*_test.py' -v
 find package/contents/ui -name '*.qml' -exec qmllint {} +
