@@ -119,7 +119,7 @@ package_plasmoid() {
         local filename="${packageName}-v${packageVersion}${filenameTag}.${packageExt}"
         rm -f -- "${packageName}"-v*."${packageExt}" # Cleanup
         echoGray "[${packageExt}] Zipping '${filename}'"
-        if type "zip" > /dev/null; then
+        if command -v zip > /dev/null 2>&1; then
                 (cd package \
                         && zip -r "$filename" ./* \
                         && mv "$filename" "$startDir/$filename" \

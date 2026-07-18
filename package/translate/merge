@@ -98,7 +98,16 @@ fi
 # We don't need -kN_ since we don't use intltool-extract but might as well keep it.
 # I have no idea what -kaliasLocale is used for. Googling aliasLocale found only listed kde1 code.
 # We don't need to parse -ki18nd since that'll extract messages from other domains.
-find "${packageRoot}" -name '*.cpp' -o -name '*.h' -o -name '*.c' -o -name '*.qml' -o -name '*.js' | sort > "${DIR}/infiles.list"
+: > "${DIR}/infiles.list"
+while IFS= read -r sourceFile; do
+	if grep -Eq '(i18n|ki18n|xi18n|I18N_NOOP|tr2i18n|tr2xi18n|N_)[[:alnum:]_]*[[:space:]]*\(' "$sourceFile"; then
+		printf '%s\n' "$sourceFile" >> "${DIR}/infiles.list"
+	fi
+done < <(
+	find "${packageRoot}" -type f \
+		\( -name '*.cpp' -o -name '*.h' -o -name '*.c' -o -name '*.qml' -o -name '*.js' \) \
+		| sort
+)
 xgettext \
 	${potArgs} \
 	--files-from="${DIR}/infiles.list" \

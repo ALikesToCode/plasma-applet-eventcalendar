@@ -18,6 +18,10 @@ assert.ok(
 	'packaging must fall back to Python when the external zip command is unavailable'
 )
 assert.ok(
+	rootBuild.includes('command -v zip > /dev/null 2>&1'),
+	'the optional zip probe must not emit an expected command-not-found error'
+)
+assert.ok(
 	rootBuild.includes('if ! (cd package/translate && bash ./build); then'),
 	'translation compilation failures must stop packaging'
 )
@@ -40,6 +44,12 @@ assert.ok(
 	translationBuild.indexOf('mkdir -p "$(dirname "$installPath")"')
 		< translationBuild.indexOf('installPath=$(realpath -- "$installPath")'),
 	'translation destination directories must exist before canonicalization'
+)
+
+const translationMerge = read('package/translate/merge')
+assert.ok(
+	translationMerge.includes("grep -Eq '(i18n|ki18n|xi18n|I18N_NOOP|tr2i18n|tr2xi18n|N_)"),
+	'translation extraction must skip source files without translation calls'
 )
 
 console.log('PASS build_shell_runtime')
