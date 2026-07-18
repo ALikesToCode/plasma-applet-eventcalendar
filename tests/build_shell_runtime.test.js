@@ -13,6 +13,10 @@ assert.ok(
 		&& rootBuild.includes('(cd package/translate && bash ./build)'),
 	'the packaging workflow must invoke Bash-only translation helpers with Bash'
 )
+assert.ok(
+	rootBuild.includes('python3 -m zipfile -c "$filename" ./*'),
+	'packaging must fall back to Python when the external zip command is unavailable'
+)
 
 for (const helper of ['package/translate/build', 'package/translate/merge']) {
 	const source = read(helper)

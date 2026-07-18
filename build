@@ -45,11 +45,11 @@ initialize_colors() {
         # Color definitions
         TC_Red='\033[31m';
         TC_LightGray='\033[90m'; TC_LightGreen='\033[92m';
-        TC_Reset='\033[0m'; TC_Bold='\033[1m';
+        TC_Reset='\033[0m';
         if [ ! -t 1 ]; then
                 TC_Red='';
                 TC_LightGray=''; TC_LightGreen='';
-                TC_Bold=''; TC_Reset='';
+                TC_Reset='';
         fi
 
         # Color echo functions
@@ -102,14 +102,6 @@ convert_metadata() {
 
 ## Package the plasmoid
 package_plasmoid() {
-        if ! type "zip" > /dev/null; then
-                echoRed "[error] 'zip' command not found."
-                if type "zypper" > /dev/null; then
-                        echoRed "[error] Opensuse detected, please run: ${TC_Bold}sudo zypper install zip"
-                fi
-                exit 1
-        fi
-
         local packageNamespace
         packageNamespace=$(read_metadata "KPlugin.Id")
         local packageName="${packageNamespace##*.}" # Strip namespace (Eg: "org.kde.plasma.")
@@ -124,10 +116,18 @@ package_plasmoid() {
         local filename="${packageName}-v${packageVersion}${filenameTag}.${packageExt}"
         rm -f -- "${packageName}"-v*."${packageExt}" # Cleanup
         echoGray "[${packageExt}] Zipping '${filename}'"
-        (cd package \
-                && zip -r "$filename" ./* \
-                && mv "$filename" "$startDir/$filename" \
-        )
+        if type "zip" > /dev/null; then
+                (cd package \
+                        && zip -r "$filename" ./* \
+                        && mv "$filename" "$startDir/$filename" \
+                )
+        else
+                echoGray "[${packageExt}] 'zip' not found; using Python's zipfile module."
+                (cd package \
+                        && python3 -m zipfile -c "$filename" ./* \
+                        && mv "$filename" "$startDir/$filename" \
+                )
+        fi
         echoGray "[${packageExt}] md5: $(md5sum "$filename" | awk '{ print $1 }')"
         echoGray "[${packageExt}] sha256: $(sha256sum "$filename" | awk '{ print $1 }')"
 }
