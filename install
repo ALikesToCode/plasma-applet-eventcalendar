@@ -148,6 +148,7 @@ DISTRO_FAMILY=""
 PLASMA_MAJOR=""
 KPACKAGE_TOOL=""
 PACKAGES_UPDATED=false
+PYTHON_PACKAGE_DIR="$HOME/.local/share/plasma_org.kde.plasma.eventcalendar/python"
 
 detect_distro() {
     if [ -f /etc/os-release ]; then
@@ -213,6 +214,40 @@ install_packages_optional() {
     done
 }
 
+install_python_calendar_dependencies() {
+    local python_path="$PYTHON_PACKAGE_DIR"
+    local import_path="$python_path"
+    if [ -n "${PYTHONPATH:-}" ]; then
+        import_path="$python_path:$PYTHONPATH"
+    fi
+
+    if PYTHONPATH="$import_path" python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1; then
+        return 0
+    fi
+    if ! python3 -m pip --version >/dev/null 2>&1; then
+        log "WARNING: python3-pip is unavailable; recurring iCalendar events will not be expanded."
+        return 0
+    fi
+    if ! mkdir -p "$python_path"; then
+        log "WARNING: Could not create the local Python dependency directory."
+        return 0
+    fi
+
+    log "Installing recurring iCalendar support in the applet data directory..."
+    if ! python3 -m pip install \
+        --disable-pip-version-check \
+        --no-warn-script-location \
+        --upgrade \
+        --target "$python_path" \
+        'recurring-ical-events>=3.8,<4'; then
+        log "WARNING: recurring-ical-events failed to install; recurring events may be missing."
+        return 0
+    fi
+    if ! PYTHONPATH="$import_path" python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1; then
+        log "WARNING: Installed iCalendar dependencies could not be imported."
+    fi
+}
+
 # Function to install required packages
 install_requirements() {
     detect_distro
@@ -242,6 +277,7 @@ install_requirements() {
             )
             optional_packages=(
                 "python3-icalendar"
+                "python3-pip"
                 "akonadi-server"
                 "kdepim-addons"
                 "konsolekalendar"
@@ -268,6 +304,7 @@ install_requirements() {
             )
             optional_packages=(
                 "python-icalendar"
+                "python-pip"
                 "akonadi"
                 "kdepim-addons"
                 "kdepim-runtime"
@@ -294,6 +331,7 @@ install_requirements() {
             )
             optional_packages=(
                 "python3-icalendar"
+                "python3-pip"
                 "akonadi-server"
                 "kdepim-addons"
                 "kdepim-runtime"
@@ -357,6 +395,7 @@ KPACKAGE_TOOL="$(select_kpackage_tool "$PLASMA_MAJOR")"
 
 # Install script requirements
 install_requirements
+install_python_calendar_dependencies
 
 if ! command -v "$KPACKAGE_TOOL" >/dev/null 2>&1; then
     for candidate in kpackagetool6 kpackagetool5 kpackagetool; do
