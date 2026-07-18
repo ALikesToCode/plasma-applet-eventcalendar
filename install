@@ -451,7 +451,9 @@ if [ -z "$packageNamespace" ] || [ "$packageNamespace" = "null" ]; then
     log "ERROR: Failed to read package information from metadata."
     exit 1
 fi
-if [[ ! "$packageNamespace" =~ ^[A-Za-z0-9._-]+$ ]]; then
+if [[ ! "$packageNamespace" =~ ^[A-Za-z0-9._-]+$ \
+    || "$packageNamespace" == "." \
+    || "$packageNamespace" == ".." ]]; then
     log "ERROR: Refusing unsafe package namespace: $packageNamespace"
     exit 1
 fi
