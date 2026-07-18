@@ -12,6 +12,7 @@ CalendarManager {
 
 	Component.onCompleted: {
 		bindSignals(plasmaCalendarManager)
+		bindSignals(icalManager)
 	}
 
 	//---

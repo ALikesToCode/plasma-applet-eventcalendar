@@ -20,7 +20,11 @@ Core runtime:
 - `libcanberra` (optional, for notification sounds)
 
 Feature-specific (optional):
-- ICalendar (.ics) import: `python3-icalendar` (Python `icalendar` module)
+- ICalendar (.ics) import:
+  - `icalendar>=6.1,<8`
+  - `recurring-ical-events>=3.8,<4` for RRULE, RDATE, EXDATE, and RECURRENCE-ID expansion
+  - The install/update scripts place these Python packages under
+    `~/.local/share/plasma_org.kde.plasma.eventcalendar/python` when they are not already available.
 - Local PIM/Akonadi calendars: `akonadi` + `kdepim-addons` (provides `PimCalendarsModel`)
 - Create local events: `konsolekalendar` (from kdepim runtime/tools)
 - Mouse wheel volume presets:
@@ -33,6 +37,7 @@ Install/update/uninstall scripts:
 - `kpackagetool6` (Plasma 6) or `kpackagetool5` (Plasma 5)
 - `qdbus` or `qdbus6` (reload/remove widgets)
 - `jq` (read metadata)
+- `python3-pip` / `python-pip` (install user-local iCalendar recurrence support)
 
 Note: package names vary by distro. The install script attempts to install `kpackagetool` and `jq` on Debian/Arch/Fedora; on other distros, install manually.
 

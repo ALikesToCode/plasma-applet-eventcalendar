@@ -8,7 +8,7 @@ Go to `~/.local/share/plasma/plasmoids/org.kde.plasma.eventcalendar/translate/` 
 
 ## New Translations
 
-1. Fill out [`template.pot`](template.pot) with your translations then open a [new issue](https://github.com/Zren/plasma-applet-eventcalendar/issues/new), name the file `spanish.txt`, attach the txt file to the issue (drag and drop).
+1. Fill out [`template.pot`](template.pot) with your translations then open a [new issue](https://github.com/ALikesToCode/plasma-applet-eventcalendar/issues/new), name the file `spanish.txt`, attach the txt file to the issue (drag and drop).
 
 Or if you know how to make a pull request
 
@@ -35,24 +35,24 @@ Or if you know how to make a pull request
 ## Status
 |  Locale  |  Lines  | % Done|
 |----------|---------|-------|
-| Template |     219 |       |
-| da       | 184/219 |   84% |
-| de       | 215/219 |   98% |
-| el       | 167/219 |   76% |
-| es       | 218/219 |   99% |
-| fi       | 215/219 |   98% |
-| fr       | 186/219 |   84% |
-| he       | 216/219 |   98% |
-| it       | 215/219 |   98% |
-| ja       | 183/219 |   83% |
-| ko       | 215/219 |   98% |
-| nl       | 219/219 |  100% |
-| pl       | 157/219 |   71% |
-| pt_BR    | 215/219 |   98% |
-| pt_PT    | 214/219 |   97% |
-| ru       | 215/219 |   98% |
-| sl       | 193/219 |   88% |
-| sv       | 179/219 |   81% |
-| tr       | 183/219 |   83% |
-| uk       | 157/219 |   71% |
-| zh_CN    | 166/219 |   75% |
+| Template |     299 |       |
+| da       | 170/299 |   56% |
+| de       | 200/299 |   66% |
+| el       | 156/299 |   52% |
+| es       | 203/299 |   67% |
+| fi       | 200/299 |   66% |
+| fr       | 172/299 |   57% |
+| he       | 201/299 |   67% |
+| it       | 200/299 |   66% |
+| ja       | 169/299 |   56% |
+| ko       | 201/299 |   67% |
+| nl       | 204/299 |   68% |
+| pl       | 148/299 |   49% |
+| pt_BR    | 200/299 |   66% |
+| pt_PT    | 199/299 |   66% |
+| ru       | 200/299 |   66% |
+| sl       | 178/299 |   59% |
+| sv       | 164/299 |   54% |
+| tr       | 169/299 |   56% |
+| uk       | 146/299 |   48% |
+| zh_CN    | 152/299 |   50% |

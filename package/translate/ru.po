@@ -8,8 +8,9 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: eventcalendar\n"
-"Report-Msgid-Bugs-To: https://github.com/Zren/plasma-applet-eventcalendar\n"
-"POT-Creation-Date: 2023-08-18 10:16-0400\n"
+"Report-Msgid-Bugs-To: https://github.com/ALikesToCode/plasma-applet-"
+"eventcalendar\n"
+"POT-Creation-Date: 2026-07-18 14:17+0530\n"
 "PO-Revision-Date: 2020-01-05 22:01+0300\n"
 "Last-Translator: aliger14 <aliger14@mail.ru>\n"
 "Language-Team: ru\n"
@@ -20,16 +21,6 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 "X-Generator: Poedit 2.2.3\n"
-
-#: ../metadata.desktop ../contents/ui/AgendaView.qml
-#: ../contents/ui/UpcomingEvents.qml
-msgid "Event Calendar"
-msgstr "Календарь событий"
-
-#: ../metadata.desktop
-msgid ""
-"Plasmoid for a calendar+agenda with weather that syncs to Google Calendar."
-msgstr "Календарь событий с погодой и синхронизацией с Google Calendar."
 
 #: ../contents/config/config.qml
 msgid "General"
@@ -52,6 +43,7 @@ msgid "Agenda"
 msgstr "Обзор дня"
 
 #: ../contents/config/config.qml
+#: ../contents/ui/calendars/PlasmaCalendarManager.qml
 msgid "Events"
 msgstr "События"
 
@@ -71,10 +63,17 @@ msgstr "Погода"
 msgid "Advanced"
 msgstr "Расширенные"
 
-#: ../contents/ui/AgendaEventItem.qml ../contents/ui/EditEventForm.qml
-#: ../contents/ui/LocaleFuncs.js
-msgid "All Day"
-msgstr "Весь день"
+#: ../contents/ui/AgendaEventItem.qml
+msgid "Calendar event"
+msgstr ""
+
+#: ../contents/ui/AgendaEventItem.qml
+msgid "In progress"
+msgstr ""
+
+#: ../contents/ui/AgendaEventItem.qml
+msgid "Press to open the event in the browser"
+msgstr ""
 
 #: ../contents/ui/AgendaEventItem.qml
 msgid "Hangout"
@@ -97,6 +96,18 @@ msgid "Edit in browser"
 msgstr "Редактировать в браузере"
 
 #: ../contents/ui/AgendaListItem.qml
+msgid "Weather forecast for %1"
+msgstr ""
+
+#: ../contents/ui/AgendaListItem.qml
+msgid "Press to add a new event on %1"
+msgstr ""
+
+#: ../contents/ui/AgendaListItem.qml
+msgid "Press to open the weather forecast in your browser"
+msgstr ""
+
+#: ../contents/ui/AgendaListItem.qml
 msgctxt "agenda date format line 1"
 msgid "MMM d"
 msgstr "MMM d"
@@ -106,43 +117,303 @@ msgctxt "agenda date format line 2"
 msgid "ddd"
 msgstr "ddd"
 
+#: ../contents/ui/AgendaTaskItem.qml
+msgid "Due %1"
+msgstr ""
+
+#: ../contents/ui/AgendaTaskItem.qml
+msgid "Overdue"
+msgstr ""
+
 #: ../contents/ui/AgendaTaskItem.qml ../contents/ui/LocaleFuncs.js
 msgctxt "short month+date format"
 msgid "MMM d"
 msgstr "MMM d"
 
-#: ../contents/ui/calendars/CalendarManager.qml
-msgctxt "event with no summary"
-msgid "(No title)"
-msgstr "(Без названия)"
+#: ../contents/ui/AgendaTaskItem.qml
+msgid "Task"
+msgstr ""
+
+#: ../contents/ui/AgendaView.qml ../contents/ui/UpcomingEvents.qml
+msgid "Event Calendar"
+msgstr "Календарь событий"
 
 #: ../contents/ui/CalendarSelector.qml
 msgid "[No Calendars]"
 msgstr "[Без календарей]"
 
-#: ../contents/ui/calendars/GoogleCalendarManager.qml ../contents/ui/Logic.qml
-msgid "HTTP Error %1: %2"
-msgstr "Ошибка соединения %1: %2"
+#: ../contents/ui/DateTimeSelector.qml
+msgctxt "event editor date format"
+msgid "d MMM, yyyy"
+msgstr "d MMM, yyyy"
 
-#: ../contents/ui/calendars/GoogleCalendarManager.qml ../contents/ui/Logic.qml
+#: ../contents/ui/DurationSelector.qml
+msgid "to"
+msgstr "до"
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
+msgid "Event Title"
+msgstr "Название мероприятия"
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/LocaleFuncs.js
+msgid "All Day"
+msgstr "Весь день"
+
+#: ../contents/ui/EditEventForm.qml
+msgid "Add location"
+msgstr "Добавить местоположение"
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
+msgid "Add description"
+msgstr "Добавить описание"
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
+msgid "&Save"
+msgstr "&Сохранить"
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
+#: ../contents/ui/TimerInputView.qml
+msgid "&Cancel"
+msgstr "&Отменить"
+
+#: ../contents/ui/EditTaskForm.qml
+msgid "Add due date"
+msgstr "Добавить дату окончания"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "event time on the hour (24 hour clock)"
+msgid "h"
+msgstr "h"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "event time (24 hour clock)"
+msgid "h:mm"
+msgstr "h:mm"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "event time on the hour (12 hour clock)"
+msgid "h AP"
+msgstr "h AP"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "event time (12 hour clock)"
+msgid "h:mm AP"
+msgstr "h:mm AP"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "date (%1) with time (%2)"
+msgid "%1, %2"
+msgstr "%1, %2"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "from date/time %1 until date/time %2"
+msgid "%1 - %2"
+msgstr "%1 - %2"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "short form for %1 hours"
+msgid "%1h"
+msgstr "%1h"
+
+#: ../contents/ui/LocaleFuncs.js
+#, c-format
+msgctxt "short form for %1 minutes"
+msgid "%1m"
+msgstr "%1m"
+
+#: ../contents/ui/LocaleFuncs.js
+#, c-format
+msgctxt "short form for %1 seconds"
+msgid "%1s"
+msgstr "%1s"
+
+#: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
 msgid "Could not connect"
 msgstr "Невозможно установить соединение"
 
-#: ../contents/ui/calendars/GoogleCalendarManager.qml ../contents/ui/Logic.qml
+#: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
+msgid "HTTP Error %1: %2"
+msgstr "Ошибка HTTP %1: %2"
+
+#: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
 msgid "Will try again soon."
 msgstr "Чуть позже повторим."
 
-#: ../contents/ui/calendars/GoogleCalendarManager.qml
-#: ../contents/ui/config/ConfigGoogleCalendar.qml ../contents/ui/Logic.qml
+#: ../contents/ui/Logic.qml
+msgid "Weather API limit reached"
+msgstr "Лимит API по запросам"
+
+#: ../contents/ui/Logic.qml
+msgid ""
+"Google authorization expired or was revoked. Open Event Calendar Settings, "
+"select the account, and use Update Selected to reconnect it."
+msgstr ""
+
+#: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
 msgid ""
 "Widget has been updated. Please logout and login to Google Calendar again."
 msgstr ""
 "Виджет был обновлен. Выйдите из учетной записи Google Calendar и войдите "
 "снова."
 
+#: ../contents/ui/Logic.qml
+msgid "Logged out of Google. Please login again."
+msgstr "Произведен выход из Google. Войдите снова."
+
+#: ../contents/ui/MeteogramView.qml
+#, c-format
+msgid "%1mm"
+msgstr "%1mm"
+
+#: ../contents/ui/MonthView.qml ../contents/ui/config/ConfigCalendar.qml
+msgctxt "calendar title format for current month"
+msgid "MMMM d, yyyy"
+msgstr "d MMMM, yyyy"
+
+#: ../contents/ui/MonthView.qml
+msgctxt "calendar title format for other months of current year"
+msgid "MMMM"
+msgstr "MMMM"
+
+#: ../contents/ui/MonthView.qml
+msgctxt "calendar title format for months not from current year"
+msgid "MMMM, yyyy"
+msgstr "MMMM, yyyy"
+
+#: ../contents/ui/NewEventForm.qml
+msgid "Eg: 9am-5pm Work"
+msgstr "Например: 9am-5pm работа"
+
+#: ../contents/ui/PopupView.qml
+msgid ""
+"Weather not configured.\n"
+"Go to Weather in the config and set your city,\n"
+"and/or disable the meteogram to hide this area."
+msgstr ""
+"Погода не настроена.\n"
+"Перейдите в раздел «Погода» и установите своё местоположение,\n"
+"или отключите метеограмму, чтобы скрыть эту область."
+
+#: ../contents/ui/PopupView.qml
+msgid "Error fetching weather."
+msgstr "Ошибка получения погоды."
+
+#: ../contents/ui/TimerInputView.qml
+msgid "&Start"
+msgstr "&Пуск"
+
+#: ../contents/ui/TimerModel.qml ../contents/ui/config/ConfigGeneral.qml
+msgid "Timer"
+msgstr "Таймер"
+
+#: ../contents/ui/TimerModel.qml
+msgid "Timer finished"
+msgstr "Таймер - Стоп"
+
+#: ../contents/ui/TimerModel.qml
+msgid "%1 has passed"
+msgstr "%1 прошло"
+
+#: ../contents/ui/TimerModel.qml ../contents/ui/TimerView.qml
+msgid "Repeat"
+msgstr "Повтор"
+
+#: ../contents/ui/TimerView.qml
+msgid "Timer, %1 remaining. Activate to pause."
+msgstr ""
+
+#: ../contents/ui/TimerView.qml
+msgid "Timer, %1 remaining. Activate to start."
+msgstr ""
+
+#: ../contents/ui/TimerView.qml
+msgid "Timer set to %1. Use plus or minus to change the duration."
+msgstr ""
+
+#: ../contents/ui/TimerView.qml
+msgid "Pause Timer"
+msgstr "Таймер-Пауза"
+
+#: ../contents/ui/TimerView.qml
+msgid "Start Timer"
+msgstr "Таймер-Пуск"
+
+#: ../contents/ui/TimerView.qml
+msgid "Scroll or use plus and minus keys to adjust duration"
+msgstr ""
+
+#: ../contents/ui/TimerView.qml
+msgid "Sound"
+msgstr "Звук"
+
+#: ../contents/ui/TimerView.qml
+msgid "Set Timer"
+msgstr "Выставить таймер"
+
+#: ../contents/ui/UpcomingEvents.qml
+msgid "Events Starting"
+msgstr "Начало событий"
+
+#: ../contents/ui/UpcomingEvents.qml
+msgid "Events In Progress"
+msgstr "Текущие события"
+
+#: ../contents/ui/UpcomingEvents.qml
+msgid "Upcoming Events"
+msgstr "Ближайшие события"
+
+#: ../contents/ui/UpcomingEvents.qml
+msgctxt "%1 = 15 minutes"
+msgid "Starting in %1"
+msgstr ""
+
+#: ../contents/ui/calendars/CalendarManager.qml
+msgctxt "event with no summary"
+msgid "(No title)"
+msgstr "(Без названия)"
+
 #: ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
 msgid "Too many web requests. Will try again soon."
 msgstr "Слишком много запросов. Чуть позже повторим."
+
+#: ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
+msgid "Google authentication failed: %1"
+msgstr ""
+
+#: ../contents/ui/calendars/GoogleCalendarManager.qml
+msgid "Error fetching calendar: %1"
+msgstr ""
+
+#: ../contents/ui/calendars/ICalManager.qml
+msgid "iCalendar"
+msgstr ""
+
+#: ../contents/ui/calendars/ICalManager.qml
+msgid "Unknown iCalendar helper error"
+msgstr ""
+
+#: ../contents/ui/calendars/ICalManager.qml
+msgid "Could not load %1: %2"
+msgstr ""
+
+#: ../contents/ui/calendars/PlasmaCalendarManager.qml
+msgid "Holidays"
+msgstr ""
+
+#: ../contents/ui/calendars/PlasmaCalendarManager.qml
+msgid "Todo"
+msgstr ""
+
+#: ../contents/ui/calendars/PlasmaCalendarManager.qml
+msgid "Other"
+msgstr ""
 
 #: ../contents/ui/config/ConfigAgenda.qml
 msgid "Show agenda"
@@ -191,8 +462,8 @@ msgid "Click Weather:"
 msgstr "Клик по значку погоды:"
 
 #: ../contents/ui/config/ConfigAgenda.qml
-msgid "Open City Forecast In Browser"
-msgstr "Открыть прогноз места в браузере"
+msgid "Currently opens the city forecast in your browser."
+msgstr ""
 
 #: ../contents/ui/config/ConfigAgenda.qml
 #: ../contents/ui/config/ConfigCalendar.qml
@@ -200,12 +471,8 @@ msgid "Click Date:"
 msgstr "Клик по дате:"
 
 #: ../contents/ui/config/ConfigAgenda.qml
-msgid "Open New Event In Browser"
-msgstr "Открыть новое событие в браузере"
-
-#: ../contents/ui/config/ConfigAgenda.qml
-msgid "Open New Event Form"
-msgstr "Открыть форму нового события"
+msgid "Currently opens the new event form in the agenda."
+msgstr ""
 
 #: ../contents/ui/config/ConfigAgenda.qml
 msgid "Event description"
@@ -224,8 +491,8 @@ msgid "Click Event:"
 msgstr "Клик по событию:"
 
 #: ../contents/ui/config/ConfigAgenda.qml
-msgid "Open Event In Browser"
-msgstr "Открыть событие в браузере"
+msgid "Currently opens the selected event in your browser."
+msgstr ""
 
 #: ../contents/ui/config/ConfigAgenda.qml
 msgid "Show multi-day events:"
@@ -305,11 +572,6 @@ msgstr "Стиль"
 msgid "Current Month Title:"
 msgstr "Заголовок текущего месяца:"
 
-#: ../contents/ui/config/ConfigCalendar.qml ../contents/ui/MonthView.qml
-msgctxt "calendar title format for current month"
-msgid "MMMM d, yyyy"
-msgstr "d MMMM, yyyy"
-
 #: ../contents/ui/config/ConfigCalendar.qml
 msgid "Show Borders"
 msgstr "Показать сетку"
@@ -387,6 +649,12 @@ msgid "Plasma Calendar Plugins"
 msgstr "Плагины календаря Plasma"
 
 #: ../contents/ui/config/ConfigEvents.qml
+msgid ""
+"Plasma calendar plugins are unavailable. Install the Plasma calendar module "
+"to manage these plugins."
+msgstr ""
+
+#: ../contents/ui/config/ConfigEvents.qml
 #: ../contents/ui/config/ConfigGeneral.qml
 msgid "Misc"
 msgstr "Разное"
@@ -428,10 +696,6 @@ msgstr ""
 #: ../contents/ui/config/ConfigGeneral.qml
 msgid "Meteogram"
 msgstr "Метеограмма"
-
-#: ../contents/ui/config/ConfigGeneral.qml ../contents/ui/TimerModel.qml
-msgid "Timer"
-msgstr "Таймер"
 
 #: ../contents/ui/config/ConfigGeneral.qml
 #: ../contents/ui/lib/ConfigNotification.qml
@@ -542,46 +806,230 @@ msgid "Enable Debugging"
 msgstr "Включить отладку"
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Login"
-msgstr "Авторизация"
+msgid "Google Account"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Currently Synched."
-msgstr "В настоящее время синхронизировано."
+msgid "Google Account %1"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Logout"
-msgstr "Выйти"
+msgid "Login failed: %1"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Login complete."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Could not prepare Google login: %1"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Waiting for browser callback..."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Waiting for the helper page to send the code..."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Google login failed because the browser returned an unexpected state token. "
+"Please retry the login."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed. See logs for details."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed: no token data received."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed: invalid callback data."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed: %1"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed: authorization code missing."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"The desktop could not open the browser automatically. Use the login link "
+"below instead."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Accounts"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Account"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Remove"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Currently Synced: %1"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Google access for this account expired or was revoked. Use Update Selected "
+"below to reconnect it without removing the account."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Client Credentials"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Using a previously stored Google OAuth client for compatibility. If login "
+"still fails, add your own client ID and client secret."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"The built-in Google OAuth client is currently rejected by Google because it "
+"requires a client secret. Provide your own client ID and client secret to "
+"enable Google sync."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Provide a Google Cloud OAuth Desktop client ID, or a Web client ID and "
+"secret with the redirect URI set to %1. Leaving these empty only works if a "
+"previously stored secret-based client is available."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"For a custom OAuth client, publish the OAuth consent screen to Production. "
+"Google expires refresh tokens for external apps left in Testing after seven "
+"days; Workspace session controls can also require reauthorization."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Try desktop built-in client (no secret)"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Client ID"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Optional"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Client Secret"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Redirect Mode"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Callback: Localhost (auto capture). Helper page is shown below as a backup."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Add another Google account"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
 msgid "To sync with Google Calendar"
 msgstr "Синхронизация с календарём Google"
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid ""
-"Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and "
-"give permission to access your calendar, it will give you a code to paste "
-"below."
+msgid "Login (Auto) - Add Account"
 msgstr ""
-"Посетите <a href=\"%1\">%2</a> (открывается в вашем веб-браузере). После "
-"того, как вы войдёте в систему и дадите разрешение на доступ к своему "
-"календарю, он даст вам код для вставки ниже."
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Login (Auto)"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Click Login (Auto) to open <a href=\"%1\">%2</a>. After you grant access, "
+"the browser redirects to a localhost URL. If auto-capture succeeds you can "
+"ignore the field below; otherwise copy the full URL (or just the code) and "
+"paste it."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Click Login (Auto) to open <a href=\"%1\">%2</a>. After you grant access, "
+"the browser redirects to the helper page and will try to send the code back "
+"automatically. If it fails, copy the code and paste it below."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "The desktop could not open the browser automatically."
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
 msgid "Copy Link"
 msgstr "Копировать ссылку"
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Enter code here (Eg: %1)"
-msgstr "Введите код сюда (Например: %1)"
+msgid "Helper page (optional): <a href=\"%1\">%1</a>"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Helper page: <a href=\"%1\">%1</a>"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"If your browser shows a connection error, that's expected. Copy the URL from "
+"the address bar anyway and paste it below."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Tip: If auto-capture works, you do not need to paste anything."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Tip: If auto-capture fails, copy the code from the helper page and paste it "
+"below."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Paste the authorization code or redirect URL here"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Google authorization code or redirect URL"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Paste the Google authorization code or the full redirect URL from the browser"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Add Account"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
 msgid "Submit"
 msgstr "Отправить"
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Invalid Google Authorization Code"
-msgstr "Неверный код Google авторизации"
+msgid "Update Selected"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
 #: ../contents/ui/config/ConfigICal.qml
@@ -630,6 +1078,10 @@ msgid "Calendar Label"
 msgstr "Ярлык календаря"
 
 #: ../contents/ui/config/ConfigICal.qml
+msgid "https:// URL or local %1/*.ics file"
+msgstr ""
+
+#: ../contents/ui/config/ConfigICal.qml
 msgid "Browse"
 msgstr "Обзор"
 
@@ -646,12 +1098,46 @@ msgid "Agenda below the Calendar (Single Column)"
 msgstr "Распорядок под календарем (Одна колонка)"
 
 #: ../contents/ui/config/ConfigTimezones.qml
-msgid "Tooltip"
-msgstr "Подсказка"
+msgid "Local"
+msgstr ""
 
 #: ../contents/ui/config/ConfigTimezones.qml
-msgid "Cannot deselect Local time from the tooltip"
-msgstr "Невозможно отменить локальное время из всплывающей подсказки"
+msgid ""
+"Enter time zone IDs (for example: Europe/London, America/New_York). The list "
+"controls which zones appear in the tooltip."
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Time zone ID"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Add"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Time zones"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Identifier"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Remove time zone"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Display time zone as:"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Time zone city"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Time zone code"
+msgstr ""
 
 #: ../contents/ui/config/ConfigWeather.qml
 msgid "Data"
@@ -660,6 +1146,10 @@ msgstr "Данные"
 #: ../contents/ui/config/ConfigWeather.qml
 msgid "API App Id:"
 msgstr "API Id приложения:"
+
+#: ../contents/ui/config/ConfigWeather.qml
+msgid "Required for OpenWeatherMap"
+msgstr ""
 
 #: ../contents/ui/config/ConfigWeather.qml
 msgid "City Id:"
@@ -775,39 +1265,41 @@ msgstr "Веб-сайт города"
 msgid "Open Link"
 msgstr "Открыть ссылку"
 
-#: ../contents/ui/DateTimeSelector.qml
-msgctxt "event editor date format"
-msgid "d MMM, yyyy"
-msgstr "d MMM, yyyy"
+#: ../contents/ui/configGeneral.qml
+msgid "Appearance:"
+msgstr ""
 
-#: ../contents/ui/DurationSelector.qml
-msgid "to"
-msgstr "до"
+#: ../contents/ui/configGeneral.qml
+msgid "Show animation"
+msgstr ""
 
-#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
-msgid "Event Title"
-msgstr "Название мероприятия"
+#: ../contents/ui/configGeneral.qml
+msgid "Counter color:"
+msgstr ""
 
-#: ../contents/ui/EditEventForm.qml
-msgid "Add location"
-msgstr "Добавить местоположение"
+#: ../contents/ui/configGeneral.qml
+msgid "Theme color"
+msgstr ""
 
-#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
-msgid "Add description"
-msgstr "Добавить описание"
+#: ../contents/ui/configGeneral.qml
+msgid "Red"
+msgstr ""
 
-#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
-msgid "&Save"
-msgstr "&Сохранить"
+#: ../contents/ui/configGeneral.qml
+msgid "Green"
+msgstr ""
 
-#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
-#: ../contents/ui/TimerInputView.qml
-msgid "&Cancel"
-msgstr "&Отменить"
+#: ../contents/ui/configGeneral.qml
+msgid "Blue"
+msgstr ""
 
-#: ../contents/ui/EditTaskForm.qml
-msgid "Add due date"
-msgstr "Добавить дату окончания"
+#: ../contents/ui/configGeneral.qml
+msgid "Increment step:"
+msgstr ""
+
+#: ../contents/ui/configGeneral.qml
+msgid "Maximum value:"
+msgstr ""
 
 #: ../contents/ui/lib/AppletVersion.qml
 msgid "<b>Version:</b> %1"
@@ -830,154 +1322,71 @@ msgstr "Звуковой файл (%1)"
 msgid "All files (%1)"
 msgstr "Все файлы (%1)"
 
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "event time on the hour (24 hour clock)"
-msgid "h"
-msgstr "h"
+#: ../contents/ui/main.qml
+msgid "Copy to Clipboard"
+msgstr ""
 
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "event time (24 hour clock)"
-msgid "h:mm"
-msgstr "h:mm"
+#: ../contents/ui/main.qml
+msgid "Refresh Events"
+msgstr ""
 
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "event time on the hour (12 hour clock)"
-msgid "h AP"
-msgstr "h AP"
-
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "event time (12 hour clock)"
-msgid "h:mm AP"
-msgstr "h:mm AP"
-
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "date (%1) with time (%2)"
-msgid "%1, %2"
-msgstr "%1, %2"
-
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "from date/time %1 until date/time %2"
-msgid "%1 - %2"
-msgstr "%1 - %2"
-
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "short form for %1 hours"
-msgid "%1h"
-msgstr "%1h"
-
-#: ../contents/ui/LocaleFuncs.js
-#, c-format
-msgctxt "short form for %1 minutes"
-msgid "%1m"
-msgstr "%1m"
-
-#: ../contents/ui/LocaleFuncs.js
-#, c-format
-msgctxt "short form for %1 seconds"
-msgid "%1s"
-msgstr "%1s"
-
-#: ../contents/ui/Logic.qml
-msgid "Weather API limit reached"
-msgstr "Лимит API по запросам"
-
-#: ../contents/ui/Logic.qml
-msgid "Logged out of Google. Please login again."
-msgstr "Произведен выход из Google. Войдите снова."
-
+#. i18nd("plasma_applet_org.kde.plasma.digitalclock", "Set Time Format…")
+#. icon.name: "gnumeric-format-thousand-separator"
 #: ../contents/ui/main.qml
 msgid "Set Language…"
 msgstr "Установить язык…"
 
-#: ../contents/ui/main.qml
-msgid "Set Locale…"
-msgstr "Установить локаль …"
+#~ msgid ""
+#~ "Plasmoid for a calendar+agenda with weather that syncs to Google Calendar."
+#~ msgstr "Календарь событий с погодой и синхронизацией с Google Calendar."
 
-#: ../contents/ui/MeteogramView.qml
-#, c-format
-msgid "%1mm"
-msgstr "%1mm"
+#~ msgid "Open City Forecast In Browser"
+#~ msgstr "Открыть прогноз места в браузере"
 
-#: ../contents/ui/MonthView.qml
-msgctxt "calendar title format for other months of current year"
-msgid "MMMM"
-msgstr "MMMM"
+#~ msgid "Open New Event In Browser"
+#~ msgstr "Открыть новое событие в браузере"
 
-#: ../contents/ui/MonthView.qml
-msgctxt "calendar title format for months not from current year"
-msgid "MMMM, yyyy"
-msgstr "MMMM, yyyy"
+#~ msgid "Open New Event Form"
+#~ msgstr "Открыть форму нового события"
 
-#: ../contents/ui/NewEventForm.qml
-msgid "Eg: 9am-5pm Work"
-msgstr "Например: 9am-5pm работа"
+#~ msgid "Open Event In Browser"
+#~ msgstr "Открыть событие в браузере"
 
-#: ../contents/ui/PopupView.qml
-msgid ""
-"Weather not configured.\n"
-"Go to Weather in the config and set your city,\n"
-"and/or disable the meteogram to hide this area."
-msgstr ""
-"Погода не настроена.\n"
-"Перейдите в раздел «Погода» и установите своё местоположение,\n"
-"или отключите метеограмму, чтобы скрыть эту область."
+#~ msgid "Login"
+#~ msgstr "Авторизация"
 
-#: ../contents/ui/PopupView.qml
-msgid "Error fetching weather."
-msgstr "Ошибка получения погоды."
+#~ msgid "Currently Synched."
+#~ msgstr "В настоящее время синхронизировано."
 
-#: ../contents/ui/TimerInputView.qml
-msgid "&Start"
-msgstr "&Пуск"
+#~ msgid "Logout"
+#~ msgstr "Выйти"
 
-#: ../contents/ui/TimerModel.qml
-msgid "Timer finished"
-msgstr "Таймер - Стоп"
+#~ msgid ""
+#~ "Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login "
+#~ "and give permission to access your calendar, it will give you a code to "
+#~ "paste below."
+#~ msgstr ""
+#~ "Посетите <a href=\"%1\">%2</a> (открывается в вашем веб-браузере). После "
+#~ "того, как вы войдёте в систему и дадите разрешение на доступ к своему "
+#~ "календарю, он даст вам код для вставки ниже."
 
-#: ../contents/ui/TimerModel.qml
-msgid "%1 has passed"
-msgstr "%1 прошло"
+#~ msgid "Enter code here (Eg: %1)"
+#~ msgstr "Введите код сюда (Например: %1)"
 
-#: ../contents/ui/TimerModel.qml ../contents/ui/TimerView.qml
-msgid "Repeat"
-msgstr "Повтор"
+#~ msgid "Invalid Google Authorization Code"
+#~ msgstr "Неверный код Google авторизации"
 
-#: ../contents/ui/TimerView.qml
-msgid "Pause Timer"
-msgstr "Таймер-Пауза"
+#~ msgid "Tooltip"
+#~ msgstr "Подсказка"
 
-#: ../contents/ui/TimerView.qml
-msgid "Start Timer"
-msgstr "Таймер-Пуск"
+#~ msgid "Cannot deselect Local time from the tooltip"
+#~ msgstr "Невозможно отменить локальное время из всплывающей подсказки"
 
-#: ../contents/ui/TimerView.qml
-msgid "Scroll to add to duration"
-msgstr "Прокрутите, чтобы добавить время"
+#~ msgid "Set Locale…"
+#~ msgstr "Установить локаль …"
 
-#: ../contents/ui/TimerView.qml
-msgid "Sound"
-msgstr "Звук"
-
-#: ../contents/ui/TimerView.qml
-msgid "Set Timer"
-msgstr "Выставить таймер"
-
-#: ../contents/ui/UpcomingEvents.qml
-msgid "Events Starting"
-msgstr "Начало событий"
-
-#: ../contents/ui/UpcomingEvents.qml
-msgid "Events In Progress"
-msgstr "Текущие события"
-
-#: ../contents/ui/UpcomingEvents.qml
-msgid "Upcoming Events"
-msgstr "Ближайшие события"
-
-#: ../contents/ui/UpcomingEvents.qml
-msgctxt "%1 = 15 minutes"
-msgid "Starting in %1"
-msgstr ""
+#~ msgid "Scroll to add to duration"
+#~ msgstr "Прокрутите, чтобы добавить время"
 
 #~ msgid "Weather API limit reached, will try again soon."
 #~ msgstr "Достигнут погодный лимит API, обновится чуть позже."

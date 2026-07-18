@@ -43,13 +43,13 @@ check_command_success() {
 ## Initialize Color Variables and Functions
 initialize_colors() {
         # Color definitions
-        TC_Red='\033[31m'; TC_Orange='\033[33m';
-        TC_LightGray='\033[90m'; TC_LightRed='\033[91m'; TC_LightGreen='\033[92m'; TC_Yellow='\033[93m'; TC_LightBlue='\033[94m';
-        TC_Reset='\033[0m'; TC_Bold='\033[1m';
+        TC_Red='\033[31m';
+        TC_LightGray='\033[90m'; TC_LightGreen='\033[92m';
+        TC_Reset='\033[0m';
         if [ ! -t 1 ]; then
-                TC_Red=''; TC_Orange='';
-                TC_LightGray=''; TC_LightRed=''; TC_LightGreen=''; TC_Yellow=''; TC_LightBlue='';
-                TC_Bold=''; TC_Reset='';
+                TC_Red='';
+                TC_LightGray=''; TC_LightGreen='';
+                TC_Reset='';
         fi
 
         # Color echo functions
@@ -75,16 +75,19 @@ check_qml_versions() {
 handle_translations() {
         if [ -d "package/translate" ]; then
                 echoGray "[build] translate dir found, running merge."
-                (cd package/translate && sh ./merge)
-                (cd package/translate && sh ./build)
-                if type "git" > /dev/null; then
-                        if [ "$(git diff --stat package/translate)" != "" ]; then
-                                echoRed "[build] Changed detected. Cancelling build."
-                                git diff --stat .
-                                exit 1
-                        fi
-                else
-                        echoGray "[build] Git not found, skipping translation diff check."
+                if ! (cd package/translate && bash ./merge); then
+                        echoRed "[build] Translation extraction failed."
+                        exit 1
+                fi
+                if ! (cd package/translate && bash ./build); then
+                        echoRed "[build] Translation compilation failed."
+                        exit 1
+                fi
+                if git rev-parse --is-inside-work-tree > /dev/null 2>&1 \
+                        && ! git diff --quiet -- package/translate; then
+                        echoRed "[build] Translation changes detected. Cancelling build."
+                        git diff --stat -- package/translate
+                        exit 1
                 fi
         fi
 }
@@ -102,17 +105,11 @@ convert_metadata() {
 
 ## Package the plasmoid
 package_plasmoid() {
-        if ! type "zip" > /dev/null; then
-                echoRed "[error] 'zip' command not found."
-                if type "zypper" > /dev/null; then
-                        echoRed "[error] Opensuse detected, please run: ${TC_Bold}sudo zypper install zip"
-                fi
-                exit 1
-        fi
-
-        local packageNamespace=$(read_metadata "KPlugin.Id")
+        local packageNamespace
+        packageNamespace=$(read_metadata "KPlugin.Id")
         local packageName="${packageNamespace##*.}" # Strip namespace (Eg: "org.kde.plasma.")
-        local packageVersion=$(read_metadata "KPlugin.Version")
+        local packageVersion
+        packageVersion=$(read_metadata "KPlugin.Version")
 
         if [ -z "$packageNamespace" ] || [ -z "$packageVersion" ]; then
                 echoRed "[error] Failed to read KPlugin.Id or KPlugin.Version from metadata.json"
@@ -120,14 +117,22 @@ package_plasmoid() {
         fi
 
         local filename="${packageName}-v${packageVersion}${filenameTag}.${packageExt}"
-        rm -f ${packageName}-v*.${packageExt} # Cleanup
+        rm -f -- "${packageName}"-v*."${packageExt}" # Cleanup
         echoGray "[${packageExt}] Zipping '${filename}'"
-        (cd package \
-                && zip -r $filename * \
-                && mv $filename $startDir/$filename \
-        )
-        echoGray "[${packageExt}] md5: $(md5sum $filename | awk '{ print $1 }')"
-        echoGray "[${packageExt}] sha256: $(sha256sum $filename | awk '{ print $1 }')"
+        if command -v zip > /dev/null 2>&1; then
+                (cd package \
+                        && zip -r "$filename" ./* \
+                        && mv "$filename" "$startDir/$filename" \
+                )
+        else
+                echoGray "[${packageExt}] 'zip' not found; using Python's zipfile module."
+                (cd package \
+                        && python3 -m zipfile -c "$filename" ./* \
+                        && mv "$filename" "$startDir/$filename" \
+                )
+        fi
+        echoGray "[${packageExt}] md5: $(md5sum "$filename" | awk '{ print $1 }')"
+        echoGray "[${packageExt}] sha256: $(sha256sum "$filename" | awk '{ print $1 }')"
 }
 
 # Main Script Logic
@@ -139,4 +144,4 @@ package_plasmoid
 echoGreen "[build] Packaging completed successfully."
 
 # Return to start directory
-cd $startDir
+cd "$startDir" || exit 1

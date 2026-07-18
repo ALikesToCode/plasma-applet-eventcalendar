@@ -5,19 +5,30 @@ import ipaddress
 import json
 import os
 import socket
+import sys
 import urllib.parse
 import urllib.request
 
+LOCAL_DATA_DIR = os.path.realpath(
+	os.path.expanduser("~/.local/share/plasma_org.kde.plasma.eventcalendar")
+)
+LOCAL_PYTHON_DIR = os.path.join(LOCAL_DATA_DIR, "python")
+if os.path.isdir(LOCAL_PYTHON_DIR) and LOCAL_PYTHON_DIR not in sys.path:
+	sys.path.insert(0, LOCAL_PYTHON_DIR)
+
 from icalendar import Calendar
+
+try:
+	import recurring_ical_events  # expands RRULE/EXDATE/RECURRENCE-ID into occurrences
+except ImportError:
+	recurring_ical_events = None
 
 debugging = False
 MAX_ICS_BYTES = 10 * 1024 * 1024
 REQUEST_TIMEOUT = 15
 ALLOWED_URL_SCHEMES = {"file", "http", "https"}
 SAFE_REMOTE_SCHEMES = {"http", "https"}
-LOCAL_ICS_DIR = os.path.realpath(
-	os.path.expanduser("~/.local/share/plasma_org.kde.plasma.eventcalendar")
-)
+LOCAL_ICS_DIR = LOCAL_DATA_DIR
 
 
 def debug(*args):
@@ -25,10 +36,10 @@ def debug(*args):
 		print(*args)
 
 
-def date_to_json(date_obj):
-	if isinstance(date_obj.dt, datetime.datetime):
-		return {"dateTime": date_obj.dt.isoformat()}
-	return {"date": date_obj.dt.isoformat()}
+def date_to_json(date_value):
+	if isinstance(date_value, datetime.datetime):
+		return {"dateTime": date_value.isoformat()}
+	return {"date": date_value.isoformat()}
 
 
 def stringify(value):
@@ -39,14 +50,22 @@ def get_event_date(event, key):
 	value = event.get(key)
 	if value is None or not hasattr(value, "dt"):
 		return None
-	return value
+	return value.dt
 
 
 def get_event_bounds(event):
 	start = get_event_date(event, "DTSTART")
 	if start is None:
 		return None, None
-	end = get_event_date(event, "DTEND") or start
+	end = getattr(event, "end", None) or get_event_date(event, "DTEND")
+	if end is None:
+		duration = get_event_date(event, "DURATION")
+		if isinstance(duration, datetime.timedelta):
+			end = start + duration
+		elif isinstance(start, datetime.date) and not isinstance(start, datetime.datetime):
+			end = start + datetime.timedelta(days=1)
+		else:
+			end = start
 	return start, end
 
 
@@ -58,8 +77,8 @@ def build_event_uid(event, start_date, end_date):
 	summary = stringify(event.get("SUMMARY")).strip()
 	digest = hashlib.sha1(
 		"|".join([
-			start_date.dt.isoformat(),
-			end_date.dt.isoformat(),
+			start_date.isoformat(),
+			end_date.isoformat(),
 			summary,
 		]).encode("utf-8", "ignore")
 	).hexdigest()
@@ -72,9 +91,12 @@ def events_to_json(event_list=None, indent=4):
 
 	data = {"items": []}
 	for event in event_list:
+		status = stringify(event.get("STATUS")).strip().lower()
+		if status == "cancelled":
+			continue
 		start_date, end_date = get_event_bounds(event)
 		if start_date is None or end_date is None:
-			debug("Skipping event without DTSTART/DTEND", stringify(event.get("SUMMARY")))
+			debug("Skipping event without a usable DTSTART/end", stringify(event.get("SUMMARY")))
 			continue
 
 		ical_uid = build_event_uid(event, start_date, end_date)
@@ -84,10 +106,10 @@ def events_to_json(event_list=None, indent=4):
 			"iCalUID": ical_uid,
 			"id": "ics_{}_{}_{}".format(
 				ical_uid,
-				start_date.dt.isoformat(),
-				end_date.dt.isoformat(),
+				start_date.isoformat(),
+				end_date.isoformat(),
 			),
-			"status": "confirmed",
+			"status": status or "confirmed",
 			"htmlLink": "",
 			"summary": stringify(event.get("SUMMARY")),
 			"start": date_to_json(start_date),
@@ -100,6 +122,8 @@ def events_to_json(event_list=None, indent=4):
 			item["updated"] = event["LAST-MODIFIED"].dt.isoformat()
 		if "LOCATION" in event:
 			item["location"] = stringify(event.get("LOCATION"))
+		if "DESCRIPTION" in event:
+			item["description"] = stringify(event.get("DESCRIPTION"))
 
 		data["items"].append(item)
 
@@ -108,7 +132,11 @@ def events_to_json(event_list=None, indent=4):
 
 def ensure_date_time(dt):
 	if isinstance(dt, datetime.date) and not isinstance(dt, datetime.datetime):
-		return datetime.datetime.combine(dt, datetime.time.min)
+		dt = datetime.datetime.combine(dt, datetime.time.min)
+	if isinstance(dt, datetime.datetime) and dt.tzinfo is not None:
+		# ICS feeds (eg. Outlook) mix tz-aware timed events with naive all-day
+		# dates; comparing them against the naive query bounds raises TypeError.
+		dt = dt.astimezone().replace(tzinfo=None)
 	return dt
 
 
@@ -117,11 +145,13 @@ def event_within(event, start_time, end_time):
 	if event_start_date is None or event_end_date is None:
 		return False
 
-	event_start = ensure_date_time(event_start_date.dt)
-	event_end = ensure_date_time(event_end_date.dt)
+	event_start = ensure_date_time(event_start_date)
+	event_end = ensure_date_time(event_end_date)
 	start_time = ensure_date_time(start_time)
 	end_time = ensure_date_time(end_time)
-	return event_start <= end_time and event_end >= start_time
+	if event_start == event_end:
+		return start_time <= event_start < end_time
+	return event_start < end_time and start_time < event_end
 
 
 def validate_remote_host(parsed_url):
@@ -212,15 +242,21 @@ class CalendarManager:
 		return self.cal.walk("vevent")
 
 	def query(self, start_time, end_time):
+		if recurring_ical_events is not None:
+			# Expand recurring series into individual occurrences (RRULE, EXDATE,
+			# RECURRENCE-ID overrides). Without this, recurring meetings only
+			# match on their series start date and every other occurrence is lost.
+			yield from recurring_ical_events.of(self.cal).between(start_time, end_time)
+			return
 		for event in self.events:
 			if event_within(event, start_time, end_time):
 				start_date, end_date = get_event_bounds(event)
-				debug("within", start_date.dt, end_date.dt)
+				debug("within", start_date, end_date)
 				yield event
 			else:
 				start_date, end_date = get_event_bounds(event)
 				if start_date and end_date:
-					debug("out", start_date.dt, end_date.dt)
+					debug("out", start_date, end_date)
 
 	def to_json(self):
 		return events_to_json(self.events)
@@ -245,7 +281,7 @@ if __name__ == "__main__":
 
 	query = subparsers.add_parser("query")
 	query.add_argument("startTime", type=argparse_date, help="Inclusive starting date in YYYY-MM-DD format")
-	query.add_argument("endTime", type=argparse_date, help="Inclusive ending date in YYYY-MM-DD format")
+	query.add_argument("endTime", type=argparse_date, help="Exclusive ending date in YYYY-MM-DD format")
 
 	subparsers.add_parser("add")
 	subparsers.add_parser("delete")

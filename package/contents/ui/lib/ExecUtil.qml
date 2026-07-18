@@ -16,11 +16,12 @@ Plasma5Support.DataSource {
 		var stdout = data["stdout"]
 		var stderr = data["stderr"]
 		var listener = listeners[cmd]
+		delete listeners[cmd]
+		disconnectSource(sourceName) // clean up the completed run before callbacks can restart it
 		if (listener) {
 			listener(cmd, exitCode, exitStatus, stdout, stderr)
 		}
 		exited(cmd, exitCode, exitStatus, stdout, stderr)
-		disconnectSource(sourceName) // cmd finished
 	}
 
 	signal exited(string cmd, int exitCode, int exitStatus, string stdout, string stderr)
@@ -119,11 +120,11 @@ Plasma5Support.DataSource {
 	}
 
 	function runCommand(cmd, callback) {
+		// A command may be restarted after a suspended process never completed.
+		// Remove both its stale callback and source before registering the new run.
+		delete listeners[cmd]
+		disconnectSource(cmd)
 		if (typeof callback === 'function') {
-			if (listeners[cmd]) { // Our implementation only allows 1 callback per command.
-				exited.disconnect(listeners[cmd])
-				delete listeners[cmd]
-			}
 			var listener = execCallback.bind(executable, callback)
 			listeners[cmd] = listener
 		}
@@ -152,7 +153,6 @@ Plasma5Support.DataSource {
 	}
 
 	function execCallback(callback, cmd, exitCode, exitStatus, stdout, stderr) {
-		delete listeners[cmd]
 		callback(cmd, exitCode, exitStatus, stdout, stderr)
 	}
 
