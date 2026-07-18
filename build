@@ -43,12 +43,12 @@ check_command_success() {
 ## Initialize Color Variables and Functions
 initialize_colors() {
         # Color definitions
-        TC_Red='\033[31m'; TC_Orange='\033[33m';
-        TC_LightGray='\033[90m'; TC_LightRed='\033[91m'; TC_LightGreen='\033[92m'; TC_Yellow='\033[93m'; TC_LightBlue='\033[94m';
+        TC_Red='\033[31m';
+        TC_LightGray='\033[90m'; TC_LightGreen='\033[92m';
         TC_Reset='\033[0m'; TC_Bold='\033[1m';
         if [ ! -t 1 ]; then
-                TC_Red=''; TC_Orange='';
-                TC_LightGray=''; TC_LightRed=''; TC_LightGreen=''; TC_Yellow=''; TC_LightBlue='';
+                TC_Red='';
+                TC_LightGray=''; TC_LightGreen='';
                 TC_Bold=''; TC_Reset='';
         fi
 
@@ -75,8 +75,8 @@ check_qml_versions() {
 handle_translations() {
         if [ -d "package/translate" ]; then
                 echoGray "[build] translate dir found, running merge."
-                (cd package/translate && sh ./merge)
-                (cd package/translate && sh ./build)
+                (cd package/translate && bash ./merge)
+                (cd package/translate && bash ./build)
                 if type "git" > /dev/null; then
                         if [ "$(git diff --stat package/translate)" != "" ]; then
                                 echoRed "[build] Changed detected. Cancelling build."
@@ -110,9 +110,11 @@ package_plasmoid() {
                 exit 1
         fi
 
-        local packageNamespace=$(read_metadata "KPlugin.Id")
+        local packageNamespace
+        packageNamespace=$(read_metadata "KPlugin.Id")
         local packageName="${packageNamespace##*.}" # Strip namespace (Eg: "org.kde.plasma.")
-        local packageVersion=$(read_metadata "KPlugin.Version")
+        local packageVersion
+        packageVersion=$(read_metadata "KPlugin.Version")
 
         if [ -z "$packageNamespace" ] || [ -z "$packageVersion" ]; then
                 echoRed "[error] Failed to read KPlugin.Id or KPlugin.Version from metadata.json"
@@ -120,14 +122,14 @@ package_plasmoid() {
         fi
 
         local filename="${packageName}-v${packageVersion}${filenameTag}.${packageExt}"
-        rm -f ${packageName}-v*.${packageExt} # Cleanup
+        rm -f -- "${packageName}"-v*."${packageExt}" # Cleanup
         echoGray "[${packageExt}] Zipping '${filename}'"
         (cd package \
-                && zip -r $filename * \
-                && mv $filename $startDir/$filename \
+                && zip -r "$filename" ./* \
+                && mv "$filename" "$startDir/$filename" \
         )
-        echoGray "[${packageExt}] md5: $(md5sum $filename | awk '{ print $1 }')"
-        echoGray "[${packageExt}] sha256: $(sha256sum $filename | awk '{ print $1 }')"
+        echoGray "[${packageExt}] md5: $(md5sum "$filename" | awk '{ print $1 }')"
+        echoGray "[${packageExt}] sha256: $(sha256sum "$filename" | awk '{ print $1 }')"
 }
 
 # Main Script Logic
@@ -139,4 +141,4 @@ package_plasmoid
 echoGreen "[build] Packaging completed successfully."
 
 # Return to start directory
-cd $startDir
+cd "$startDir" || exit 1

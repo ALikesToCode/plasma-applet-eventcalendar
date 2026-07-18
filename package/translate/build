@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then
+	exec /usr/bin/env bash "$0" "$@"
+fi
 # Version: 7
 
 # This script will convert the *.po files to *.mo files, rebuilding the package/contents/locale folder.
@@ -26,20 +29,18 @@ PY
 }
 
 plasmoidName=$(read_metadata "KPlugin.Id")
-website=$(read_metadata "KPlugin.Website")
-bugAddress="$website"
 packageRoot="${DIR}/.." # Root of translatable sources
 projectName="plasma_applet_${plasmoidName}" # project name
 
 ### Colors
 # https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux
 # https://stackoverflow.com/questions/911168/how-can-i-detect-if-my-shell-script-is-running-through-a-pipe
-TC_Red='\033[31m'; TC_Orange='\033[33m';
-TC_LightGray='\033[90m'; TC_LightRed='\033[91m'; TC_LightGreen='\033[92m'; TC_Yellow='\033[93m'; TC_LightBlue='\033[94m';
+TC_Red='\033[31m';
+TC_LightGray='\033[90m'; TC_LightGreen='\033[92m';
 TC_Reset='\033[0m'; TC_Bold='\033[1m';
 if [ ! -t 1 ]; then
-	TC_Red=''; TC_Orange='';
-	TC_LightGray=''; TC_LightRed=''; TC_LightGreen=''; TC_Yellow=''; TC_LightBlue='';
+	TC_Red='';
+	TC_LightGray=''; TC_LightGreen='';
 	TC_Bold=''; TC_Reset='';
 fi
 function echoTC() {

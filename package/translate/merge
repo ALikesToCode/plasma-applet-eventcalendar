@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then
+	exec /usr/bin/env bash "$0" "$@"
+fi
 # Version: 23
 
 # https://techbase.kde.org/Development/Tutorials/Localization/i18n_Build_Systems
@@ -30,17 +33,16 @@ widgetName="${plasmoidName##*.}" # Strip namespace
 website=$(read_metadata "KPlugin.Website")
 bugAddress="$website"
 packageRoot=".." # Root of translatable sources
-projectName="plasma_applet_${plasmoidName}" # project name
 
 ### Colors
 # https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux
 # https://stackoverflow.com/questions/911168/how-can-i-detect-if-my-shell-script-is-running-through-a-pipe
-TC_Red='\033[31m'; TC_Orange='\033[33m';
-TC_LightGray='\033[90m'; TC_LightRed='\033[91m'; TC_LightGreen='\033[92m'; TC_Yellow='\033[93m'; TC_LightBlue='\033[94m';
+TC_Red='\033[31m';
+TC_LightGray='\033[90m'; TC_LightGreen='\033[92m';
 TC_Reset='\033[0m'; TC_Bold='\033[1m';
 if [ ! -t 1 ]; then
-	TC_Red=''; TC_Orange='';
-	TC_LightGray=''; TC_LightRed=''; TC_LightGreen=''; TC_Yellow=''; TC_LightBlue='';
+	TC_Red='';
+	TC_LightGray=''; TC_LightGreen='';
 	TC_Bold=''; TC_Reset='';
 fi
 function echoTC() {
@@ -153,7 +155,7 @@ else
 	mv "template.pot.new" "template.pot"
 fi
 
-potMessageCount=`expr $(grep -Pzo 'msgstr ""\n(\n|$)' "template.pot" | grep -c 'msgstr ""')`
+potMessageCount=$(grep -Pzo 'msgstr ""\n(\n|$)' "template.pot" | grep -c 'msgstr ""')
 echo "|  Locale  |  Lines  | % Done|" > "./Status.md"
 echo "|----------|---------|-------|" >> "./Status.md"
 entryFormat="| %-8s | %7s | %5s |"
@@ -201,7 +203,7 @@ for cat in $catalogs; do
 	sed -i 's/# Translation of '"${widgetName}"' in LANGUAGE/'"# Translation of ${widgetName} in ${catLocale}"'/' "$cat.new"
 	sed -i 's/# Copyright (C) YEAR THE PACKAGE'"'"'S COPYRIGHT HOLDER/'"# Copyright (C) $(date +%Y)"'/' "$cat.new"
 
-	poEmptyMessageCount=`expr $(grep -Pzo 'msgstr ""\n(\n|$)' "$cat.new" | grep -c 'msgstr ""')`
+	poEmptyMessageCount=$(grep -Pzo 'msgstr ""\n(\n|$)' "$cat.new" | grep -c 'msgstr ""')
 	poMessagesDoneCount=`expr $potMessageCount - $poEmptyMessageCount`
 	poCompletion=`perl -e "printf(\"%d\", $poMessagesDoneCount * 100 / $potMessageCount)"`
 	poLine=`perl -e "printf(\"$entryFormat\", \"$catLocale\", \"${poMessagesDoneCount}/${potMessageCount}\", \"${poCompletion}%\")"`
