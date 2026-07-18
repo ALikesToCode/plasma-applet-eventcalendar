@@ -451,6 +451,10 @@ if [ -z "$packageNamespace" ] || [ "$packageNamespace" = "null" ]; then
     log "ERROR: Failed to read package information from metadata."
     exit 1
 fi
+if [[ ! "$packageNamespace" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    log "ERROR: Refusing unsafe package namespace: $packageNamespace"
+    exit 1
+fi
 
 # Check if package type is available
 if ! "$KPACKAGE_TOOL" --list-types | grep -q "Plasma/Applet"; then
@@ -461,14 +465,15 @@ fi
 # Install or update the package
 INSTALL_DIR="$HOME/.local/share/plasma/plasmoids"
 mkdir -p "$INSTALL_DIR"
+PACKAGE_INSTALL_DIR="${INSTALL_DIR:?}/${packageNamespace:?}"
 
-if [ -d "$INSTALL_DIR/$packageNamespace" ]; then
+if [ -d "$PACKAGE_INSTALL_DIR" ]; then
     log "Updating existing package..."
-    rm -rf "$INSTALL_DIR/$packageNamespace"
+    rm -rf -- "$PACKAGE_INSTALL_DIR"
 fi
 
 log "Installing package..."
-cp -r package "$INSTALL_DIR/$packageNamespace"
+cp -r package "$PACKAGE_INSTALL_DIR"
 
 QDBUS_BIN=$(command -v qdbus || command -v qdbus6) || {
     echo "qdbus not found" >&2
