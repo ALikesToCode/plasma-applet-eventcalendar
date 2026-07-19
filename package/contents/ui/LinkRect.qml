@@ -1,5 +1,5 @@
-import QtQuick 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
+import QtQuick
+import org.kde.plasma.core as PlasmaCore
 
 import "lib"
 
@@ -36,7 +36,7 @@ Rectangle {
 			acceptedButtons: Qt.LeftButton | Qt.RightButton
 			cursorShape: linkRect.enabled && containsMouse ? Qt.PointingHandCursor : Qt.ArrowCursor
 			enabled: linkRect.enabled
-			onClicked: {
+			onClicked: function(mouse) {
 				mouse.accepted = false
 				linkRect.clicked(mouse)
 				if (!mouse.accepted) {
@@ -48,7 +48,9 @@ Rectangle {
 					}
 				}
 			}
-			onDoubleClicked: linkRect.doubleClicked(mouse)
+			onDoubleClicked: function(mouse) {
+				linkRect.doubleClicked(mouse)
+			}
 		}
 	}
 

@@ -16,10 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-import QtQuick 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
-
-import org.kde.plasma.calendar 2.0
+import QtQuick
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.workspace.calendar as PlasmaCalendar
 
 import "LocaleFuncs.js" as LocaleFuncs
 import "Shared.js" as Shared
@@ -38,13 +38,13 @@ MouseArea {
 	readonly property bool today: {
 		var today = root.today
 		var result = true
-		if (dateMatchingPrecision >= Calendar.MatchYear) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYear) {
 			result = result && today.getFullYear() === thisDate.getFullYear()
 		}
-		if (dateMatchingPrecision >= Calendar.MatchYearAndMonth) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYearAndMonth) {
 			result = result && today.getMonth() === thisDate.getMonth()
 		}
-		if (dateMatchingPrecision >= Calendar.MatchYearMonthAndDay) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYearMonthAndDay) {
 			result = result && today.getDate() === thisDate.getDate()
 		}
 		return result
@@ -52,13 +52,13 @@ MouseArea {
 	readonly property bool selected: {
 		var current = root.currentDate
 		var result = true
-		if (dateMatchingPrecision >= Calendar.MatchYear) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYear) {
 			result = result && current.getFullYear() === thisDate.getFullYear()
 		}
-		if (dateMatchingPrecision >= Calendar.MatchYearAndMonth) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYearAndMonth) {
 			result = result && current.getMonth() === thisDate.getMonth()
 		}
-		if (dateMatchingPrecision >= Calendar.MatchYearMonthAndDay) {
+		if (dateMatchingPrecision >= PlasmaCalendar.Calendar.MatchYearMonthAndDay) {
 			result = result && current.getDate() === thisDate.getDate()
 		}
 		return result
@@ -68,7 +68,7 @@ MouseArea {
 		// this is needed here as the text is first rendered, counting with the default root.cellHeight
 		// then root.cellHeight actually changes to whatever it should be, but the Label does not pick
 		// it up after that, so we need to change it explicitly after the cell size changes
-		// label.font.pixelSize = Math.max(theme.smallestFont.pixelSize, Math.floor(daysCalendar.cellHeight / 3))
+		// label.font.pixelSize = Math.max(Kirigami.Theme.smallFont.pixelSize, Math.floor(daysCalendar.cellHeight / 3))
 	}
 
 	Rectangle {
@@ -88,8 +88,8 @@ MouseArea {
 				return 0
 			}
 		}
-		Behavior on opacity { NumberAnimation { duration: units.shortDuration*2 } }
-		color: theme.textColor
+		Behavior on opacity { NumberAnimation { duration: Kirigami.Units.shortDuration*2 } }
+		color: Kirigami.Theme.textColor
 		radius: dayStyle.radius
 	}
 
@@ -110,14 +110,36 @@ MouseArea {
 			}
 		}
 		// visible: !today
-		Behavior on opacity { NumberAnimation { duration: units.shortDuration*2 } }
-		color: theme.highlightColor
+		Behavior on opacity { NumberAnimation { duration: Kirigami.Units.shortDuration*2 } }
+		color: Kirigami.Theme.highlightColor
 		radius: dayStyle.radius
 		z: todayRect.z - 1
 	}
 
 
-	property int eventCount: model.events ? model.events.count : 0
+	function eventsLength(events) {
+		if (!events) {
+			return 0
+		}
+		if (typeof events.count === "number") {
+			return events.count
+		}
+		if (typeof events.length === "number") {
+			return events.length
+		}
+		return 0
+	}
+	function eventAt(events, index) {
+		if (!events) {
+			return null
+		}
+		if (typeof events.get === "function") {
+			return events.get(index)
+		}
+		return events[index]
+	}
+
+	property int eventCount: eventsLength(model.events)
 	property var eventColors: []
 	property bool useHightlightColor: eventColors.length === 0
 
@@ -125,8 +147,8 @@ MouseArea {
 	function updateEventColors() {
 		var set = {}
 		for (var i = 0; i < eventCount; i++) {
-			var eventItem = model.events.get(i)
-			if (eventItem.backgroundColor) {
+			var eventItem = eventAt(model.events, i)
+			if (eventItem && eventItem.backgroundColor) {
 				set[eventItem.backgroundColor] = true
 			}
 		}
@@ -162,7 +184,7 @@ MouseArea {
 			sourceComponent: badgeComponent
 
 			readonly property var modelEvents: model.events
-			readonly property int modelEventsCount: modelEvents ? modelEvents.count : 0
+			readonly property int modelEventsCount: dayStyle.eventsLength(modelEvents)
 			property alias dayStyle: dayStyle // aka DayDelegate
 		}
 	}
@@ -171,7 +193,7 @@ MouseArea {
 		id: label
 		anchors {
 			fill: parent
-			margins: units.smallSpacing
+			margins: Kirigami.Units.smallSpacing
 		}
 		horizontalAlignment: Text.AlignHCenter
 		verticalAlignment: Text.AlignVCenter
@@ -182,9 +204,9 @@ MouseArea {
 		fontSizeMode: Text.HorizontalFit
 		font.pixelSize: {
 			if (today && todayStyle == "bigNumber") {
-				return Math.max(theme.smallestFont.pixelSize, Math.min(Math.floor(dayStyle.height / 2), Math.floor(dayStyle.width * 7/8)))
+				return Math.max(Kirigami.Theme.smallFont.pixelSize, Math.min(Math.floor(dayStyle.height / 2), Math.floor(dayStyle.width * 7/8)))
 			} else {
-				return Math.max(theme.smallestFont.pixelSize, Math.min(Math.floor(dayStyle.height / 3), Math.floor(dayStyle.width * 5/8)))
+				return Math.max(Kirigami.Theme.smallFont.pixelSize, Math.min(Math.floor(dayStyle.height / 3), Math.floor(dayStyle.width * 5/8)))
 			}
 		}
 		// This is to avoid the "Both point size and
@@ -194,19 +216,19 @@ MouseArea {
 			if (today) {
 				if (todayStyle == "bigNumber") {
 					if (dayStyle.containsMouse || dayStyle.selected) {
-						return theme.textColor
+						return Kirigami.Theme.textColor
 					} else {
-						return theme.highlightColor
+						return Kirigami.Theme.highlightColor
 					}
 				} else { // todayStyle == "theme"
-					return theme.backgroundColor
+					return Kirigami.Theme.backgroundColor
 				}
 			} else {
-				return theme.textColor
+				return Kirigami.Theme.textColor
 			}
 		}
 		Behavior on color {
-			ColorAnimation { duration: units.shortDuration * 2 }
+			ColorAnimation { duration: Kirigami.Units.shortDuration * 2 }
 		}
 	}
 
@@ -217,16 +239,19 @@ MouseArea {
 		mainText: containsMouse ? Qt.formatDate(thisDate, Qt.locale().dateFormat(Locale.LongFormat)) : ""
 		subText: containsMouse ? tooltipBody() : ""
 		function tooltipBody() {
-			if (!model.events) {
+			if (!eventsLength(model.events)) {
 				return ''
 			}
 			var lines = []
-			for (var i = 0; i < model.events.count; i++) {
-				var eventItem = model.events.get(i)
+			for (var i = 0; i < eventsLength(model.events); i++) {
+				var eventItem = eventAt(model.events, i)
+				if (!eventItem) {
+					continue
+				}
 				var line = ''
-				var eventBullet = '■'
-				if(new Date(eventItem.end.dateTime) < new Date()) {
-					eventBullet = '✓'
+				var eventBullet = "■"
+				if (new Date(eventItem.end.dateTime) < new Date()) {
+					eventBullet = "✓"
 				}
 				line += '<font color="' + eventItem.backgroundColor + '">' + eventBullet + '</font> '
 				line += '<b>' + Shared.escapeHtml(eventItem.summary) + ':</b> '

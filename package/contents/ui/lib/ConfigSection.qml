@@ -1,6 +1,6 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 GroupBox {
 	id: configSection
@@ -9,8 +9,7 @@ GroupBox {
 
 	ColumnLayout {
 		id: content
-		anchors.left: parent.left
-		anchors.right: parent.right
+		width: parent ? parent.width : implicitWidth
 
 		// Workaround for crash when using default on a Layout.
 		// https://bugreports.qt.io/browse/QTBUG-52490

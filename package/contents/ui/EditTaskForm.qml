@@ -1,8 +1,6 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents3
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.components as PlasmaComponents3
 
 import "Shared.js" as Shared
 
@@ -110,7 +108,7 @@ Loader {
 					text: (task && task.notes) || ""
 
 					Layout.fillWidth: true
-					Layout.preferredHeight: contentHeight + (20 * units.devicePixelRatio)
+					Layout.preferredHeight: contentHeight + (20 * Screen.devicePixelRatio)
 
 					Keys.onEscapePressed: editTaskItem.cancel()
 
@@ -159,7 +157,7 @@ Loader {
 						}
 						function getDueDate() {
 							if (dueTimeSelector.hasDueDate) {
-								return Shared.dateString(dateTime)  + 'T00:00:00.000Z'
+								return Shared.localeDateString(dateTime) + 'T00:00:00.000Z'
 							} else {
 								return null
 							}
@@ -180,7 +178,7 @@ Loader {
 				//---
 				RowLayout {
 					Layout.columnSpan: 2
-					spacing: 4 * units.devicePixelRatio
+					spacing: 4 * Screen.devicePixelRatio
 					Item {
 						Layout.fillWidth: true
 					}

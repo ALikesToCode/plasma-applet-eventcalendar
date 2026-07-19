@@ -1,16 +1,25 @@
-import QtQuick 2.0
+import QtQuick
 
 import "./calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 
 QtObject {
 	signal migrate()
+	readonly property bool showDebug: typeof plasmoid !== "undefined"
+		&& plasmoid.configuration
+		&& plasmoid.configuration.debugging === true
+
+	function logMigration(message) {
+		if (showDebug) {
+			console.log("[eventcalendar:migrate] " + message)
+		}
+	}
 
 	function copy(oldKey, newKey) {
 		if (typeof plasmoid.configuration[oldKey] === 'undefined') return
 		if (typeof plasmoid.configuration[newKey] === 'undefined') return
 		if (plasmoid.configuration[oldKey] === plasmoid.configuration[newKey]) return
 		plasmoid.configuration[newKey] = plasmoid.configuration[oldKey]
-		console.log('[eventcalendar:migrate] copy ' + oldKey + ' => ' + newKey + ' (value: ' + plasmoid.configuration[oldKey] + ')')
+		logMigration('copy ' + oldKey + ' => ' + newKey)
 	}
 
 	Component.onCompleted: migrate()
@@ -20,9 +29,25 @@ QtObject {
 			var oldValue = plasmoid.configuration.enabledCalendarPlugins
 			var newValue = PlasmaCalendarUtils.pluginPathToFilenameList(plasmoid.configuration.enabledCalendarPlugins)
 			plasmoid.configuration.enabledCalendarPlugins = newValue
-			console.log('[eventcalendar:migrate] convert enabledCalendarPlugins (' + oldValue + ' => ' + newValue + ')')
+			logMigration('convert enabledCalendarPlugins (' + oldValue + ' => ' + newValue + ')')
 
 			plasmoid.configuration.v72Migration = true
+		}
+
+		// Added in: v73
+		if (!plasmoid.configuration.v73Migration) {
+			if (!plasmoid.configuration.enabledCalendarPluginsAllowEmpty) {
+				var oldEnabledCalendarPlugins = plasmoid.configuration.enabledCalendarPlugins
+				var newEnabledCalendarPlugins = PlasmaCalendarUtils.getEffectivePluginFilenameList(
+					null,
+					oldEnabledCalendarPlugins,
+					false
+				)
+				plasmoid.configuration.enabledCalendarPlugins = newEnabledCalendarPlugins
+				logMigration('fallback enabledCalendarPlugins (' + oldEnabledCalendarPlugins + ' => ' + newEnabledCalendarPlugins + ')')
+			}
+
+			plasmoid.configuration.v73Migration = true
 		}
 
 		// Renamed in: v71
@@ -81,4 +106,3 @@ QtObject {
 	}
 
 }
-

@@ -1,8 +1,7 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents3
+import QtQuick
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
 import "lib"
 import "Shared.js" as Shared
@@ -14,18 +13,63 @@ MouseArea {
 	onClicked: focus = true
 
 	property int padding: 0 // Assigned in main.qml
-	property int spacing: 10 * units.devicePixelRatio
+	property int spacing: 10
 
-	property int topRowHeight: plasmoid.configuration.topRowHeight * units.devicePixelRatio
-	property int bottomRowHeight: plasmoid.configuration.bottomRowHeight * units.devicePixelRatio
-	property int singleColumnMonthViewHeight: plasmoid.configuration.monthHeightSingleColumn * units.devicePixelRatio
+	property real screenWidth: Screen.width > 0 ? Screen.width : plasmoid.screenGeometry.width
+	property real screenHeight: Screen.height > 0 ? Screen.height : plasmoid.screenGeometry.height
+	property real widthScale: Math.max(1, screenWidth / 1920)
+	property real heightScale: Math.max(1, screenHeight / 1080)
 
-	// DigitalClock LeftColumn minWidth: units.gridUnit * 22
-	// DigitalClock RightColumn minWidth: units.gridUnit * 14
+	property int topRowHeight: Math.round(plasmoid.configuration.topRowHeight * heightScale)
+	property int bottomRowHeight: Math.round(plasmoid.configuration.bottomRowHeight * heightScale)
+	property int singleColumnMonthViewHeight: Math.round(plasmoid.configuration.monthHeightSingleColumn * heightScale)
+
+	// DigitalClock LeftColumn minWidth: Kirigami.Units.gridUnit * 22
+	// DigitalClock RightColumn minWidth: Kirigami.Units.gridUnit * 14
 	// 14/(22+14) * 400 = 156
 	// rightColumnWidth=156 looks nice but is very thin for listing events + date + weather.
-	property int leftColumnWidth: plasmoid.configuration.leftColumnWidth * units.devicePixelRatio // Meteogram + MonthView
-	property int rightColumnWidth: plasmoid.configuration.rightColumnWidth * units.devicePixelRatio // TimerView + AgendaView
+	property int leftColumnWidth: Math.round(plasmoid.configuration.leftColumnWidth * widthScale) // Meteogram + MonthView
+	property int rightColumnWidth: Math.round(plasmoid.configuration.rightColumnWidth * widthScale) // TimerView + AgendaView
+
+	property int singleColumnWidth: {
+		if (showAgenda && showCalendar) {
+			return Math.max(leftColumnWidth, rightColumnWidth)
+		} else if (showCalendar) {
+			return leftColumnWidth
+		} else if (showAgenda) {
+			return rightColumnWidth
+		}
+
+		var width = 0
+		if (showMeteogram) {
+			width = Math.max(width, leftColumnWidth)
+		}
+		if (showTimer) {
+			width = Math.max(width, rightColumnWidth)
+		}
+		return width
+	}
+
+	property int singleColumnHeight: {
+		var rows = []
+		if (showMeteogram) {
+			rows.push(topRowHeight)
+		}
+		if (showTimer) {
+			rows.push(topRowHeight)
+		}
+		if (showCalendar || showAgenda) {
+			rows.push(bottomRowHeight)
+		}
+		var h = 0
+		for (var i = 0; i < rows.length; i++) {
+			h += rows[i]
+		}
+		if (rows.length > 1) {
+			h += spacing * (rows.length - 1)
+		}
+		return h
+	}
 
 	property bool singleColumn: !showAgenda || !showCalendar
 	property bool singleColumnFullHeight: !plasmoid.configuration.twoColumns && showAgenda && showCalendar
@@ -33,32 +77,25 @@ MouseArea {
 
 	Layout.minimumWidth: {
 		if (twoColumns) {
-			return units.gridUnit * 28
+			return Kirigami.Units.gridUnit * 28
 		} else {
-			return units.gridUnit * 14
+			return Kirigami.Units.gridUnit * 14
 		}
 	}
 	Layout.preferredWidth: {
 		if (twoColumns) {
 			return (leftColumnWidth + spacing + rightColumnWidth) + padding * 2
 		} else {
-			return leftColumnWidth + padding * 2
+			return singleColumnWidth + padding * 2
 		}
 	}
 
-	Layout.minimumHeight: units.gridUnit * 14
+	Layout.minimumHeight: Kirigami.Units.gridUnit * 14
 	Layout.preferredHeight: {
 		if (singleColumnFullHeight) {
 			return plasmoid.screenGeometry.height
 		} else if (singleColumn) {
-			var h = bottomRowHeight // showAgenda || showCalendar
-			if (showMeteogram) {
-				h += spacing + topRowHeight
-			}
-			if (showTimer) {
-				h += spacing + topRowHeight
-			}
-			return h + padding * 2
+			return singleColumnHeight + padding * 2
 		} else { // twoColumns
 			var h = bottomRowHeight // showAgenda || showCalendar
 			if (showMeteogram || showTimer) {
@@ -84,7 +121,7 @@ MouseArea {
 
 	Connections {
 		target: monthView
-		function onDateSelected() {
+		function onDateSelected(date) {
 			// logger.debug('onDateSelected', selectedDate)
 			scrollToSelection()
 		}
@@ -123,8 +160,8 @@ MouseArea {
 			PropertyChanges { target: popup
 				// Use the same size as the digitalclock popup
 				// since we don't need more space to fit more agenda items.
-				Layout.preferredWidth: 378 * units.devicePixelRatio
-				Layout.preferredHeight: 378 * units.devicePixelRatio
+				Layout.preferredWidth: 378 * popup.widthScale
+				Layout.preferredHeight: 378 * popup.heightScale
 			}
 			PropertyChanges { target: monthView
 				Layout.preferredWidth: -1
@@ -256,13 +293,13 @@ MouseArea {
 			property int hoursPerDataPoint: WeatherApi.getDataPointDuration(plasmoid.configuration)
 			rainUnits: WeatherApi.getRainUnits(plasmoid.configuration)
 
-			Rectangle {
-				id: meteogramMessageBox
-				anchors.fill: parent
-				anchors.margins: units.smallSpacing
-				color: "transparent"
-				border.color: theme.buttonBackgroundColor
-				border.width: 1
+				Rectangle {
+					id: meteogramMessageBox
+					anchors.fill: parent
+					anchors.margins: Kirigami.Units.smallSpacing
+					color: "transparent"
+					border.color: Kirigami.Theme.buttonBackgroundColor ? Kirigami.Theme.buttonBackgroundColor : Kirigami.Theme.backgroundColor
+					border.width: 1
 
 				readonly property string message: {
 					if (!WeatherApi.weatherIsSetup(plasmoid.configuration)) {
@@ -302,6 +339,8 @@ MouseArea {
 			borderOpacity: plasmoid.configuration.monthShowBorder ? 0.25 : 0
 			showWeekNumbers: plasmoid.configuration.monthShowWeekNumbers
 			highlightCurrentDayWeek: plasmoid.configuration.monthHighlightCurrentDayWeek
+			property int parseGeneration: 0
+			property int parseChunkSize: 50
 
 			Layout.preferredWidth: popup.leftColumnWidth
 			Layout.preferredHeight: popup.bottomRowHeight
@@ -316,42 +355,76 @@ MouseArea {
 				if (!(data && data.items)) {
 					return
 				}
+				var generation = ++monthView.parseGeneration
 
 				// Clear event data since data contains events from all calendars, and this function
 				// is called every time a calendar is recieved.
 				for (var i = 0; i < monthView.daysModel.count; i++) {
-					var dayData = monthView.daysModel.get(i)
 					monthView.daysModel.setProperty(i, 'showEventBadge', false)
-					dayData.events.clear()
+					monthView.daysModel.setProperty(i, 'events', [])
 				}
 
 				// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/calendar/daysmodel.h
-				for (var j = 0; j < data.items.length; j++) {
-					var eventItem = data.items[j]
-					var eventItemStartDate = new Date(eventItem.startDateTime.getFullYear(), eventItem.startDateTime.getMonth(), eventItem.startDateTime.getDate())
-					var eventItemEndDate = new Date(eventItem.endDateTime.getFullYear(), eventItem.endDateTime.getMonth(), eventItem.endDateTime.getDate())
-					if (eventItem.end.date) {
-						// All day events end at midnight which is technically the next day.
-						eventItemEndDate.setDate(eventItemEndDate.getDate() - 1)
+				var items = data.items
+				var itemIndex = 0
+				var dayCount = monthView.daysModel.count
+				if (!dayCount) {
+					return
+				}
+				var firstDayData = monthView.daysModel.get(0)
+				var firstDayDate = new Date(firstDayData.yearNumber, firstDayData.monthNumber - 1, firstDayData.dayNumber)
+				function dayOffsetFromFirst(date) {
+					var millisPerDay = 24 * 60 * 60 * 1000
+					return Math.floor((date.getTime() - firstDayDate.getTime()) / millisPerDay)
+				}
+				function clampDayIndex(index) {
+					return Math.max(0, Math.min(dayCount - 1, index))
+				}
+
+				function processChunk() {
+					if (generation !== monthView.parseGeneration) {
+						return
 					}
-					// logger.debug(eventItemStartDate, eventItemEndDate)
-					for (var i = 0; i < monthView.daysModel.count; i++) {
-						var dayData = monthView.daysModel.get(i)
-						var dayDataDate = new Date(dayData.yearNumber, dayData.monthNumber - 1, dayData.dayNumber)
-						if (eventItemStartDate <= dayDataDate && dayDataDate <= eventItemEndDate) {
-							// logger.debug('\t', dayDataDate)
-							monthView.daysModel.setProperty(i, 'showEventBadge', true)
-							var events = dayData.events || []
-							events.append(eventItem)
-							monthView.daysModel.setProperty(i, 'events', events)
-						} else if (eventItemEndDate < dayDataDate) {
-							break
+					var end = Math.min(itemIndex + monthView.parseChunkSize, items.length)
+					for (; itemIndex < end; itemIndex++) {
+						var eventItem = items[itemIndex]
+						var eventItemStartDate = new Date(eventItem.startDateTime.getFullYear(), eventItem.startDateTime.getMonth(), eventItem.startDateTime.getDate())
+						var eventItemEndDate = new Date(eventItem.endDateTime.getFullYear(), eventItem.endDateTime.getMonth(), eventItem.endDateTime.getDate())
+						if (eventItem.end.date) {
+							// All day events end at midnight which is technically the next day.
+							eventItemEndDate.setDate(eventItemEndDate.getDate() - 1)
+						}
+						var rawStartIndex = dayOffsetFromFirst(eventItemStartDate)
+						var rawEndIndex = dayOffsetFromFirst(eventItemEndDate)
+						if (rawEndIndex < 0 || rawStartIndex >= dayCount) {
+							continue
+						}
+						var startIndex = clampDayIndex(rawStartIndex)
+						var endIndex = clampDayIndex(rawEndIndex)
+						if (endIndex < startIndex) {
+							continue
+						}
+						for (var dayIndex = startIndex; dayIndex <= endIndex; dayIndex++) {
+							if (generation !== monthView.parseGeneration) {
+								return
+							}
+							var dayData = monthView.daysModel.get(dayIndex)
+							monthView.daysModel.setProperty(dayIndex, 'showEventBadge', true)
+							var events = dayData.events ? dayData.events.slice(0) : []
+							events.push(eventItem)
+							monthView.daysModel.setProperty(dayIndex, 'events', events)
 						}
 					}
+
+					if (itemIndex < items.length) {
+						Qt.callLater(processChunk)
+					}
 				}
+
+				processChunk()
 			}
 
-			onDayDoubleClicked: {
+			onDayDoubleClicked: function(dayData) {
 				var date = new Date(dayData.yearNumber, dayData.monthNumber-1, dayData.dayNumber)
 				// logger.debug('Popup.monthView.onDoubleClicked', date)
 				var doubleClickOption = plasmoid.configuration.monthDayDoubleClick
@@ -375,7 +448,7 @@ MouseArea {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 
-			onNewEventFormOpened: {
+			onNewEventFormOpened: function(agendaItem, calendarSelector) {
 				// logger.debug('onNewEventFormOpened')
 				var selectedCalendarId = ""
 				if (plasmoid.configuration.agendaNewEventRememberCalendar) {
@@ -384,7 +457,7 @@ MouseArea {
 				var calendarList = eventModel.getCalendarList()
 				calendarSelector.populate(calendarList, selectedCalendarId)
 			}
-			onSubmitNewEventForm: {
+			onSubmitNewEventForm: function(calendarId, date, text) {
 				logger.debug('onSubmitNewEventForm', calendarId)
 				eventModel.createEvent(calendarId, date, text)
 			}
@@ -394,7 +467,7 @@ MouseArea {
 				anchors.left: parent.left
 				anchors.bottom: parent.bottom
 				anchors.right: refreshButton.left
-				anchors.margins: PlasmaCore.Units.smallSpacing
+				anchors.margins: Kirigami.Units.smallSpacing
 				text: logic.currentErrorMessage
 			}
 

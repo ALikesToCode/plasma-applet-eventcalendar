@@ -6,8 +6,9 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: eventcalendar\n"
-"Report-Msgid-Bugs-To: https://github.com/Zren/plasma-applet-eventcalendar\n"
-"POT-Creation-Date: 2023-08-18 10:16-0400\n"
+"Report-Msgid-Bugs-To: https://github.com/ALikesToCode/plasma-applet-"
+"eventcalendar\n"
+"POT-Creation-Date: 2026-07-18 14:17+0530\n"
 "PO-Revision-Date: 2022-10-25 17:15+0900\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -17,17 +18,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "X-Generator: Poedit 3.1.1\n"
-
-#: ../metadata.desktop ../contents/ui/AgendaView.qml
-#: ../contents/ui/UpcomingEvents.qml
-msgid "Event Calendar"
-msgstr "이벤트 달력"
-
-#: ../metadata.desktop
-msgid ""
-"Plasmoid for a calendar+agenda with weather that syncs to Google Calendar."
-msgstr ""
-"Google 캘린더랑 동기화할 수 있는 달력, 일정 및 날씨 Plasmoid 위젯입니다."
 
 #: ../contents/config/config.qml
 msgid "General"
@@ -50,6 +40,7 @@ msgid "Agenda"
 msgstr "일정"
 
 #: ../contents/config/config.qml
+#: ../contents/ui/calendars/PlasmaCalendarManager.qml
 msgid "Events"
 msgstr "행사"
 
@@ -69,10 +60,17 @@ msgstr "날씨"
 msgid "Advanced"
 msgstr "고급"
 
-#: ../contents/ui/AgendaEventItem.qml ../contents/ui/EditEventForm.qml
-#: ../contents/ui/LocaleFuncs.js
-msgid "All Day"
-msgstr "하루 종일"
+#: ../contents/ui/AgendaEventItem.qml
+msgid "Calendar event"
+msgstr ""
+
+#: ../contents/ui/AgendaEventItem.qml
+msgid "In progress"
+msgstr ""
+
+#: ../contents/ui/AgendaEventItem.qml
+msgid "Press to open the event in the browser"
+msgstr ""
 
 #: ../contents/ui/AgendaEventItem.qml
 msgid "Hangout"
@@ -95,6 +93,18 @@ msgid "Edit in browser"
 msgstr "브라우저에서 편집"
 
 #: ../contents/ui/AgendaListItem.qml
+msgid "Weather forecast for %1"
+msgstr ""
+
+#: ../contents/ui/AgendaListItem.qml
+msgid "Press to add a new event on %1"
+msgstr ""
+
+#: ../contents/ui/AgendaListItem.qml
+msgid "Press to open the weather forecast in your browser"
+msgstr ""
+
+#: ../contents/ui/AgendaListItem.qml
 msgctxt "agenda date format line 1"
 msgid "MMM d"
 msgstr "MMM d일"
@@ -104,42 +114,302 @@ msgctxt "agenda date format line 2"
 msgid "ddd"
 msgstr "ddd"
 
+#: ../contents/ui/AgendaTaskItem.qml
+msgid "Due %1"
+msgstr ""
+
+#: ../contents/ui/AgendaTaskItem.qml
+msgid "Overdue"
+msgstr ""
+
 #: ../contents/ui/AgendaTaskItem.qml ../contents/ui/LocaleFuncs.js
 msgctxt "short month+date format"
 msgid "MMM d"
 msgstr "MMM d일"
+
+#: ../contents/ui/AgendaTaskItem.qml
+msgid "Task"
+msgstr ""
+
+#: ../contents/ui/AgendaView.qml ../contents/ui/UpcomingEvents.qml
+msgid "Event Calendar"
+msgstr "이벤트 달력"
+
+#: ../contents/ui/CalendarSelector.qml
+msgid "[No Calendars]"
+msgstr "[달력 없음]"
+
+#: ../contents/ui/DateTimeSelector.qml
+msgctxt "event editor date format"
+msgid "d MMM, yyyy"
+msgstr "yyyy년 MMM d일"
+
+#: ../contents/ui/DurationSelector.qml
+msgid "to"
+msgstr ""
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
+msgid "Event Title"
+msgstr "이벤트 제목"
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/LocaleFuncs.js
+msgid "All Day"
+msgstr "하루 종일"
+
+#: ../contents/ui/EditEventForm.qml
+msgid "Add location"
+msgstr "위치 추가"
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
+msgid "Add description"
+msgstr "설명 추가"
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
+msgid "&Save"
+msgstr "저장(&S)"
+
+#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
+#: ../contents/ui/TimerInputView.qml
+msgid "&Cancel"
+msgstr "취소(&C)"
+
+#: ../contents/ui/EditTaskForm.qml
+msgid "Add due date"
+msgstr "기한 추가"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "event time on the hour (24 hour clock)"
+msgid "h"
+msgstr "h시"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "event time (24 hour clock)"
+msgid "h:mm"
+msgstr "h:mm"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "event time on the hour (12 hour clock)"
+msgid "h AP"
+msgstr "AP h시"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "event time (12 hour clock)"
+msgid "h:mm AP"
+msgstr "AP h:mm"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "date (%1) with time (%2)"
+msgid "%1, %2"
+msgstr "%1, %2"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "from date/time %1 until date/time %2"
+msgid "%1 - %2"
+msgstr "%1 - %2"
+
+#: ../contents/ui/LocaleFuncs.js
+msgctxt "short form for %1 hours"
+msgid "%1h"
+msgstr "%1시간"
+
+#: ../contents/ui/LocaleFuncs.js
+#, c-format
+msgctxt "short form for %1 minutes"
+msgid "%1m"
+msgstr "%1m"
+
+#: ../contents/ui/LocaleFuncs.js
+#, c-format
+msgctxt "short form for %1 seconds"
+msgid "%1s"
+msgstr "%1s"
+
+#: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
+msgid "Could not connect"
+msgstr "연결 실패"
+
+#: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
+msgid "HTTP Error %1: %2"
+msgstr "HTTP 오류 %1: %2"
+
+#: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
+msgid "Will try again soon."
+msgstr "나중에 다시 시도하십시오."
+
+#: ../contents/ui/Logic.qml
+msgid "Weather API limit reached"
+msgstr "날씨 API의 제한에 도달하였습니다"
+
+#: ../contents/ui/Logic.qml
+msgid ""
+"Google authorization expired or was revoked. Open Event Calendar Settings, "
+"select the account, and use Update Selected to reconnect it."
+msgstr ""
+
+#: ../contents/ui/Logic.qml ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Widget has been updated. Please logout and login to Google Calendar again."
+msgstr ""
+"위젯이 업데이트되었습니다. Google 캘린더에 로그아웃 후 다시 로그인하십시오."
+
+#: ../contents/ui/Logic.qml
+msgid "Logged out of Google. Please login again."
+msgstr "Google에 로그아웃되었습니다. 다시 로그인하십시오."
+
+#: ../contents/ui/MeteogramView.qml
+#, c-format
+msgid "%1mm"
+msgstr "%1mm"
+
+#: ../contents/ui/MonthView.qml ../contents/ui/config/ConfigCalendar.qml
+msgctxt "calendar title format for current month"
+msgid "MMMM d, yyyy"
+msgstr "yyyy년 MMMM d일"
+
+#: ../contents/ui/MonthView.qml
+msgctxt "calendar title format for other months of current year"
+msgid "MMMM"
+msgstr "MMMM"
+
+#: ../contents/ui/MonthView.qml
+msgctxt "calendar title format for months not from current year"
+msgid "MMMM, yyyy"
+msgstr "yyyy년 MMMM"
+
+#: ../contents/ui/NewEventForm.qml
+msgid "Eg: 9am-5pm Work"
+msgstr "예: 오전 9시 - 오후 5시 근무"
+
+#: ../contents/ui/PopupView.qml
+msgid ""
+"Weather not configured.\n"
+"Go to Weather in the config and set your city,\n"
+"and/or disable the meteogram to hide this area."
+msgstr ""
+"날씨가 설정되지 않았습니다.\n"
+"설정 창의 날씨 항목에서 도시를 설정하십시오.\n"
+"천문 현상을 비활성화하셔도 됩니다."
+
+#: ../contents/ui/PopupView.qml
+msgid "Error fetching weather."
+msgstr "날씨 확인에 실패하였습니다."
+
+#: ../contents/ui/TimerInputView.qml
+msgid "&Start"
+msgstr "시작(&S)"
+
+#: ../contents/ui/TimerModel.qml ../contents/ui/config/ConfigGeneral.qml
+msgid "Timer"
+msgstr "타이머"
+
+#: ../contents/ui/TimerModel.qml
+msgid "Timer finished"
+msgstr "타이머 완료"
+
+#: ../contents/ui/TimerModel.qml
+msgid "%1 has passed"
+msgstr "%1 초과"
+
+#: ../contents/ui/TimerModel.qml ../contents/ui/TimerView.qml
+msgid "Repeat"
+msgstr "반복"
+
+#: ../contents/ui/TimerView.qml
+msgid "Timer, %1 remaining. Activate to pause."
+msgstr ""
+
+#: ../contents/ui/TimerView.qml
+msgid "Timer, %1 remaining. Activate to start."
+msgstr ""
+
+#: ../contents/ui/TimerView.qml
+msgid "Timer set to %1. Use plus or minus to change the duration."
+msgstr ""
+
+#: ../contents/ui/TimerView.qml
+msgid "Pause Timer"
+msgstr "타이머 일시정지"
+
+#: ../contents/ui/TimerView.qml
+msgid "Start Timer"
+msgstr "타이머 시작"
+
+#: ../contents/ui/TimerView.qml
+msgid "Scroll or use plus and minus keys to adjust duration"
+msgstr ""
+
+#: ../contents/ui/TimerView.qml
+msgid "Sound"
+msgstr "소리"
+
+#: ../contents/ui/TimerView.qml
+msgid "Set Timer"
+msgstr "타이머 설정"
+
+#: ../contents/ui/UpcomingEvents.qml
+msgid "Events Starting"
+msgstr "이벤트 시작"
+
+#: ../contents/ui/UpcomingEvents.qml
+msgid "Events In Progress"
+msgstr "진행 중인 이벤트"
+
+#: ../contents/ui/UpcomingEvents.qml
+msgid "Upcoming Events"
+msgstr "예정된 이벤트"
+
+#: ../contents/ui/UpcomingEvents.qml
+msgctxt "%1 = 15 minutes"
+msgid "Starting in %1"
+msgstr "%1부터 시작"
 
 #: ../contents/ui/calendars/CalendarManager.qml
 msgctxt "event with no summary"
 msgid "(No title)"
 msgstr "(제목 없음)"
 
-#: ../contents/ui/CalendarSelector.qml
-msgid "[No Calendars]"
-msgstr "[달력 없음]"
-
-#: ../contents/ui/calendars/GoogleCalendarManager.qml ../contents/ui/Logic.qml
-msgid "HTTP Error %1: %2"
-msgstr "HTTP 오류 %1: %2"
-
-#: ../contents/ui/calendars/GoogleCalendarManager.qml ../contents/ui/Logic.qml
-msgid "Could not connect"
-msgstr "연결 실패"
-
-#: ../contents/ui/calendars/GoogleCalendarManager.qml ../contents/ui/Logic.qml
-msgid "Will try again soon."
-msgstr "나중에 다시 시도하십시오."
-
 #: ../contents/ui/calendars/GoogleCalendarManager.qml
-#: ../contents/ui/config/ConfigGoogleCalendar.qml ../contents/ui/Logic.qml
-msgid ""
-"Widget has been updated. Please logout and login to Google Calendar again."
-msgstr ""
-"위젯이 업데이트되었습니다. Google 캘린더에 로그아웃 후 다시 로그인하십시오."
-
-#: ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
 msgid "Too many web requests. Will try again soon."
 msgstr "웹 요청이 너무 많습니다. 나중에 다시 시도하십시오."
+
+#: ../contents/ui/calendars/GoogleCalendarManager.qml
+#: ../contents/ui/calendars/GoogleTasksManager.qml
+msgid "Google authentication failed: %1"
+msgstr ""
+
+#: ../contents/ui/calendars/GoogleCalendarManager.qml
+msgid "Error fetching calendar: %1"
+msgstr ""
+
+#: ../contents/ui/calendars/ICalManager.qml
+msgid "iCalendar"
+msgstr ""
+
+#: ../contents/ui/calendars/ICalManager.qml
+msgid "Unknown iCalendar helper error"
+msgstr ""
+
+#: ../contents/ui/calendars/ICalManager.qml
+msgid "Could not load %1: %2"
+msgstr ""
+
+#: ../contents/ui/calendars/PlasmaCalendarManager.qml
+msgid "Holidays"
+msgstr ""
+
+#: ../contents/ui/calendars/PlasmaCalendarManager.qml
+msgid "Todo"
+msgstr ""
+
+#: ../contents/ui/calendars/PlasmaCalendarManager.qml
+msgid "Other"
+msgstr ""
 
 #: ../contents/ui/config/ConfigAgenda.qml
 msgid "Show agenda"
@@ -188,8 +458,8 @@ msgid "Click Weather:"
 msgstr "날씨 클릭:"
 
 #: ../contents/ui/config/ConfigAgenda.qml
-msgid "Open City Forecast In Browser"
-msgstr "브라우저에서 도시 날씨 열기"
+msgid "Currently opens the city forecast in your browser."
+msgstr ""
 
 #: ../contents/ui/config/ConfigAgenda.qml
 #: ../contents/ui/config/ConfigCalendar.qml
@@ -197,12 +467,8 @@ msgid "Click Date:"
 msgstr "날짜 클릭:"
 
 #: ../contents/ui/config/ConfigAgenda.qml
-msgid "Open New Event In Browser"
-msgstr "브라우저에서 새 이벤트 열기"
-
-#: ../contents/ui/config/ConfigAgenda.qml
-msgid "Open New Event Form"
-msgstr "새 이벤트 창 열기"
+msgid "Currently opens the new event form in the agenda."
+msgstr ""
 
 #: ../contents/ui/config/ConfigAgenda.qml
 msgid "Event description"
@@ -221,8 +487,8 @@ msgid "Click Event:"
 msgstr "이벤트 클릭:"
 
 #: ../contents/ui/config/ConfigAgenda.qml
-msgid "Open Event In Browser"
-msgstr "브라우저에서 이벤트 열기"
+msgid "Currently opens the selected event in your browser."
+msgstr ""
 
 #: ../contents/ui/config/ConfigAgenda.qml
 msgid "Show multi-day events:"
@@ -302,11 +568,6 @@ msgstr "스타일"
 msgid "Current Month Title:"
 msgstr "이번 달 제목:"
 
-#: ../contents/ui/config/ConfigCalendar.qml ../contents/ui/MonthView.qml
-msgctxt "calendar title format for current month"
-msgid "MMMM d, yyyy"
-msgstr "yyyy년 MMMM d일"
-
 #: ../contents/ui/config/ConfigCalendar.qml
 msgid "Show Borders"
 msgstr "윤곽선 표시"
@@ -384,6 +645,12 @@ msgid "Plasma Calendar Plugins"
 msgstr "Plasma 달력 플러그인"
 
 #: ../contents/ui/config/ConfigEvents.qml
+msgid ""
+"Plasma calendar plugins are unavailable. Install the Plasma calendar module "
+"to manage these plugins."
+msgstr ""
+
+#: ../contents/ui/config/ConfigEvents.qml
 #: ../contents/ui/config/ConfigGeneral.qml
 msgid "Misc"
 msgstr "그 외"
@@ -423,10 +690,6 @@ msgstr "달력 밑에 위젯을 표시하거나 숨깁니다."
 #: ../contents/ui/config/ConfigGeneral.qml
 msgid "Meteogram"
 msgstr "천문 현상"
-
-#: ../contents/ui/config/ConfigGeneral.qml ../contents/ui/TimerModel.qml
-msgid "Timer"
-msgstr "타이머"
 
 #: ../contents/ui/config/ConfigGeneral.qml
 #: ../contents/ui/lib/ConfigNotification.qml
@@ -533,45 +796,230 @@ msgid "Enable Debugging"
 msgstr "디버깅 사용"
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Login"
-msgstr "로그인"
+msgid "Google Account"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Currently Synched."
-msgstr "동기화되었습니다."
+msgid "Google Account %1"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Logout"
-msgstr "로그아웃"
+msgid "Login failed: %1"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Login complete."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Could not prepare Google login: %1"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Waiting for browser callback..."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Waiting for the helper page to send the code..."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Google login failed because the browser returned an unexpected state token. "
+"Please retry the login."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed. See logs for details."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed: no token data received."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed: invalid callback data."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed: %1"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Auto login failed: authorization code missing."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"The desktop could not open the browser automatically. Use the login link "
+"below instead."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Accounts"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Account"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Remove"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Currently Synced: %1"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Google access for this account expired or was revoked. Use Update Selected "
+"below to reconnect it without removing the account."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Client Credentials"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Using a previously stored Google OAuth client for compatibility. If login "
+"still fails, add your own client ID and client secret."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"The built-in Google OAuth client is currently rejected by Google because it "
+"requires a client secret. Provide your own client ID and client secret to "
+"enable Google sync."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Provide a Google Cloud OAuth Desktop client ID, or a Web client ID and "
+"secret with the redirect URI set to %1. Leaving these empty only works if a "
+"previously stored secret-based client is available."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"For a custom OAuth client, publish the OAuth consent screen to Production. "
+"Google expires refresh tokens for external apps left in Testing after seven "
+"days; Workspace session controls can also require reauthorization."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Try desktop built-in client (no secret)"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Client ID"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Optional"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Client Secret"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Redirect Mode"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Callback: Localhost (auto capture). Helper page is shown below as a backup."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Add another Google account"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
 msgid "To sync with Google Calendar"
 msgstr "Google 캘린더랑 동기화"
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid ""
-"Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login and "
-"give permission to access your calendar, it will give you a code to paste "
-"below."
+msgid "Login (Auto) - Add Account"
 msgstr ""
-"<a href=\"%1\">%2</a>으로 가십시오 (웹 브라우저에서 열림). 로그인 후 달력 접"
-"근 권한을 부여하시면 이곳으로 복사할 코드가 주어집니다."
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Login (Auto)"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Click Login (Auto) to open <a href=\"%1\">%2</a>. After you grant access, "
+"the browser redirects to a localhost URL. If auto-capture succeeds you can "
+"ignore the field below; otherwise copy the full URL (or just the code) and "
+"paste it."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Click Login (Auto) to open <a href=\"%1\">%2</a>. After you grant access, "
+"the browser redirects to the helper page and will try to send the code back "
+"automatically. If it fails, copy the code and paste it below."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "The desktop could not open the browser automatically."
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
 msgid "Copy Link"
 msgstr "링크 복사"
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Enter code here (Eg: %1)"
-msgstr "코드 입력 (예: %1)"
+msgid "Helper page (optional): <a href=\"%1\">%1</a>"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Helper page: <a href=\"%1\">%1</a>"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"If your browser shows a connection error, that's expected. Copy the URL from "
+"the address bar anyway and paste it below."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Tip: If auto-capture works, you do not need to paste anything."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Tip: If auto-capture fails, copy the code from the helper page and paste it "
+"below."
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Paste the authorization code or redirect URL here"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Google authorization code or redirect URL"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid ""
+"Paste the Google authorization code or the full redirect URL from the browser"
+msgstr ""
+
+#: ../contents/ui/config/ConfigGoogleCalendar.qml
+msgid "Add Account"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
 msgid "Submit"
 msgstr "제출"
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
-msgid "Invalid Google Authorization Code"
-msgstr "잘못된 Google 인증 코드"
+msgid "Update Selected"
+msgstr ""
 
 #: ../contents/ui/config/ConfigGoogleCalendar.qml
 #: ../contents/ui/config/ConfigICal.qml
@@ -619,6 +1067,10 @@ msgid "Calendar Label"
 msgstr "달력 이름"
 
 #: ../contents/ui/config/ConfigICal.qml
+msgid "https:// URL or local %1/*.ics file"
+msgstr ""
+
+#: ../contents/ui/config/ConfigICal.qml
 msgid "Browse"
 msgstr "찾기"
 
@@ -635,12 +1087,46 @@ msgid "Agenda below the Calendar (Single Column)"
 msgstr "일정 밑에 달력 표시 (한 줄)"
 
 #: ../contents/ui/config/ConfigTimezones.qml
-msgid "Tooltip"
-msgstr "툴팁"
+msgid "Local"
+msgstr ""
 
 #: ../contents/ui/config/ConfigTimezones.qml
-msgid "Cannot deselect Local time from the tooltip"
-msgstr "툴팁에서 지역 시간 선택을 해제할 수 없음"
+msgid ""
+"Enter time zone IDs (for example: Europe/London, America/New_York). The list "
+"controls which zones appear in the tooltip."
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Time zone ID"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Add"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Time zones"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Identifier"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Remove time zone"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Display time zone as:"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Time zone city"
+msgstr ""
+
+#: ../contents/ui/config/ConfigTimezones.qml
+msgid "Time zone code"
+msgstr ""
 
 #: ../contents/ui/config/ConfigWeather.qml
 msgid "Data"
@@ -649,6 +1135,10 @@ msgstr "데이터"
 #: ../contents/ui/config/ConfigWeather.qml
 msgid "API App Id:"
 msgstr "API 앱 ID:"
+
+#: ../contents/ui/config/ConfigWeather.qml
+msgid "Required for OpenWeatherMap"
+msgstr ""
 
 #: ../contents/ui/config/ConfigWeather.qml
 msgid "City Id:"
@@ -762,39 +1252,41 @@ msgstr "도시 웹페이지"
 msgid "Open Link"
 msgstr "링크 열기"
 
-#: ../contents/ui/DateTimeSelector.qml
-msgctxt "event editor date format"
-msgid "d MMM, yyyy"
-msgstr "yyyy년 MMM d일"
-
-#: ../contents/ui/DurationSelector.qml
-msgid "to"
+#: ../contents/ui/configGeneral.qml
+msgid "Appearance:"
 msgstr ""
 
-#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
-msgid "Event Title"
-msgstr "이벤트 제목"
+#: ../contents/ui/configGeneral.qml
+msgid "Show animation"
+msgstr ""
 
-#: ../contents/ui/EditEventForm.qml
-msgid "Add location"
-msgstr "위치 추가"
+#: ../contents/ui/configGeneral.qml
+msgid "Counter color:"
+msgstr ""
 
-#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
-msgid "Add description"
-msgstr "설명 추가"
+#: ../contents/ui/configGeneral.qml
+msgid "Theme color"
+msgstr ""
 
-#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
-msgid "&Save"
-msgstr "저장(&S)"
+#: ../contents/ui/configGeneral.qml
+msgid "Red"
+msgstr ""
 
-#: ../contents/ui/EditEventForm.qml ../contents/ui/EditTaskForm.qml
-#: ../contents/ui/TimerInputView.qml
-msgid "&Cancel"
-msgstr "취소(&C)"
+#: ../contents/ui/configGeneral.qml
+msgid "Green"
+msgstr ""
 
-#: ../contents/ui/EditTaskForm.qml
-msgid "Add due date"
-msgstr "기한 추가"
+#: ../contents/ui/configGeneral.qml
+msgid "Blue"
+msgstr ""
+
+#: ../contents/ui/configGeneral.qml
+msgid "Increment step:"
+msgstr ""
+
+#: ../contents/ui/configGeneral.qml
+msgid "Maximum value:"
+msgstr ""
 
 #: ../contents/ui/lib/AppletVersion.qml
 msgid "<b>Version:</b> %1"
@@ -817,151 +1309,65 @@ msgstr "소리 파일 (%1)"
 msgid "All files (%1)"
 msgstr "모든 파일 (%1)"
 
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "event time on the hour (24 hour clock)"
-msgid "h"
-msgstr "h시"
+#: ../contents/ui/main.qml
+msgid "Copy to Clipboard"
+msgstr ""
 
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "event time (24 hour clock)"
-msgid "h:mm"
-msgstr "h:mm"
+#: ../contents/ui/main.qml
+msgid "Refresh Events"
+msgstr ""
 
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "event time on the hour (12 hour clock)"
-msgid "h AP"
-msgstr "AP h시"
-
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "event time (12 hour clock)"
-msgid "h:mm AP"
-msgstr "AP h:mm"
-
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "date (%1) with time (%2)"
-msgid "%1, %2"
-msgstr "%1, %2"
-
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "from date/time %1 until date/time %2"
-msgid "%1 - %2"
-msgstr "%1 - %2"
-
-#: ../contents/ui/LocaleFuncs.js
-msgctxt "short form for %1 hours"
-msgid "%1h"
-msgstr "%1시간"
-
-#: ../contents/ui/LocaleFuncs.js
-#, c-format
-msgctxt "short form for %1 minutes"
-msgid "%1m"
-msgstr "%1m"
-
-#: ../contents/ui/LocaleFuncs.js
-#, c-format
-msgctxt "short form for %1 seconds"
-msgid "%1s"
-msgstr "%1s"
-
-#: ../contents/ui/Logic.qml
-msgid "Weather API limit reached"
-msgstr "날씨 API의 제한에 도달하였습니다"
-
-#: ../contents/ui/Logic.qml
-msgid "Logged out of Google. Please login again."
-msgstr "Google에 로그아웃되었습니다. 다시 로그인하십시오."
-
+#. i18nd("plasma_applet_org.kde.plasma.digitalclock", "Set Time Format…")
+#. icon.name: "gnumeric-format-thousand-separator"
 #: ../contents/ui/main.qml
 msgid "Set Language…"
 msgstr "언어 설정…"
 
-#: ../contents/ui/main.qml
-msgid "Set Locale…"
-msgstr "지역 설정…"
+#~ msgid ""
+#~ "Plasmoid for a calendar+agenda with weather that syncs to Google Calendar."
+#~ msgstr ""
+#~ "Google 캘린더랑 동기화할 수 있는 달력, 일정 및 날씨 Plasmoid 위젯입니다."
 
-#: ../contents/ui/MeteogramView.qml
-#, c-format
-msgid "%1mm"
-msgstr "%1mm"
+#~ msgid "Open City Forecast In Browser"
+#~ msgstr "브라우저에서 도시 날씨 열기"
 
-#: ../contents/ui/MonthView.qml
-msgctxt "calendar title format for other months of current year"
-msgid "MMMM"
-msgstr "MMMM"
+#~ msgid "Open New Event In Browser"
+#~ msgstr "브라우저에서 새 이벤트 열기"
 
-#: ../contents/ui/MonthView.qml
-msgctxt "calendar title format for months not from current year"
-msgid "MMMM, yyyy"
-msgstr "yyyy년 MMMM"
+#~ msgid "Open New Event Form"
+#~ msgstr "새 이벤트 창 열기"
 
-#: ../contents/ui/NewEventForm.qml
-msgid "Eg: 9am-5pm Work"
-msgstr "예: 오전 9시 - 오전 5시 직장"
+#~ msgid "Open Event In Browser"
+#~ msgstr "브라우저에서 이벤트 열기"
 
-#: ../contents/ui/PopupView.qml
-msgid ""
-"Weather not configured.\n"
-"Go to Weather in the config and set your city,\n"
-"and/or disable the meteogram to hide this area."
-msgstr ""
-"날씨가 설정되지 않았습니다.\n"
-"설정 창의 날씨 항목에서 도시를 설정하십시오.\n"
-"천문 현상을 비활성화하셔도 됩니다."
+#~ msgid "Login"
+#~ msgstr "로그인"
 
-#: ../contents/ui/PopupView.qml
-msgid "Error fetching weather."
-msgstr "날씨 확인에 실패하였습니다."
+#~ msgid "Currently Synched."
+#~ msgstr "동기화되었습니다."
 
-#: ../contents/ui/TimerInputView.qml
-msgid "&Start"
-msgstr "시작(&S)"
+#~ msgid "Logout"
+#~ msgstr "로그아웃"
 
-#: ../contents/ui/TimerModel.qml
-msgid "Timer finished"
-msgstr "타이머 완료"
+#~ msgid ""
+#~ "Visit <a href=\"%1\">%2</a> (opens in your web browser). After you login "
+#~ "and give permission to access your calendar, it will give you a code to "
+#~ "paste below."
+#~ msgstr ""
+#~ "<a href=\"%1\">%2</a>으로 가십시오 (웹 브라우저에서 열림). 로그인 후 달력 "
+#~ "접근 권한을 부여하시면 이곳으로 복사할 코드가 주어집니다."
 
-#: ../contents/ui/TimerModel.qml
-msgid "%1 has passed"
-msgstr "%1 초과"
+#~ msgid "Enter code here (Eg: %1)"
+#~ msgstr "코드 입력 (예: %1)"
 
-#: ../contents/ui/TimerModel.qml ../contents/ui/TimerView.qml
-msgid "Repeat"
-msgstr "반복"
+#~ msgid "Invalid Google Authorization Code"
+#~ msgstr "잘못된 Google 인증 코드"
 
-#: ../contents/ui/TimerView.qml
-msgid "Pause Timer"
-msgstr "타이머 일시정지"
+#~ msgid "Tooltip"
+#~ msgstr "툴팁"
 
-#: ../contents/ui/TimerView.qml
-msgid "Start Timer"
-msgstr "타이머 시작"
+#~ msgid "Cannot deselect Local time from the tooltip"
+#~ msgstr "툴팁에서 지역 시간 선택을 해제할 수 없음"
 
-#: ../contents/ui/TimerView.qml
-msgid "Scroll to add to duration"
-msgstr ""
-
-#: ../contents/ui/TimerView.qml
-msgid "Sound"
-msgstr "소리"
-
-#: ../contents/ui/TimerView.qml
-msgid "Set Timer"
-msgstr "타이머 설정"
-
-#: ../contents/ui/UpcomingEvents.qml
-msgid "Events Starting"
-msgstr "이벤트 시작"
-
-#: ../contents/ui/UpcomingEvents.qml
-msgid "Events In Progress"
-msgstr "진행 중인 이벤트"
-
-#: ../contents/ui/UpcomingEvents.qml
-msgid "Upcoming Events"
-msgstr "예정된 이벤트"
-
-#: ../contents/ui/UpcomingEvents.qml
-msgctxt "%1 = 15 minutes"
-msgid "Starting in %1"
-msgstr "%1부터 시작"
+#~ msgid "Set Locale…"
+#~ msgstr "지역 설정…"

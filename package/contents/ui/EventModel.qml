@@ -1,6 +1,7 @@
-import QtQuick 2.0
+import QtQuick
 
 import "./calendars"
+import "./lib"
 
 CalendarManager {
 	id: eventModel
@@ -10,12 +11,8 @@ CalendarManager {
 	property var eventsData: { "items": [] }
 
 	Component.onCompleted: {
-		bindSignals(googleCalendarManager)
-		bindSignals(googleTasksManager)
 		bindSignals(plasmaCalendarManager)
-		// bindSignals(icalManager)
-		// bindSignals(debugCalendarManager)
-		// bindSignals(debugGoogleCalendarManager)
+		bindSignals(icalManager)
 	}
 
 	//---
@@ -65,29 +62,154 @@ CalendarManager {
 		calendarManagerList.push(calendarManager)
 	}
 
+	function unbindSignals(calendarManager) {
+		var index = calendarManagerList.indexOf(calendarManager)
+		if (index >= 0) {
+			calendarManagerList.splice(index, 1)
+		}
+		for (var calendarId in eventModel.calendarPluginMap) {
+			if (eventModel.calendarPluginMap[calendarId] === calendarManager) {
+				delete eventModel.calendarPluginMap[calendarId]
+			}
+		}
+	}
+
 	function getCalendarManager(calendarId) {
-		return eventModel.calendarPluginMap[calendarId]
+		var calendarKey = calendarId ? "" + calendarId : ""
+		var manager = eventModel.calendarPluginMap[calendarKey]
+		if (manager) {
+			return manager
+		}
+		for (var i = 0; i < calendarManagerList.length; i++) {
+			var calendarManager = calendarManagerList[i]
+			if (calendarManager && calendarManager.getCalendar && calendarManager.getCalendar(calendarKey)) {
+				eventModel.calendarPluginMap[calendarKey] = calendarManager
+				return calendarManager
+			}
+		}
+		if (!calendarKey || calendarKey.indexOf("::") < 0) {
+			return null
+		}
+		var splitIndex = calendarKey.indexOf("::")
+		var accountPrefix = calendarKey.slice(0, splitIndex)
+		var rawId = calendarKey.slice(splitIndex + 2)
+		var calendarCandidate = null
+		var taskCandidate = null
+		for (var j = 0; j < calendarManagerList.length; j++) {
+			var googleManager = calendarManagerList[j]
+			if (!googleManager || googleManager.accountId !== accountPrefix || !googleManager.getAccount) {
+				continue
+			}
+			if (googleManager.calendarManagerId === "GoogleCalendar") {
+				calendarCandidate = googleManager
+			} else if (googleManager.calendarManagerId === "GoogleTasks") {
+				taskCandidate = googleManager
+			}
+			var account = googleManager.getAccount()
+			if (googleManager.calendarManagerId === "GoogleCalendar" && account && Array.isArray(account.calendarList)) {
+				for (var c = 0; c < account.calendarList.length; c++) {
+					var calendar = account.calendarList[c]
+					if (rawId === calendar.id || (rawId === "primary" && calendar.primary)) {
+						eventModel.calendarPluginMap[calendarKey] = googleManager
+						return googleManager
+					}
+				}
+			}
+			if (googleManager.calendarManagerId === "GoogleTasks" && account && Array.isArray(account.tasklistList)) {
+				for (var t = 0; t < account.tasklistList.length; t++) {
+					var tasklist = account.tasklistList[t]
+					if (rawId === tasklist.id) {
+						eventModel.calendarPluginMap[calendarKey] = googleManager
+						return googleManager
+					}
+				}
+			}
+		}
+		if (calendarCandidate || taskCandidate) {
+			var looksLikeCalendar = rawId === "primary" || rawId.indexOf("@") >= 0
+			var fallbackManager = looksLikeCalendar ? (calendarCandidate || taskCandidate) : (taskCandidate || calendarCandidate)
+			if (fallbackManager) {
+				eventModel.calendarPluginMap[calendarKey] = fallbackManager
+				return fallbackManager
+			}
+		}
+		return null
 	}
 
 	//---
+	GoogleAccountsStore {
+		id: googleAccountsStore
+	}
+
 	ICalManager {
 		id: icalManager
 		calendarList: appletConfig.icalCalendarList.value
 	}
 
 	DebugCalendarManager { id: debugCalendarManager }
-	DebugGoogleCalendarManager { id: debugGoogleCalendarManager }
+	// DebugGoogleCalendarManager { id: debugGoogleCalendarManager }
 
-	GoogleApiSession {
-		id: googleApiSession
+	Repeater {
+		id: googleAccountsRepeater
+		model: googleAccountsStore.fetchableAccounts
+		delegate: Item {
+			id: googleAccountItem
+			property string accountId: modelData.id
+			property string accountLabel: modelData.label || ""
+
+			GoogleApiSession {
+				id: googleApiSession
+				accountsStore: googleAccountsStore
+				accountId: googleAccountItem.accountId
+			}
+			GoogleCalendarManager {
+				id: googleCalendarManager
+				session: googleApiSession
+				accountsStore: googleAccountsStore
+				accountId: googleAccountItem.accountId
+				accountLabel: googleAccountItem.accountLabel
+			}
+			GoogleTasksManager {
+				id: googleTasksManager
+				session: googleApiSession
+				accountsStore: googleAccountsStore
+				accountId: googleAccountItem.accountId
+				accountLabel: googleAccountItem.accountLabel
+			}
+
+			Connections {
+				target: googleAccountsStore
+				function onAccountUpdated(updatedId) {
+					if (updatedId === googleAccountItem.accountId) {
+						var account = googleAccountsStore.getAccount(updatedId)
+						googleAccountItem.accountLabel = account && account.label ? account.label : ""
+					}
+				}
+			}
+
+			Component.onCompleted: {
+				eventModel.bindSignals(googleCalendarManager)
+				eventModel.bindSignals(googleTasksManager)
+			}
+			Component.onDestruction: {
+				eventModel.unbindSignals(googleCalendarManager)
+				eventModel.unbindSignals(googleTasksManager)
+			}
+		}
 	}
-	GoogleCalendarManager {
-		id: googleCalendarManager
-		session: googleApiSession
-	}
-	GoogleTasksManager {
-		id: googleTasksManager
-		session: googleApiSession
+
+	Connections {
+		target: googleAccountsStore
+		function onAccountsChanged() {
+			eventModel.clear()
+			deferredUpdate.restart()
+		}
+		function onSecretsLoadedChanged() {
+			if (googleAccountsStore.secretsLoaded) {
+				eventModel.clear()
+				deferredUpdate.restart()
+			}
+		}
 	}
 
 	PlasmaCalendarManager {
@@ -172,6 +294,11 @@ CalendarManager {
 			var calendarManager = calendarManagerList[i]
 			var list = calendarManager.getCalendarList()
 			// logger.debugJSON(calendarManager.toString(), list)
+			for (var j = 0; j < list.length; j++) {
+				if (list[j] && list[j].id) {
+					eventModel.calendarPluginMap[list[j].id] = calendarManager
+				}
+			}
 			calendarList = calendarList.concat(list)
 		}
 		return calendarList

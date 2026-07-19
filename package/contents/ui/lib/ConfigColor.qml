@@ -1,13 +1,14 @@
 // Version 5
 
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
-import QtQuick.Dialogs 1.2
-import QtQuick.Window 2.2
-import org.kde.kirigami 2.0 as Kirigami
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import QtQuick.Dialogs
+import QtQuick.Window
+import org.kde.kirigami as Kirigami
 
 import ".."
+import "ConfigUtils.js" as ConfigUtils
 
 RowLayout {
 	id: configColor
@@ -18,7 +19,7 @@ RowLayout {
 	property alias label: label.text
 	property alias labelColor: label.color
 	property alias horizontalAlignment: label.horizontalAlignment
-	property alias showAlphaChannel: dialog.showAlphaChannel
+	property bool showAlphaChannel: true
 	property color buttonOutlineColor: {
 		if (valueColor.r + valueColor.g + valueColor.b > 0.5) {
 			return "#BB000000" // Black outline
@@ -31,10 +32,17 @@ RowLayout {
 	property ColorDialog dialog: dialog
 
 	property string configKey: ''
+	property var configBridge: null
 	property string defaultColor: ''
 	property string value: {
 		if (configKey) {
-			return plasmoid.configuration[configKey]
+			if (configBridge) {
+				return configBridge.read(configKey, "")
+			}
+			if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+				return plasmoid.configuration[configKey]
+			}
+			return ""
 		} else {
 			return "#000"
 		}
@@ -55,9 +63,23 @@ RowLayout {
 		}
 		if (configKey) {
 			if (value == defaultColorValue) {
-				plasmoid.configuration[configKey] = ""
+				if (configBridge) {
+					configBridge.write(configKey, "")
+				} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+					plasmoid.configuration[configKey] = ""
+					if (typeof kcm !== "undefined") {
+						kcm.needsSave = true
+					}
+				}
 			} else {
-				plasmoid.configuration[configKey] = value
+				if (configBridge) {
+					configBridge.write(configKey, value)
+				} else if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+					plasmoid.configuration[configKey] = value
+					if (typeof kcm !== "undefined") {
+						kcm.needsSave = true
+					}
+				}
 			}
 		}
 	}
@@ -65,6 +87,8 @@ RowLayout {
 	function setValue(newColor) {
 		textField.text = newColor
 	}
+
+	Component.onCompleted: configBridge = ConfigUtils.findBridge(configColor)
 
 	Label {
 		id: label
@@ -79,7 +103,10 @@ RowLayout {
 		Layout.preferredHeight: textField.height
 		hoverEnabled: true
 
-		onClicked: dialog.open()
+		onClicked: {
+			dialog.selectedColor = configColor.valueColor
+			dialog.open()
+		}
 
 		Rectangle {
 			anchors.fill: parent
@@ -110,12 +137,12 @@ RowLayout {
 		visible: false
 		modality: Qt.WindowModal
 		title: configColor.label
-		showAlphaChannel: true
-		color: configColor.valueColor
-		onCurrentColorChanged: {
-			if (visible && color != currentColor) {
-				configColor.value = currentColor
+		options: configColor.showAlphaChannel ? ColorDialog.ShowAlphaChannel : 0
+		onSelectedColorChanged: {
+			if (visible) {
+				configColor.value = selectedColor
 			}
 		}
+		onAccepted: configColor.value = selectedColor
 	}
 }

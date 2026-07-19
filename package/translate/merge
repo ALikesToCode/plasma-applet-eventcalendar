@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then
+	exec /usr/bin/env bash "$0" "$@"
+fi
 # Version: 23
 
 # https://techbase.kde.org/Development/Tutorials/Localization/i18n_Build_Systems
@@ -6,22 +9,40 @@
 # https://invent.kde.org/sysadmin/l10n-scripty/-/blob/master/extract-messages.sh
 
 DIR=`cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd`
-plasmoidName=`kreadconfig5 --file="$DIR/../metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Name"`
+metadataFile="$DIR/../metadata.json"
+read_metadata() {
+	python3 - "$metadataFile" "$1" <<'PY'
+import json, sys
+metadata_path = sys.argv[1]
+key_path = sys.argv[2].split(".")
+with open(metadata_path, "r", encoding="utf-8") as f:
+	data = json.load(f)
+for part in key_path:
+	if not isinstance(data, dict):
+		data = ""
+		break
+	data = data.get(part, "")
+if data is None:
+	data = ""
+print(data)
+PY
+}
+
+plasmoidName=$(read_metadata "KPlugin.Id")
 widgetName="${plasmoidName##*.}" # Strip namespace
-website=`kreadconfig5 --file="$DIR/../metadata.desktop" --group="Desktop Entry" --key="X-KDE-PluginInfo-Website"`
+website=$(read_metadata "KPlugin.Website")
 bugAddress="$website"
 packageRoot=".." # Root of translatable sources
-projectName="plasma_applet_${plasmoidName}" # project name
 
 ### Colors
 # https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux
 # https://stackoverflow.com/questions/911168/how-can-i-detect-if-my-shell-script-is-running-through-a-pipe
-TC_Red='\033[31m'; TC_Orange='\033[33m';
-TC_LightGray='\033[90m'; TC_LightRed='\033[91m'; TC_LightGreen='\033[92m'; TC_Yellow='\033[93m'; TC_LightBlue='\033[94m';
+TC_Red='\033[31m';
+TC_LightGray='\033[90m'; TC_LightGreen='\033[92m';
 TC_Reset='\033[0m'; TC_Bold='\033[1m';
 if [ ! -t 1 ]; then
-	TC_Red=''; TC_Orange='';
-	TC_LightGray=''; TC_LightRed=''; TC_LightGreen=''; TC_Yellow=''; TC_LightBlue='';
+	TC_Red='';
+	TC_LightGray=''; TC_LightGreen='';
 	TC_Bold=''; TC_Reset='';
 fi
 function echoTC() {
@@ -50,23 +71,26 @@ fi
 echoGray "[translate/merge] Extracting messages"
 potArgs="--from-code=UTF-8 --width=200 --add-location=file"
 
-# Note: xgettext v0.20.1 (Kubuntu 20.04) and below will attempt to translate Icon,
-# so we need to specify Name, GenericName, Comment, and Keywords.
-# https://github.com/Zren/plasma-applet-lib/issues/1
-# https://savannah.gnu.org/support/?108887
-find "${packageRoot}" -name '*.desktop' | sort > "${DIR}/infiles.list"
-xgettext \
-	${potArgs} \
-	--files-from="${DIR}/infiles.list" \
-	--language=Desktop \
-	-k -kName -kGenericName -kComment -kKeywords \
-	-D "${packageRoot}" \
-	-D "${DIR}" \
-	-o "template.pot.new" \
-	|| \
-	{ echoRed "[translate/merge] error while calling xgettext. aborting."; exit 1; }
-
-sed -i 's/"Content-Type: text\/plain; charset=CHARSET\\n"/"Content-Type: text\/plain; charset=UTF-8\\n"/' "template.pot.new"
+desktopFiles=$(find "${packageRoot}" -name '*.desktop' | sort)
+joinArg=""
+if [ -n "$desktopFiles" ]; then
+	# Note: xgettext v0.20.1 (Kubuntu 20.04) and below will attempt to translate Icon,
+	# so we need to specify Name, GenericName, Comment, and Keywords.
+	# https://github.com/Zren/plasma-applet-lib/issues/1
+	# https://savannah.gnu.org/support/?108887
+	printf "%s\n" "$desktopFiles" > "${DIR}/infiles.list"
+	xgettext \
+		${potArgs} \
+		--files-from="${DIR}/infiles.list" \
+		--language=Desktop \
+		-k -kName -kGenericName -kComment -kKeywords \
+		-D "${packageRoot}" \
+		-D "${DIR}" \
+		-o "template.pot.new" \
+		|| \
+		{ echoRed "[translate/merge] error while calling xgettext. aborting."; exit 1; }
+	joinArg="--join-existing"
+fi
 
 # See Ki18n's extract-messages.sh for a full example:
 # https://invent.kde.org/sysadmin/l10n-scripty/-/blob/master/extract-messages.sh#L25
@@ -74,7 +98,16 @@ sed -i 's/"Content-Type: text\/plain; charset=CHARSET\\n"/"Content-Type: text\/p
 # We don't need -kN_ since we don't use intltool-extract but might as well keep it.
 # I have no idea what -kaliasLocale is used for. Googling aliasLocale found only listed kde1 code.
 # We don't need to parse -ki18nd since that'll extract messages from other domains.
-find "${packageRoot}" -name '*.cpp' -o -name '*.h' -o -name '*.c' -o -name '*.qml' -o -name '*.js' | sort > "${DIR}/infiles.list"
+: > "${DIR}/infiles.list"
+while IFS= read -r sourceFile; do
+	if grep -Eq '(i18n|ki18n|xi18n|I18N_NOOP|tr2i18n|tr2xi18n|N_)[[:alnum:]_]*[[:space:]]*\(' "$sourceFile"; then
+		printf '%s\n' "$sourceFile" >> "${DIR}/infiles.list"
+	fi
+done < <(
+	find "${packageRoot}" -type f \
+		\( -name '*.cpp' -o -name '*.h' -o -name '*.c' -o -name '*.qml' -o -name '*.js' \) \
+		| sort
+)
 xgettext \
 	${potArgs} \
 	--files-from="${DIR}/infiles.list" \
@@ -93,11 +126,12 @@ xgettext \
 	--msgid-bugs-address="${bugAddress}" \
 	-D "${packageRoot}" \
 	-D "${DIR}" \
-	--join-existing \
+	${joinArg} \
 	-o "template.pot.new" \
 	|| \
 	{ echoRed "[translate/merge] error while calling xgettext. aborting."; exit 1; }
 
+sed -i 's/"Content-Type: text\/plain; charset=CHARSET\\n"/"Content-Type: text\/plain; charset=UTF-8\\n"/' "template.pot.new"
 sed -i 's/# SOME DESCRIPTIVE TITLE./'"# Translation of ${widgetName} in LANGUAGE"'/' "template.pot.new"
 sed -i 's/# Copyright (C) YEAR THE PACKAGE'"'"'S COPYRIGHT HOLDER/'"# Copyright (C) $(date +%Y)"'/' "template.pot.new"
 
@@ -130,7 +164,7 @@ else
 	mv "template.pot.new" "template.pot"
 fi
 
-potMessageCount=`expr $(grep -Pzo 'msgstr ""\n(\n|$)' "template.pot" | grep -c 'msgstr ""')`
+potMessageCount=$(grep -Pzo 'msgstr ""\n(\n|$)' "template.pot" | grep -c 'msgstr ""')
 echo "|  Locale  |  Lines  | % Done|" > "./Status.md"
 echo "|----------|---------|-------|" >> "./Status.md"
 entryFormat="| %-8s | %7s | %5s |"
@@ -178,7 +212,7 @@ for cat in $catalogs; do
 	sed -i 's/# Translation of '"${widgetName}"' in LANGUAGE/'"# Translation of ${widgetName} in ${catLocale}"'/' "$cat.new"
 	sed -i 's/# Copyright (C) YEAR THE PACKAGE'"'"'S COPYRIGHT HOLDER/'"# Copyright (C) $(date +%Y)"'/' "$cat.new"
 
-	poEmptyMessageCount=`expr $(grep -Pzo 'msgstr ""\n(\n|$)' "$cat.new" | grep -c 'msgstr ""')`
+	poEmptyMessageCount=$(grep -Pzo 'msgstr ""\n(\n|$)' "$cat.new" | grep -c 'msgstr ""')
 	poMessagesDoneCount=`expr $potMessageCount - $poEmptyMessageCount`
 	poCompletion=`perl -e "printf(\"%d\", $poMessagesDoneCount * 100 / $potMessageCount)"`
 	poLine=`perl -e "printf(\"$entryFormat\", \"$catLocale\", \"${poMessagesDoneCount}/${potMessageCount}\", \"${poCompletion}%\")"`
@@ -190,7 +224,8 @@ done
 echoGray "[translate/merge] Done merging messages"
 
 #---
-echoGray "[translate/merge] Updating .desktop file"
+if [ -f "$DIR/../metadata.desktop" ]; then
+	echoGray "[translate/merge] Updating .desktop file"
 
 # Generate LINGUAS for msgfmt
 if [ -f "$DIR/LINGUAS" ]; then
@@ -241,9 +276,12 @@ if [ ! -z "${translatedLines}" ]; then
 fi
 
 # Cleanup
-mv "$DIR/new.desktop" "$DIR/../metadata.desktop"
-rm "$DIR/template.desktop"
-rm "$DIR/LINGUAS"
+	mv "$DIR/new.desktop" "$DIR/../metadata.desktop"
+	rm "$DIR/template.desktop"
+	rm "$DIR/LINGUAS"
+else
+	echoGray "[translate/merge] metadata.desktop not found, skipping desktop translation merge"
+fi
 
 #---
 # Populate ReadMe.md

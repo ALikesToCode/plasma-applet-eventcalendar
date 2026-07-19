@@ -1,10 +1,11 @@
-import QtQuick 2.0
-import org.kde.plasma.plasmoid 2.0 // root.Plasmoid.___
+import QtQuick
 import "./ErrorType.js" as ErrorType
 import "./weather/WeatherApi.js" as WeatherApi
+import "./lib/GoogleOAuthConfig.js" as GoogleOAuthConfig
+import "./lib/SafeConfig.js" as SafeConfig
 
 Item {
-	readonly property Item popup: root.Plasmoid.fullRepresentationItem
+	readonly property Item popup: root.fullRepresentationItem
 
 	//--- Weather
 	property var dailyWeatherData: { "list": [] }
@@ -23,7 +24,7 @@ Item {
 	//--- Update
 	Timer {
 		id: pollTimer
-
+		
 		repeat: true
 		triggeredOnStart: true
 		interval: plasmoid.configuration.eventsPollInterval * 60000
@@ -49,7 +50,7 @@ Item {
 	}
 	Timer {
 		id: updateEventsTimer
-		interval: 200
+		interval: 1000
 		onTriggered: logic.deferredUpdateEvents()
 	}
 	function deferredUpdateEvents() {
@@ -79,7 +80,7 @@ Item {
 			} else {
 				shouldUpdate = true
 			}
-
+			
 			if (force || shouldUpdate) {
 				updateWeatherTimer.restart()
 			}
@@ -93,7 +94,7 @@ Item {
 	function deferredUpdateWeather() {
 		logic.updateDailyWeather()
 
-		if (popup.showMeteogram) {
+		if (popup && popup.showMeteogram) {
 			logic.updateHourlyWeather()
 		}
 	}
@@ -132,12 +133,14 @@ Item {
 		logger.debug('updateDailyWeather', lastForecastAt, Date.now())
 		WeatherApi.updateDailyWeather(plasmoid.configuration, function(err, data, xhr) {
 			if (err) return handleWeatherError('updateDailyWeather', err, data, xhr)
-			logger.debugJSON('updateDailyWeather.response', data)
+			logger.debugJSON('updateDailyWeather.responseSummary', {
+				count: data && data.list ? data.list.length : 0,
+			})
 
 			logic.lastForecastAt = Date.now()
 			logic.lastForecastErr = null
 			logic.dailyWeatherData = data
-			popup.updateUI()
+			if (popup) popup.updateUI()
 		})
 	}
 
@@ -145,13 +148,15 @@ Item {
 		logger.debug('updateHourlyWeather', lastForecastAt, Date.now())
 		WeatherApi.updateHourlyWeather(plasmoid.configuration, function(err, data, xhr) {
 			if (err) return handleWeatherError('updateHourlyWeather', err, data, xhr)
-			logger.debugJSON('updateHourlyWeather.response', data)
+			logger.debugJSON('updateHourlyWeather.responseSummary', {
+				count: data && data.list ? data.list.length : 0,
+			})
 
 			logic.lastForecastAt = Date.now()
 			logic.lastForecastErr = null
 			logic.hourlyWeatherData = data
 			logic.currentWeatherData = data.list[0]
-			popup.updateMeteogram()
+			if (popup) popup.updateMeteogram()
 		})
 	}
 
@@ -160,38 +165,20 @@ Item {
 		target: plasmoid.configuration
 
 		//--- Events
-		function onAccessTokenChanged() {
-			logic.updateEvents()
-		}
-		function onCalendarIdListChanged() {
-			logic.updateEvents()
-		}
-		function onEnabledCalendarPluginsChanged() {
-			logic.updateEvents()
-		}
-		function onTasklistIdListChanged() {
-			logic.updateEvents()
-		}
-		function onGoogleEventClickActionChanged() {
-			logic.updateEvents()
-		}
+		function onAccessTokenChanged() { logic.updateEvents() }
+		function onCalendarIdListChanged() { logic.updateEvents() }
+		function onEnabledCalendarPluginsChanged() { logic.updateEvents() }
+		function onTasklistIdListChanged() { logic.updateEvents() }
+		function onGoogleAccountsChanged() { logic.updateEvents() }
+		function onGoogleActiveAccountIdChanged() { logic.updateEvents() }
+		function onGoogleEventClickActionChanged() { logic.updateEvents() }
 
 		//--- Weather
-		function onWeatherServiceChanged() {
-			logic.resetWeatherAndUpdate()
-		}
-		function onOpenWeatherMapAppIdChanged() {
-			logic.resetWeatherAndUpdate()
-		}
-		function onOpenWeatherMapCityIdChanged() {
-			logic.resetWeatherAndUpdate()
-		}
-		function onWeatherCanadaCityIdChanged() {
-			logic.resetWeatherAndUpdate()
-		}
-		function onWeatherUnitsChanged() {
-			logic.updateWeather(true)
-		}
+		function onWeatherServiceChanged() { logic.resetWeatherAndUpdate() }
+		function onOpenWeatherMapAppIdChanged() { logic.resetWeatherAndUpdate() }
+		function onOpenWeatherMapCityIdChanged() { logic.resetWeatherAndUpdate() }
+		function onWeatherCanadaCityIdChanged() { logic.resetWeatherAndUpdate() }
+		function onWeatherUnitsChanged() { logic.updateWeather(true) }
 		function onWidgetShowMeteogramChanged() {
 			if (plasmoid.configuration.widgetShowMeteogram) {
 				logic.updateHourlyWeather()
@@ -199,28 +186,66 @@ Item {
 		}
 
 		//--- UI
-		function onAgendaBreakupMultiDayEventsChanged() {
-			popup.updateUI()
-		}
-		function onMeteogramHoursChanged() {
-			popup.updateMeteogram()
-		}
+		function onAgendaBreakupMultiDayEventsChanged() { if (popup) popup.updateUI() }
+		function onMeteogramHoursChanged() { if (popup) popup.updateMeteogram() }
 	}
 
 	//---
 	Connections {
 		target: appletConfig
-		function onClock24hChanged() {
-			popup.updateUI()
-		}
+		function onClock24hChanged() { if (popup) popup.updateUI() }
 	}
 
 	//---
 	property int currentErrorType: ErrorType.UnknownError
+	function normalizedConfigValue(value) {
+		return value ? String(value).trim() : ""
+	}
+	function currentGoogleCredentials() {
+		return GoogleOAuthConfig.effectiveClientCredentials(
+			plasmoid.configuration,
+			"352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
+		)
+	}
+	function currentGoogleClientId() {
+		return currentGoogleCredentials().clientId
+	}
+	function currentGoogleUsesPkce() {
+		return !currentGoogleCredentials().clientSecret
+	}
+	function parseGoogleAccounts() {
+		var raw = plasmoid.configuration.googleAccounts
+		if (!raw) {
+			return []
+		}
+		if (Array.isArray(raw)) {
+			return raw
+		}
+		try {
+			var parsed = SafeConfig.parseBase64Json(raw, [])
+			return Array.isArray(parsed) ? parsed : []
+		} catch (e) {
+			return []
+		}
+	}
 	property string currentErrorMessage: {
-		if (plasmoid.configuration.accessToken && plasmoid.configuration.latestClientId != plasmoid.configuration.sessionClientId) {
-			return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
-		} else if (!plasmoid.configuration.accessToken && plasmoid.configuration.access_token) {
+		var accounts = parseGoogleAccounts()
+		for (var i = 0; i < accounts.length; i++) {
+			var account = accounts[i]
+			if (account.reauthRequired) {
+				return i18n("Google authorization expired or was revoked. Open Event Calendar Settings, select the account, and use Update Selected to reconnect it.")
+			}
+			if (account.sessionUsesPkce === false) {
+				continue
+			}
+			if (account.sessionClientId && account.sessionClientId !== currentGoogleClientId()) {
+				return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
+			}
+			if (account.sessionUsesPkce === true && currentGoogleUsesPkce() === false) {
+				return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
+			}
+		}
+		if (plasmoid.configuration.access_token) {
 			return i18n("Logged out of Google. Please login again.")
 		} else {
 			return ""
@@ -232,7 +257,7 @@ Item {
 	}
 	Connections {
 		target: eventModel
-		function onError() {
+		function onError(msg, errorType) {
 			logic.currentErrorMessage = msg
 			logic.currentErrorType = errorType
 			if (popup) popup.showError(logic.currentErrorMessage)
@@ -242,25 +267,24 @@ Item {
 	//---
 	Connections {
 		target: eventModel
-		function onCalendarFetched() {
+		function onCalendarFetched(calendarId, data) {
 			logger.debug('onCalendarFetched', calendarId)
 			// logger.debug('onCalendarFetched', calendarId, JSON.stringify(data, null, '\t'))
 			if (popup) popup.deferredUpdateUI()
 		}
 		function onAllDataFetched() {
 			logger.debug('onAllDataFetched')
-			if (logic.currentErrorType == ErrorType.NetworkError) logic.clearError()
 			if (popup) popup.deferredUpdateUI()
 		}
-		function onEventCreated() {
+		function onEventCreated(calendarId, data) {
 			logger.logJSON('onEventCreated', calendarId, data)
 			if (popup) popup.deferredUpdateUI()
 		}
-		function onEventUpdated() {
+		function onEventUpdated(calendarId, eventId, data) {
 			logger.logJSON('onEventUpdated', calendarId, eventId, data)
 			if (popup) popup.deferredUpdateUI()
 		}
-		function onEventDeleted() {
+		function onEventDeleted(calendarId, eventId, data) {
 			logger.logJSON('onEventDeleted', calendarId, eventId, data)
 			if (popup) popup.deferredUpdateUI()
 		}

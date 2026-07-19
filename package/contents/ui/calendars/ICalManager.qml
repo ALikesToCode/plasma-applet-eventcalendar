@@ -1,6 +1,6 @@
-import QtQuick 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
+import QtQuick
 
+import "../ErrorType.js" as ErrorType
 import "../lib"
 
 CalendarManager {
@@ -8,66 +8,109 @@ CalendarManager {
 
 	calendarManagerId: "ical"
 	ExecUtil { id: executable }
+	Logger {
+		id: logger
+		name: "eventcalendar-ical"
+		showDebug: plasmoid.configuration.debugging
+	}
 
 	// property var eventsData: { "items": [] }
 
 	property var calendarList: [
 	]
 
+	function localFilePath(url) {
+		var path = String(url)
+		return path.indexOf("file://") === 0 ? path.slice(7) : path
+	}
+
 	function getCalendar(calendarId) {
 		for (var i = 0; i < calendarList.length; i++) {
 			var calendarData = calendarList[i]
-			if (calendarData.url == calendarId) {
+			if (calendarData && calendarData.url == calendarId) {
 				return calendarData
 			}
 		}
 		return null
 	}
 
+	function calendarLabel(calendarData) {
+		return String(calendarData && calendarData.name || i18n("iCalendar"))
+	}
+
+	function safeProcessError(stderr) {
+		var message = String(stderr || i18n("Unknown iCalendar helper error")).trim()
+		return message.replace(/https?:\/\/\S+/gi, "[redacted URL]")
+	}
+
 	function fetchEvents(calendarData, startTime, endTime, callback) {
-		logger.debug('ical.fetchEvents', calendarData.url)
+		logger.debug('ical.fetchEvents', calendarLabel(calendarData))
+		var startDate = startTime.getFullYear() + '-' + (startTime.getMonth() + 1) + '-' + startTime.getDate()
+		var endDate = endTime.getFullYear() + '-' + (endTime.getMonth() + 1) + '-' + endTime.getDate()
 		var cmd = [
 			'python3',
-			plasmoid.file("", "scripts/icsjson.py"),
+			localFilePath(Qt.resolvedUrl("../../scripts/icsjson.py")),
 			'--url',
 			calendarData.url,
 			'query',
-			startTime.getFullYear() + '-' + (startTime.getMonth()+1) + '-' + startTime.getDate(),
-			endTime.getFullYear() + '-' + (endTime.getMonth()+1) + '-' + endTime.getDate(),
+			startDate,
+			endDate,
 		]
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
+		executable.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr) {
 			if (exitCode) {
-				logger.log('ical.stderr', stderr)
-				return callback(stderr)
+				logger.log('ical.fetchError', calendarLabel(calendarData), exitCode, exitStatus)
+				return callback(safeProcessError(stderr || stdout))
 			}
+			var parsed
 			try {
-				callback(null, JSON.parse(stdout))
+				parsed = JSON.parse(stdout)
+				if (!(parsed && Array.isArray(parsed.items))) {
+					throw new Error("iCalendar helper returned an invalid event list")
+				}
 			} catch (err) {
-				logger.log('ical.parseError', err, stdout)
-				callback(err.toString())
+				logger.log('ical.parseError', calendarLabel(calendarData), err)
+				return callback(err.toString())
 			}
+			callback(null, parsed)
 		})
 	}
 
 	function fetchCalendar(calendarData) {
-		icalManager.asyncRequests += 0
+		icalManager.asyncRequests += 1
 		fetchEvents(calendarData, dateMin, dateMax, function(err, data) {
-			parseEventList(calendarData, data.items)
-			setCalendarData(calendarData.url, data)
-			icalManager.asyncRequestsDone += 1
+			try {
+				if (err) {
+					icalManager.error(
+						i18n("Could not load %1: %2", calendarLabel(calendarData), err),
+						ErrorType.UnknownError
+					)
+					return
+				}
+				var currentCalendar = getCalendar(calendarData.url)
+				if (!currentCalendar || currentCalendar.show === false) {
+					return
+				}
+				setCalendarData(calendarData.url, data)
+			} finally {
+				icalManager.asyncRequestsDone += 1
+			}
 		})
 	}
 
 	onFetchAllCalendars: {
 		for (var i = 0; i < calendarList.length; i++) {
 			var calendarData = calendarList[i]
-			fetchCalendar(calendarData)
+			if (calendarData && calendarData.show !== false && String(calendarData.url || "").trim()) {
+				fetchCalendar(calendarData)
+			}
 		}
 	}
 
-	onCalendarParsing: {
+	onCalendarParsing: function(calendarId, data) {
 		var calendar = getCalendar(calendarId)
-		parseEventList(calendar, data.items)
+		if (calendar) {
+			parseEventList(calendar, data.items)
+		}
 	}
 
 	function parseEvent(calendar, event) {
@@ -76,6 +119,9 @@ CalendarManager {
 	}
 
 	function parseEventList(calendar, eventList) {
+		if (!calendar || !Array.isArray(eventList)) {
+			return
+		}
 		eventList.forEach(function(event) {
 			parseEvent(calendar, event)
 		})

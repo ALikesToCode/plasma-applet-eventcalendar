@@ -1,5 +1,7 @@
 .pragma library
 
+.import "Base64Compat.js" as Base64Compat
+
 var MAX_BASE64_JSON_LENGTH = 1024 * 1024
 
 function isDangerousKey(key) {
@@ -33,7 +35,7 @@ function parseBase64Json(configValue, defaultValue) {
 		return defaultValue
 	}
 
-	var decoded = Qt.atob(configValue)
+	var decoded = Base64Compat.base64DecodeToString(configValue)
 	if (decoded.length > MAX_BASE64_JSON_LENGTH) {
 		throw new Error("Config payload exceeds maximum size")
 	}
@@ -49,5 +51,5 @@ function serializeBase64Json(value) {
 	if (serialized.length > MAX_BASE64_JSON_LENGTH) {
 		throw new Error("Config payload exceeds maximum size")
 	}
-	return Qt.btoa(serialized)
+	return Base64Compat.base64EncodeString(serialized)
 }

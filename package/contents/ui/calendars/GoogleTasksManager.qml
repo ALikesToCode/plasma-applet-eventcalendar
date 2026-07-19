@@ -1,10 +1,11 @@
-import QtQuick 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
+import QtQuick
+import org.kde.kirigami as Kirigami
 
+import "../ErrorType.js" as ErrorType
 import "../Shared.js" as Shared
+import "../lib"
 import "../lib/Async.js" as Async
 import "../lib/Requests.js" as Requests
-import "../lib/SafeConfig.js" as SafeConfig
 
 // import "./GoogleCalendarTests.js" as GoogleCalendarTests
 
@@ -22,16 +23,127 @@ CalendarManager {
 	calendarManagerId: "GoogleTasks"
 
 	property var session
-	readonly property var tasklistIdList: plasmoid.configuration.tasklistIdList ? plasmoid.configuration.tasklistIdList.split(',') : []
+	property var accountsStore
+	property string accountId: ""
+	property string accountLabel: ""
+
+	Logger {
+		id: logger
+		name: 'eventcalendar-google-tasks'
+		showDebug: plasmoid.configuration.debugging
+	}
+
+	function getAccount() {
+		if (!accountsStore || !accountId) {
+			return null
+		}
+		return accountsStore.getAccount(accountId)
+	}
+
+	function getTasklistIdList() {
+		var account = getAccount()
+		return account && account.tasklistIdList ? account.tasklistIdList : []
+	}
+
+	function scopedTasklistId(rawId) {
+		if (!accountId) {
+			return rawId
+		}
+		return accountId + "::" + rawId
+	}
+
+	function unscopedTasklistId(scopedId) {
+		if (!accountId) {
+			return scopedId
+		}
+		var prefix = accountId + "::"
+		if (scopedId.indexOf(prefix) === 0) {
+			return scopedId.substr(prefix.length)
+		}
+		return scopedId
+	}
+
+	function formatTasklistSummary(tasklist) {
+		if (accountLabel) {
+			return accountLabel + " - " + tasklist.title
+		}
+		return tasklist.title
+	}
+
+	function decorateTasklist(tasklist) {
+		return {
+			id: scopedTasklistId(tasklist.id),
+			summary: formatTasklistSummary(tasklist),
+			backgroundColor: Kirigami.Theme.highlightColor.toString(),
+			accessRole: 'owner',
+			isTasklist: true,
+		}
+	}
 
 	onFetchAllCalendars: {
 		fetchGoogleAccountData()
 	}
 
 	function fetchGoogleAccountData() {
-		if (session.accessToken) {
-			fetchGoogleAccountTasks(tasklistIdList)
+		var account = getAccount()
+		if (!account) {
+			return
 		}
+		fetchGoogleAccountTasks(getTasklistIdList())
+	}
+
+	//--- Errors
+	function showHttpError(httpCode, msg, suggestion, errorType) {
+		var errorMessage = i18n("HTTP Error %1: %2", httpCode, msg)
+		if (suggestion) {
+			errorMessage += '\n' + suggestion
+		}
+		googleTasksManager.error(errorMessage, errorType)
+	}
+	function handleError(err, data, xhr) {
+		var httpCode = xhr.status
+		if (httpCode === 0) {
+			var msg = i18n("Could not connect")
+			var suggestion = i18n("Will try again soon.")
+			showHttpError(httpCode, msg, suggestion, ErrorType.NetworkError)
+			return
+		}
+
+		// https://developers.google.com/tasks/reference/rest/errors
+		if (err.error && err.error.errors && err.error.errors.length >= 1) {
+			httpCode = err.error.code
+			var err0 = err.error.errors[0]
+
+			if (httpCode === 401 && err0.reason == 'authError') {
+				var suggestion = i18n("Widget has been updated. Please logout and login to Google Calendar again.")
+				showHttpError(httpCode, err0.message, suggestion, ErrorType.ClientError)
+			} else if (httpCode === 403 && err0.domain == 'usageLimits') {
+				var suggestion = i18n("Too many web requests. Will try again soon.")
+				showHttpError(httpCode, err0.message, suggestion, ErrorType.ClientError)
+			} else {
+				var suggestion = i18n("Will try again soon.")
+				showHttpError(httpCode, err0.message, suggestion, ErrorType.UnknownError)
+			}
+			return
+		}
+	}
+	function handleAuthError(err, markDone) {
+		if (markDone) {
+			googleTasksManager.asyncRequestsDone += 1
+		}
+		var message = i18n("Google authentication failed: %1", err)
+		googleTasksManager.error(message, ErrorType.ClientError)
+	}
+	function withAccessToken(action, onError) {
+		session.checkAccessToken(function(err) {
+			if (err) {
+				if (onError) {
+					onError(err)
+				}
+				return
+			}
+			action()
+		})
 	}
 
 	//--- Utils
@@ -67,29 +179,16 @@ CalendarManager {
 	//-------------------------
 	// CalendarManager
 	function getCalendarList() {
-		if (session.accessToken && plasmoid.configuration.tasklistList) {
-			var tasklistList
-			try {
-				tasklistList = SafeConfig.parseBase64Json(plasmoid.configuration.tasklistList, [])
-			} catch (err) {
-				logger.log('Failed to parse tasklistList', err)
-				return []
-			}
-			var calendarList = []
-			for (var i = 0; i < tasklistList.length; i++) {
-				var tasklist = tasklistList[i]
-				calendarList.push({
-					id: tasklist.id,
-					summary: tasklist.title,
-					backgroundColor: theme.highlightColor.toString(),
-					accessRole: 'owner',
-					isTasklist: true,
-				})
-			}
-			return calendarList
-		} else {
+		var account = getAccount()
+		if (!account || !account.tasklistList) {
 			return []
 		}
+		var tasklistList = account.tasklistList
+		var calendarList = []
+		for (var i = 0; i < tasklistList.length; i++) {
+			calendarList.push(decorateTasklist(tasklistList[i]))
+		}
+		return calendarList
 	}
 
 
@@ -104,7 +203,9 @@ CalendarManager {
 				fetchGoogleAccountTasks_done(data)
 			}
 		})
-		session.checkAccessToken(func)
+		withAccessToken(func, function(err) {
+			handleAuthError(err, true)
+		})
 	}
 	function fetchGoogleAccountTasks_run(tasklistIdList, callback) {
 		logger.debug('fetchGoogleAccountTasks_run', tasklistIdList)
@@ -121,14 +222,15 @@ CalendarManager {
 	function fetchGoogleAccountTasks_err(err, data, xhr) {
 		logger.debug('fetchGoogleAccountTasks_err', err, data, xhr)
 		googleTasksManager.asyncRequestsDone += 1
-		return handleError(err, data, xhr)
+		return googleTasksManager.handleError(err, data, xhr)
 	}
 	function fetchGoogleAccountTasks_done(results) {
 		for (var i = 0; i < results.length; i++) {
 			var tasklistId = results[i].tasklistId
 			var tasklistData = results[i].data
 			var eventList = parseTasklistAsEvents(tasklistData)
-			setCalendarData(tasklistId, eventList)
+			var scopedId = results[i].scopedTasklistId || scopedTasklistId(tasklistId)
+			setCalendarData(scopedId, eventList)
 		}
 		googleTasksManager.asyncRequestsDone += 1
 	}
@@ -203,9 +305,9 @@ CalendarManager {
 			// Note: In the Google Tasks API docs:
 			// The due date only records date information; the time portion of the timestamp is discarded when setting the due date.
 			// It isn't possible to read or write the time that a task is due via the API.
-			var dueDateTime = new Date(taskData.due)
-			// Use local time zone, like we do in CalendarManager.onEventParsing
-			eventData.dueDate = Shared.dateString(dueDateTime)
+			var dueDateString = taskData.due.substring(0, 10)
+			// Use local time zone, like we do in CalendarManager.onEventParsing.
+			eventData.dueDate = dueDateString
 			eventData.dueDateTime = new Date(eventData.dueDate + ' 00:00:00')
 			// All day event, due at end of day.
 			eventData.dueEndOfDay = taskData.due.indexOf('T00:00:00.000Z') !== -1
@@ -224,10 +326,10 @@ CalendarManager {
 		var endDateTime = new Date(startDateTime)
 		endDateTime.setDate(endDateTime.getDate() + 1)
 		eventData.start = {
-			date: Shared.dateString(startDateTime),
+			date: Shared.localeDateString(startDateTime),
 		}
 		eventData.end = {
-			date: Shared.dateString(endDateTime),
+			date: Shared.localeDateString(endDateTime),
 		}
 
 		if (taskData.parent) {
@@ -257,6 +359,7 @@ CalendarManager {
 
 			return callback(null, {
 				tasklistId: tasklistId,
+				scopedTasklistId: scopedTasklistId(tasklistId),
 				data: data,
 			})
 		})
@@ -338,22 +441,26 @@ CalendarManager {
 					createEvent_done(calendarId, data)
 				}
 			})
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "create an event" without an access token set')
 		}
 	}
 	function createEvent_run(calendarId, eventText, callback) {
 		logger.debugJSON(calendarManagerId, 'createEvent_run', calendarId, eventText)
+		var rawTasklistId = unscopedTasklistId(calendarId)
 		createGoogleTask({
 			accessToken: session.accessToken,
-			tasklistId: calendarId,
+			tasklistId: rawTasklistId,
 			title: eventText,
 		}, callback)
 	}
 	function createEvent_done(calendarId, data) {
 		logger.debugJSON(calendarManagerId, 'createEvent_done', calendarId, data)
-		if (googleTasksManager.tasklistIdList.indexOf(calendarId) >= 0) {
+		var rawTasklistId = unscopedTasklistId(calendarId)
+		if (getTasklistIdList().indexOf(rawTasklistId) >= 0) {
 			var eventData = parseTaskAsEventData(data)
 			parseSingleEvent(calendarId, eventData)
 			addEvent(calendarId, eventData)
@@ -362,7 +469,7 @@ CalendarManager {
 	}
 	function createEvent_err(err, data, xhr) {
 		logger.log(calendarManagerId, 'createEvent_err', err, data, xhr)
-		return handleError(err, data, xhr)
+		return googleTasksManager.handleError(err, data, xhr)
 	}
 
 	function createGoogleTask(args, callback) {
@@ -409,7 +516,9 @@ CalendarManager {
 					deleteEvent_done(calendarId, eventId, data)
 				}
 			})
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "delete an event" without an access token set')
 		}
@@ -419,7 +528,7 @@ CalendarManager {
 
 		deleteGoogleTask({
 			accessToken: session.accessToken,
-			tasklistId: calendarId,
+			tasklistId: unscopedTasklistId(calendarId),
 			taskId: eventId,
 		}, callback)
 	}
@@ -435,7 +544,7 @@ CalendarManager {
 	}
 	function deleteEvent_err(err, data, xhr) {
 		logger.log(calendarManagerId, 'deleteEvent_err', err, data, xhr)
-		return handleError(err, data, xhr)
+		return googleTasksManager.handleError(err, data, xhr)
 	}
 
 	function deleteGoogleTask(args, callback) {
@@ -485,7 +594,9 @@ CalendarManager {
 					setEventProperties_done(calendarId, eventId, event, data)
 				}
 			})
-			session.checkAccessToken(func)
+			withAccessToken(func, function(err) {
+				handleAuthError(err, false)
+			})
 		} else {
 			session.transactionError('attempting to "set an event property" without an access token set')
 		}
@@ -500,7 +611,7 @@ CalendarManager {
 
 		updateGoogleTask({
 			accessToken: session.accessToken,
-			tasklistId: calendarId,
+			tasklistId: unscopedTasklistId(calendarId),
 			taskId: eventId,
 			data: data,
 		}, callback)
@@ -518,7 +629,7 @@ CalendarManager {
 	}
 	function setEventProperties_err(err, data, xhr) {
 		logger.log(calendarManagerId, 'setEventProperties_err', err, data, xhr)
-		return handleError(err, data, xhr)
+		return googleTasksManager.handleError(err, data, xhr)
 	}
 
 	function updateGoogleTask(args, callback) {

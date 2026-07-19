@@ -1,7 +1,7 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
-import org.kde.kirigami 2.0 as Kirigami
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 
 import ".."
 import "../lib"
@@ -64,30 +64,31 @@ ConfigPage {
 			]
 		}
 
-		ConfigRadioButtonGroup {
-			id: clickWeatherGroup
-			label: i18n("Click Weather:")
-			RadioButton {
-				text: i18n("Open City Forecast In Browser")
-				exclusiveGroup: clickWeatherGroup.exclusiveGroup
-				checked: true
+		ColumnLayout {
+			spacing: Kirigami.Units.smallSpacing
+
+			Label {
+				text: i18n("Click Weather:")
+			}
+			Label {
+				Layout.fillWidth: true
+				wrapMode: Text.Wrap
+				text: i18n("Currently opens the city forecast in your browser.")
 			}
 		}
 	}
 
 	ConfigSection {
-		ConfigRadioButtonGroup {
-			id: clickDateGroup
-			label: i18n("Click Date:")
-			RadioButton {
-				text: i18n("Open New Event In Browser")
-				exclusiveGroup: clickDateGroup.exclusiveGroup
-				enabled: false
+		ColumnLayout {
+			spacing: Kirigami.Units.smallSpacing
+
+			Label {
+				text: i18n("Click Date:")
 			}
-			RadioButton {
-				text: i18n("Open New Event Form")
-				exclusiveGroup: clickDateGroup.exclusiveGroup
-				checked: true
+			Label {
+				Layout.fillWidth: true
+				wrapMode: Text.Wrap
+				text: i18n("Currently opens the new event form in the agenda.")
 			}
 		}
 	}
@@ -111,13 +112,16 @@ ConfigPage {
 			configKey: 'agendaShowEventHangoutLink'
 			text: i18n("Google Hangouts link")
 		}
-		ConfigRadioButtonGroup {
-			id: clickEventGroup
-			label: i18n("Click Event:")
-			RadioButton {
-				text: i18n("Open Event In Browser")
-				exclusiveGroup: clickEventGroup.exclusiveGroup
-				checked: true
+		ColumnLayout {
+			spacing: Kirigami.Units.smallSpacing
+
+			Label {
+				text: i18n("Click Event:")
+			}
+			Label {
+				Layout.fillWidth: true
+				wrapMode: Text.Wrap
+				text: i18n("Currently opens the selected event in your browser.")
 			}
 		}
 	}
@@ -127,17 +131,6 @@ ConfigPage {
 		ConfigRadioButtonGroup {
 			configKey: 'agendaBreakupMultiDayEvents'
 			label: i18n("Show multi-day events:")
-			model: [
-				{ value: true, text: i18n("On all days") },
-				{ value: false, text: i18n("Only on the first and current day") },
-			]
-		}
-	}
-
-	ConfigSection {
-		ConfigRadioButtonGroup {
-			configKey: 'agendaBreakupReccurentEvents'
-			label: i18n("Show reccurent events:")
 			model: [
 				{ value: true, text: i18n("On all days") },
 				{ value: false, text: i18n("Only on the first and current day") },

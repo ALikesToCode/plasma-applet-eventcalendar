@@ -1,5 +1,5 @@
-import QtQuick 2.0
-import org.kde.kirigami 2.0 as Kirigami
+import QtQuick
+import org.kde.kirigami as Kirigami
 
 // We need to use this pattern in order to use the SystemPalette colors
 Canvas {

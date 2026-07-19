@@ -1,12 +1,49 @@
-Currently doesn't work on Plasma-6
-
-<hr>
-
 # Event Calendar Updated version
 This is an updated version that I modified for my own needs, with fix for Google Calender and quality of life improvements. 
 
 
 Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.
+
+## Branch guide
+
+- Plasma 6 (default): `master`
+- Plasma 5 (legacy): `plasma-5`
+- `plasma-6` is reserved for development/testing.
+
+## Dependencies
+
+Core runtime:
+- Plasma 6 or Plasma 5 (Qt/QML + KDE Frameworks that ship with Plasma)
+- `python3`
+- `python3-gi` + `gir1.2-notify-0.7` (libnotify bindings used by `notification.py`)
+- `notify-send` (`libnotify-bin`/`libnotify`, used as a fallback for notifications)
+- `libcanberra` (optional, for notification sounds)
+
+Feature-specific (optional):
+- ICalendar (.ics) import:
+  - `icalendar>=6.1,<8`
+  - `recurring-ical-events>=3.8,<4` for RRULE, RDATE, EXDATE, and RECURRENCE-ID expansion
+  - The install/update scripts place these Python packages under
+    `~/.local/share/plasma_org.kde.plasma.eventcalendar/python` when they are not already available.
+- Local PIM/Akonadi calendars: `akonadi` + `kdepim-addons` (provides `PimCalendarsModel`)
+- Create local events: `konsolekalendar` (from kdepim runtime/tools)
+- Mouse wheel volume presets:
+  - `amixer` (alsa-utils) for the no-UI option
+  - `qdbus`/`qdbus6` + `kmix` (kglobalaccel shortcuts) for the UI option
+
+Install/update/uninstall scripts:
+- `bash`
+- `git` (clone/update)
+- `kpackagetool6` (Plasma 6) or `kpackagetool5` (Plasma 5)
+- `qdbus` or `qdbus6` (reload/remove widgets)
+- `jq` (read metadata)
+- `python3-pip` / `python-pip` (install user-local iCalendar recurrence support)
+
+Note: package names vary by distro. The install script attempts to install `kpackagetool` and `jq` on Debian/Arch/Fedora; on other distros, install manually.
+
+## Contributing
+
+See `CONTRIBUTING.md` for guidelines and `MAINTENANCE.md` for project status.
 
 ## Screenshots
 
@@ -18,27 +55,45 @@ Plasmoid for a calendar+agenda with weather that syncs to Google Calendar.
 
 ## A) Install via GitHub
 
+Plasma 6 (default branch):
+
 ```
 git clone https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
 cd eventcalendar
 sh ./install
 ```
 
-To update, run the `sh ./update` script. It will run a `git pull` then reinstall the applet. Please note this script will restart plasmashell (so you don't have to relog)!
+Plasma 5 (legacy branch):
+
+```
+git clone -b plasma-5 https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
+cd eventcalendar
+sh ./install
+```
+
+To update, run the `sh ./update` script. It will auto-detect your Plasma version, switch branches if needed, pull updates, and reinstall the applet.
 
 
 
-## Update to GitHub master
+## Update to GitHub master (Plasma 6)
 
 If you're asked to test something, you can do so by installing the latest unreleased code.
 
 Beforehand, uninstall the AUR version if you are running Arch (you can reinstall after testing).
 
-Then install pen the Terminal and run the following commands. Please note the install script will restart plasmashell so that you don't have to relog.
+Then open the Terminal and run the following commands. The install script can reload the widget when you pass `--restart`.
 
 ```
 sudo apt install git
 git clone https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
+cd eventcalendar
+sh ./install --restart
+```
+
+For Plasma 5, use the `plasma-5` branch instead:
+
+```
+git clone -b plasma-5 https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
 cd eventcalendar
 sh ./install --restart
 ```
@@ -55,5 +110,3 @@ sh ./uninstall
 2. Copy the Code and enter it at the given link. Keep the settings window open.
 3. After the settings window says it's synched, click apply.
 4. Go to the Weather Tab > Enter your city id for OpenWeatherMap. If their search can't find your city, try googling it with [site:openweathermap.org/city](https://www.google.ca/search?q=site%3Aopenweathermap.org%2Fcity+toronto).
-
-

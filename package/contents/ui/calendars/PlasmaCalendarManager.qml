@@ -1,10 +1,10 @@
-import QtQuick 2.0
-
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.calendar 2.0 as PlasmaCalendar
+import QtQuick
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.workspace.calendar as PlasmaCalendar
 
 import "../lib"
 import "../Shared.js" as Shared
+import "../calendars/PlasmaCalendarEventState.js" as PlasmaCalendarEventState
 import "../calendars/PlasmaCalendarUtils.js" as PlasmaCalendarUtils
 
 CalendarManager {
@@ -13,7 +13,35 @@ CalendarManager {
 	calendarManagerId: "plasma"
 
 	property var executable: ExecUtil { id: executable }
-	property var calendarModel: Qt.createQmlObject("import org.kde.plasma.PimCalendars 1.0; PimCalendarsModel {}", plasmaCalendarManager)
+	property var calendarModel: Qt.createQmlObject("import org.kde.plasma.PimCalendars; PimCalendarsModel {}", plasmaCalendarManager)
+	property var eventPluginsManager: null
+
+	function ensureEventPluginsManager() {
+		if (eventPluginsManager) {
+			return true
+		}
+		try {
+			eventPluginsManager = Qt.createQmlObject(
+				"import org.kde.plasma.workspace.calendar as PlasmaCalendar; PlasmaCalendar.EventPluginsManager {}",
+				plasmaCalendarManager
+			)
+			return true
+		} catch (e) {
+			logger.debug('EventPluginsManager unavailable', e)
+			eventPluginsManager = null
+			return false
+		}
+	}
+	function syncEnabledPlugins() {
+		if (!ensureEventPluginsManager()) {
+			return
+		}
+		PlasmaCalendarUtils.setEnabledPluginsByFilename(
+			eventPluginsManager,
+			plasmoid.configuration.enabledCalendarPlugins,
+			plasmoid.configuration.enabledCalendarPluginsAllowEmpty
+		)
+	}
 	function appendPimCalendars(calendarList) {
 		// https://github.com/KDE/kdepim-addons/blob/master/plugins/plasma/pimeventsplugin/PimEventsConfig.qml
 		// https://github.com/KDE/kdepim-addons/blob/master/plugins/plasma/pimeventsplugin/pimcalendarsmodel.cpp
@@ -72,8 +100,8 @@ CalendarManager {
 
 		// KHolidays
 		calendarList.push({
-			"calendarId": "plasma_Holidays",
-			"backgroundColor": "" + theme.highlightColor,
+			"id": "plasma_Holidays",
+			"backgroundColor": "" + Kirigami.Theme.highlightColor,
 			"accessRole": "reader",
 			"isTasklist": false,
 		})
@@ -102,12 +130,15 @@ CalendarManager {
 	// to get a list of events for a specific day.
 
 	Component.onCompleted: {
-		PlasmaCalendarUtils.setEnabledPluginsByFilename(PlasmaCalendar.EventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
+		syncEnabledPlugins()
 	}
 	Connections {
 		target: plasmoid.configuration
 		function onEnabledCalendarPluginsChanged() {
-			PlasmaCalendarUtils.setEnabledPluginsByFilename(PlasmaCalendar.EventPluginsManager, plasmoid.configuration.enabledCalendarPlugins)
+			syncEnabledPlugins()
+		}
+		function onEnabledCalendarPluginsAllowEmptyChanged() {
+			syncEnabledPlugins()
 		}
 	}
 
@@ -128,26 +159,58 @@ CalendarManager {
 
 		Component.onCompleted: {
 			//daysModel.connect
-			daysModel.setPluginsManager(PlasmaCalendar.EventPluginsManager)
+			if (daysModel && ensureEventPluginsManager() && typeof daysModel.setPluginsManager === "function") {
+				try {
+					daysModel.setPluginsManager(eventPluginsManager)
+				} catch (e) {
+					logger.debug('daysModel.setPluginsManager failed', e)
+				}
+			}
 		}
 	}
 
-	readonly property string translatedHolidaysType: i18ndc("libplasma5", "Agenda listview section title", "Holidays")
-	readonly property string translatedEventsType: i18ndc("libplasma5", "Agenda listview section title", "Events")
-	readonly property string translatedTodoType: i18ndc("libplasma5", "Agenda listview section title", "Todo")
-	readonly property string translatedOtherType: i18ndc("libplasma5", "Means 'Other calendar items'", "Other")
+	readonly property var eventTypeLabels: ({
+		holidays: [
+			i18ndc("libplasma6", "Agenda listview section title", "Holidays"),
+			i18ndc("libplasma5", "Agenda listview section title", "Holidays"),
+			i18n("Holidays"),
+		],
+		events: [
+			i18ndc("libplasma6", "Agenda listview section title", "Events"),
+			i18ndc("libplasma5", "Agenda listview section title", "Events"),
+			i18n("Events"),
+		],
+		todo: [
+			i18ndc("libplasma6", "Agenda listview section title", "Todo"),
+			i18ndc("libplasma5", "Agenda listview section title", "Todo"),
+			i18n("Todo"),
+		],
+		other: [
+			i18ndc("libplasma6", "Means 'Other calendar items'", "Other"),
+			i18ndc("libplasma5", "Means 'Other calendar items'", "Other"),
+			i18n("Other"),
+		],
+	})
+	function isEventType(dayItem, labels) {
+		for (var i = 0; i < labels.length; i++) {
+			if (dayItem.eventType === labels[i]) {
+				return true
+			}
+		}
+		return false
+	}
 	function parseCalendarId(dayItem) {
 		// dayItem.eventType is translated, but is the only way to tell which plugin it belongs to without
 		// creating a seperate PlasmaCalendar.EventPluginsManager for each plugin (assuming it's not a singleton).
 		// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/calendar/eventdatadecorator.cpp#L60
-		// plasma-framework uses the "libplasma5" translation domain.
-		if (dayItem.eventType == translatedHolidaysType) {
+		// plasma-framework uses the "libplasma5"/"libplasma6" translation domains.
+		if (isEventType(dayItem, eventTypeLabels.holidays)) {
 			return calendarManagerId + "_Holidays"
-		} else if (dayItem.eventType == translatedEventsType) {
+		} else if (isEventType(dayItem, eventTypeLabels.events)) {
 			return calendarManagerId + "_Events"
-		} else if (dayItem.eventType == translatedTodoType) {
+		} else if (isEventType(dayItem, eventTypeLabels.todo)) {
 			return calendarManagerId + "_Todo"
-		} else if (dayItem.eventType == translatedOtherType) {
+		} else if (isEventType(dayItem, eventTypeLabels.other)) {
 			return calendarManagerId + "_Other"
 		} else {
 			return calendarManagerId + "_NotImplemented"
@@ -169,7 +232,7 @@ CalendarManager {
 			var endDateTime = new Date(Shared.isValidDate(dayItem.endDateTime) ? dayItem.endDateTime : day)
 			// logger.log('\t startDateTime', dayItem.startDateTime, startDateTime)
 			// logger.log('\t endDateTime', dayItem.endDateTime, endDateTime)
-
+			
 			if (dayItem.isAllDay) {
 				start.date = Shared.localeDateString(startDateTime) // 2018-01-31
 				// Google Calendar has the event start at midnight, and end at midnight the next day
@@ -186,7 +249,7 @@ CalendarManager {
 			var calendarId = parseCalendarId(dayItem)
 			var eventId = calendarId + "_" + startDateTime.getTime() + "_" + endDateTime.getTime()
 
-			var eventColor = dayItem.eventColor || theme.highlightColor
+			var eventColor = dayItem.eventColor || Kirigami.Theme.highlightColor
 			eventColor = "" + eventColor // Cast to string, as dayItem.eventColor is a QColor which JSON treats as an object
 
 			var event = {
@@ -210,7 +273,7 @@ CalendarManager {
 
 	function getEventsForDate(date) {
 		var dayEvents = calendarBackend.daysModel.eventsForDate(date)
-		return parseEventsForDate(dayEvents)
+		return parseEventsForDate(date, dayEvents)
 	}
 
 	function getEventsForDuration(dateMin, dateMax) {
@@ -224,7 +287,7 @@ CalendarManager {
 		calendarBackend.displayedDate = middleDay
 
 		var items = []
-
+		
 		// 2018-05-24T00:00:00.000Z
 		var dateMinUtcStr = Shared.localeDateString(dateMin) + 'T00:00:00.000Z'
 		var dateMinUtc = new Date(dateMinUtcStr)
@@ -234,42 +297,17 @@ CalendarManager {
 		for (var day = new Date(dateMinUtc); day < dateMax; day.setDate(day.getDate() + 1)) {
 			var dayEvents = calendarBackend.daysModel.eventsForDate(day)
 			if (dayEvents.length) {
-				logger.debugJSON('PlasmaCalendar', day, dayEvents)
+				logger.debugJSON('PlasmaCalendar.dayEvents', {
+					date: day.toISOString(),
+					count: dayEvents.length,
+				})
 			}
 			items = items.concat(parseEventsForDate(day, dayEvents))
 		}
 		// logger.debugJSON(items)
 
-		// We need to filter out the repeated items for multi-day events as Plasma creates a new "event item"
-		// for each day of the event.
-		for (var i = 0; i < items.length; i++) {
-			var itemA = items[i]
-
-			// Check every event before this one.
-			for (var j = 0; j < i; j++) {
-				var itemB = items[j]
-				if (itemA.eventId == itemB.eventId) {
-					// There's a conflict, TODO: generate a better eventIds
-
-					if (itemA.start.date == itemB.start.date
-						&& itemA.start.dateTime == itemB.start.dateTime
-						&& itemA.end.date == itemB.end.date
-						&& itemA.end.dateTime == itemB.end.dateTime
-						&& itemA.summary == itemB.summary
-					) {
-						// Same event.
-
-						// logger.debug('itemA == itemB, removing')
-						// logger.debugJSON('\titemA', itemA)
-						// logger.debugJSON('\titemB', itemB)
-
-						items.splice(i, 1) // remove this event item
-						i -= 1 // start this index again
-						break // exit j/itemB loop
-					}
-				}
-			}
-		}
+		// Plasma may return the same parsed item more than once for multi-day/plugin events.
+		items = PlasmaCalendarEventState.dedupeParsedEvents(items)
 
 		return items
 	}
@@ -311,7 +349,7 @@ CalendarManager {
 		}
 	}
 
-	onCalendarParsing: {
+	onCalendarParsing: function(calendarId, data) {
 		var calendar = getCalendar(calendarId)
 		parseEventList(calendar, data.items)
 	}
@@ -351,7 +389,7 @@ CalendarManager {
 			'--summary',
 			text,
 		]
-		executable.exec(cmd, function(cmd, exitCode, exitStatus, stdout, stderr){
+		executable.execArgv(cmd, function(cmd, exitCode, exitStatus, stdout, stderr){
 			logger.debug('konsolekalendar.cmd', cmd)
 			logger.debug('konsolekalendar.exitCode', exitCode)
 			logger.debug('konsolekalendar.exitStatus', exitStatus)

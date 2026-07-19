@@ -1,9 +1,8 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Controls 2.0 as QQC2
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents3
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
 import "LocaleFuncs.js" as LocaleFuncs
 import "Shared.js" as Shared
@@ -13,10 +12,27 @@ LinkRect {
 	readonly property int eventItemIndex: index
 	Layout.fillWidth: true
 	implicitHeight: contents.implicitHeight
+	activeFocusOnTab: enabled
+	Accessible.role: Accessible.Button
+	Accessible.name: model.summary || i18n("Calendar event")
+	Accessible.description: accessibleDescription()
+	Accessible.focusable: activeFocusOnTab
+	Accessible.focused: activeFocus
+	Accessible.onPressAction: activateEvent()
+	Keys.onReturnPressed: function(event) {
+		activateEvent()
+		event.accepted = true
+	}
+	Keys.onEnterPressed: function(event) {
+		activateEvent()
+		event.accepted = true
+	}
+	Keys.onSpacePressed: function(event) {
+		activateEvent()
+		event.accepted = true
+	}
 
 	property bool eventItemInProgress: false
-	property bool eventItemInPast: false
-
 	function checkIfInProgress() {
 		if (model.startDateTime && timeModel.currentTime && model.endDateTime) {
 			eventItemInProgress = model.startDateTime <= timeModel.currentTime && timeModel.currentTime <= model.endDateTime
@@ -24,11 +40,6 @@ LinkRect {
 			eventItemInProgress = false
 		}
 		// console.log('checkIfInProgress()', model.start, timeModel.currentTime, model.end)
-		if (model.startDateTime && timeModel.currentTime && model.endDateTime) {
-			eventItemInPast = model.endDateTime < timeModel.currentTime
-		} else {
-			eventItemInPast = false
-		}
 	}
 	Connections {
 		target: timeModel
@@ -48,12 +59,32 @@ LinkRect {
 
 	property alias isEditing: editEventForm.active
 	enabled: !isEditing
+	function activateEvent() {
+		if (!enabled) {
+			return
+		}
+		Shared.openExternalUrl(model.htmlLink)
+	}
+	function accessibleDescription() {
+		var parts = []
+		if (eventTimestamp) {
+			parts.push(eventTimestamp)
+		}
+		if (model.location) {
+			parts.push(model.location)
+		}
+		if (eventItemInProgress) {
+			parts.push(i18n("In progress"))
+		}
+		parts.push(i18n("Press to open the event in the browser"))
+		return parts.join(". ")
+	}
 
 	readonly property string eventTimestamp: LocaleFuncs.formatEventDuration(model, {
 		relativeDate: agendaItemDate,
 		clock24h: appletConfig.clock24h,
 	})
-	readonly property bool isAllDay: eventTimestamp === i18n("All Day") // TODO: Remove string comparison.
+	readonly property bool isAllDay: !!model.start && !!model.start.date && !model.start.dateTime
 	readonly property bool isCondensed: plasmoid.configuration.agendaCondensedAllDayEvent && isAllDay
 
 
@@ -63,7 +94,7 @@ LinkRect {
 	QQC2.ToolTip {
 		id: eventToolTip
 		x: 0
-		y: agendaEventItem.height + PlasmaCore.Units.smallSpacing
+		y: agendaEventItem.height + Kirigami.Units.smallSpacing
 		width: agendaEventItem.width
 		delay: 1000
 
@@ -113,12 +144,12 @@ LinkRect {
 		id: contents
 		anchors.left: parent.left
 		anchors.right: parent.right
-		spacing: 4 * units.devicePixelRatio
+		spacing: 4 * Screen.devicePixelRatio
 
 		Rectangle {
 			implicitWidth: appletConfig.eventIndicatorWidth
 			Layout.fillHeight: true
-			color: model.backgroundColor || theme.textColor
+			color: model.backgroundColor || Kirigami.Theme.textColor
 		}
 
 		ColumnLayout {
@@ -129,16 +160,13 @@ LinkRect {
 			PlasmaComponents3.Label {
 				id: eventSummary
 				text: {
-					var eventBullet = eventItemInPast ? '✓ ' : ' '
 					if (isCondensed && model.location) {
-						return eventBullet + model.summary + " | " + model.location
+						return model.summary + " | " + model.location
 					} else {
-						return eventBullet + model.summary
+						return model.summary
 					}
 				}
-				color: {
-					eventItemInPast ? PlasmaCore.ColorScope.disabledTextColor : (eventItemInProgress ? inProgressColor : PlasmaCore.ColorScope.textColor)
-				}
+				color: eventItemInProgress ? inProgressColor : Kirigami.Theme.textColor
 				font.pointSize: -1
 				font.pixelSize: appletConfig.agendaFontSize
 				font.weight: eventItemInProgress ? inProgressFontWeight : Font.Normal
@@ -160,8 +188,8 @@ LinkRect {
 						return eventTimestamp
 					}
 				}
-				color: eventItemInProgress ? inProgressColor : (eventItemInPast ? PlasmaCore.ColorScope.disabledTextColor : PlasmaCore.ColorScope.textColor)
-				opacity: eventItemInProgress ? 1 : (eventItemInPast ? 0.25 : 0.75)
+				color: eventItemInProgress ? inProgressColor : Kirigami.Theme.textColor
+				opacity: eventItemInProgress ? 1 : 0.75
 				font.pointSize: -1
 				font.pixelSize: appletConfig.agendaFontSize
 				font.weight: eventItemInProgress ? inProgressFontWeight : Font.Normal
@@ -171,7 +199,7 @@ LinkRect {
 			Item {
 				id: eventDescriptionSpacing
 				visible: eventDescription.visible
-				implicitHeight: 4 * units.devicePixelRatio
+				implicitHeight: 4 * Screen.devicePixelRatio
 			}
 
 			PlasmaComponents3.Label {
@@ -179,9 +207,7 @@ LinkRect {
 				readonly property bool showProperty: plasmoid.configuration.agendaShowEventDescription && text
 				visible: showProperty && !editEventForm.visible
 				text: Shared.renderText(model.description)
-				
-				color: eventItemInPast ? PlasmaCore.ColorScope.disabledTextColor : (eventItemInProgress ? inProgressColor : PlasmaCore.ColorScope.textColor)
-				
+				color: Kirigami.Theme.textColor
 				opacity: 0.75
 				font.pointSize: -1
 				font.pixelSize: appletConfig.agendaFontSize
@@ -192,7 +218,7 @@ LinkRect {
 				maximumLineCount: plasmoid.configuration.agendaMaxDescriptionLines
 				elide: Text.ElideRight
 
-				linkColor: PlasmaCore.ColorScope.highlightColor
+				linkColor: Kirigami.Theme.highlightColor
 				onLinkActivated: Shared.openExternalUrl(link)
 				MouseArea {
 					anchors.fill: parent
@@ -204,7 +230,7 @@ LinkRect {
 			Item {
 				id: eventEditorSpacing
 				visible: editEventForm.visible
-				implicitHeight: 4 * units.devicePixelRatio
+				implicitHeight: 4 * Screen.devicePixelRatio
 			}
 
 			EditEventForm {
@@ -215,7 +241,7 @@ LinkRect {
 			Item {
 				id: eventEditorSpacingBelow
 				visible: editEventForm.visible
-				implicitHeight: 4 * units.devicePixelRatio
+				implicitHeight: 4 * Screen.devicePixelRatio
 			}
 
 			Loader {
@@ -237,22 +263,15 @@ LinkRect {
 							return i18n("Hangout")
 						}
 					}
-					contentItem: Text {
-						text: eventHangoutLink.text
-						color: eventItemInPast ? PlasmaCore.ColorScope.disabledTextColor : (eventItemInProgress ? inProgressColor : PlasmaCore.ColorScope.textColor)
-					}
-					icon.source: plasmoid.file("", "icons/Hangouts_2018.svg")
+					icon.source: Qt.resolvedUrl("../icons/hangouts.svg")
 					onClicked: Shared.openExternalUrl(externalLink)
-					flat: eventItemInPast
-
 				}
 			}
 
 		} // eventColumn
 	}
-
+	
 	onLeftClicked: {
-		// logger.log('agendaItem.event.leftClicked', model.startDateTime, mouse)
 		if (false) {
 			var event = events.get(eventItemIndex)
 			logger.logJSON("event", event)
@@ -260,8 +279,7 @@ LinkRect {
 			logger.logJSON("calendar", calendar)
 			upcomingEvents.sendEventStartingNotification(model)
 		} else {
-			// agenda_event_clicked == "browser_viewevent"
-			Shared.openExternalUrl(model.htmlLink)
+			activateEvent()
 		}
 	}
 
@@ -271,7 +289,7 @@ LinkRect {
 
 		menuItem = contextMenu.newMenuItem()
 		menuItem.text = i18n("Edit")
-		menuItem.icon = "edit-rename"
+		menuItem.icon.name = "edit-rename"
 		menuItem.enabled = event.canEdit
 		menuItem.clicked.connect(function() {
 			editEventForm.active = !editEventForm.active
@@ -279,24 +297,23 @@ LinkRect {
 		})
 		contextMenu.addMenuItem(menuItem)
 
-		var deleteMenuItem = contextMenu.newSubMenu()
-		deleteMenuItem.text = i18n("Delete Event")
-		deleteMenuItem.icon = "delete"
-		menuItem = contextMenu.newMenuItem(deleteMenuItem)
+		var deleteMenu = contextMenu.newSubMenu()
+		deleteMenu.title = i18n("Delete Event")
+		deleteMenu.icon.name = "delete"
+		menuItem = deleteMenu.newMenuItem()
 		menuItem.text = i18n("Confirm Deletion")
-		menuItem.icon = "delete"
+		menuItem.icon.name = "delete"
 		menuItem.enabled = event.canEdit
 		menuItem.clicked.connect(function() {
 			logger.debug('eventModel.deleteEvent', event.calendarId, event.id)
 			eventModel.deleteEvent(event.calendarId, event.id)
 		})
-		deleteMenuItem.enabled = event.canEdit
-		deleteMenuItem.subMenu.addMenuItem(menuItem)
-		contextMenu.addMenuItem(deleteMenuItem)
+		deleteMenu.enabled = event.canEdit
+		deleteMenu.addMenuItem(menuItem)
 
 		menuItem = contextMenu.newMenuItem()
 		menuItem.text = i18n("Edit in browser")
-		menuItem.icon = "internet-web-browser"
+		menuItem.icon.name = "internet-web-browser"
 		menuItem.enabled = !!event.htmlLink
 		menuItem.clicked.connect(function() {
 			Shared.openExternalUrl(event.htmlLink)

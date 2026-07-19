@@ -1,10 +1,10 @@
-import QtQuick 2.0
-import QtQuick.Controls 2.2 as QQC2
-import QtQuick.Layouts 1.1
-import org.kde.kirigami 2.0 as Kirigami
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 2.0 as PlasmaComponents
-import org.kde.plasma.components 3.0 as PlasmaComponents3
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.components as PlasmaComponents3
+import org.kde.plasma.extras as PlasmaExtras
 
 import "LocaleFuncs.js" as LocaleFuncs
 
@@ -34,13 +34,13 @@ Item {
 
 		RowLayout {
 			id: topRow
-			spacing: 10 * units.devicePixelRatio
+			spacing: 10 * Screen.devicePixelRatio
 			property int contentsWidth: timerLabel.width + topRow.spacing + toggleButtonColumn.Layout.preferredWidth
 			property bool contentsFit: timerButtonView.width >= contentsWidth
 
 			PlasmaComponents3.ToolButton {
 				id: timerLabel
-				text: "0:00"
+				text: timerModel.formatTimer(timerModel.secondsLeft)
 				icon.name: {
 					if (timerModel.secondsLeft === 0) {
 						return 'chronometer'
@@ -50,11 +50,22 @@ Item {
 						return 'chronometer-start'
 					}
 				}
-				icon.width: units.iconSizes.large
-				icon.height: units.iconSizes.large
+				icon.width: Kirigami.Units.iconSizes.large
+				icon.height: Kirigami.Units.iconSizes.large
 				font.pointSize: -1
 				font.pixelSize: appletConfig.timerClockFontHeight
 				Layout.alignment: Qt.AlignVCenter
+				focusPolicy: Qt.StrongFocus
+				Accessible.role: Accessible.Button
+				Accessible.name: {
+					if (timerModel.running) {
+						return i18n("Timer, %1 remaining. Activate to pause.", text)
+					}
+					if (timerModel.secondsLeft > 0) {
+						return i18n("Timer, %1 remaining. Activate to start.", text)
+					}
+					return i18n("Timer set to %1. Use plus or minus to change the duration.", text)
+				}
 				property string tooltip: {
 					var s = ""
 					if (timerModel.secondsLeft > 0) {
@@ -65,7 +76,7 @@ Item {
 						}
 						s += "\n"
 					}
-					s += i18n("Scroll to add to duration")
+					s += i18n("Scroll or use plus and minus keys to adjust duration")
 					return s
 				}
 				QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
@@ -79,6 +90,25 @@ Item {
 						timerModel.runTimer()
 					} else { // timerModel.secondsLeft == 0
 						// ignore
+					}
+				}
+
+				Keys.onPressed: function(event) {
+					if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
+						timerModel.increaseDuration()
+						timerModel.pause()
+						event.accepted = true
+						return
+					}
+					if (event.key === Qt.Key_Minus || event.key === Qt.Key_Underscore) {
+						timerModel.decreaseDuration()
+						timerModel.pause()
+						event.accepted = true
+						return
+					}
+					if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+						timerLabel.clicked()
+						event.accepted = true
 					}
 				}
 
@@ -106,7 +136,7 @@ Item {
 					}
 				}
 			}
-
+			
 			ColumnLayout {
 				id: toggleButtonColumn
 				Layout.alignment: Qt.AlignBottom
@@ -118,7 +148,7 @@ Item {
 					text: "Test"
 					visible: false
 				}
-
+				
 				PlasmaComponents3.ToolButton {
 					id: timerRepeatsButton
 					readonly property bool isChecked: plasmoid.configuration.timerRepeats // New property to avoid checked=pressed theming.
@@ -153,12 +183,12 @@ Item {
 					}
 				}
 			}
-
+			
 		}
 
 		RowLayout {
 			id: bottomRow
-			spacing: Math.floor(2 * units.devicePixelRatio)
+			spacing: Math.floor(2 * Screen.devicePixelRatio)
 
 			// onWidthChanged: console.log('row.width', width)
 
@@ -220,14 +250,14 @@ Item {
 
 	// https://github.com/KDE/plasma-framework/blob/master/src/declarativeimports/plasmacomponents/qmenu.cpp
 	// Example: https://github.com/KDE/plasma-desktop/blob/master/applets/taskmanager/package/contents/ui/ContextMenu.qml
-	PlasmaComponents.ContextMenu {
+	PlasmaExtras.Menu {
 		id: contextMenu
 
 		function newSeperator() {
-			return Qt.createQmlObject("import org.kde.plasma.components 2.0 as PlasmaComponents; PlasmaComponents.MenuItem { separator: true }", contextMenu)
+			return Qt.createQmlObject("import org.kde.plasma.components as PlasmaComponents; PlasmaExtras.Menu { separator: true }", contextMenu)
 		}
 		function newMenuItem() {
-			return Qt.createQmlObject("import org.kde.plasma.components 2.0 as PlasmaComponents; PlasmaComponents.MenuItem {}", contextMenu)
+			return Qt.createQmlObject("import org.kde.plasma.components as PlasmaComponents; PlasmaExtras.Menu {}", contextMenu)
 		}
 
 		function loadDynamicActions() {

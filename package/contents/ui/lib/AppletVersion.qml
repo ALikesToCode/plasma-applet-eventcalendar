@@ -1,14 +1,16 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Layouts 1.0
-import org.kde.plasma.plasmoid 2.0
+import QtQuick
+import QtQuick.Controls
 
 Item {
 	implicitWidth: label.implicitWidth
 	implicitHeight: label.implicitHeight
 
 	property string version: "?"
-	property string metadataFilepath: plasmoid.file("", "../metadata.desktop")
+	property string metadataFilepath: {
+		var path = Qt.resolvedUrl("../../metadata.json").toString()
+		return path.indexOf("file://") === 0 ? path.slice(7) : path
+	}
+
 	ExecUtil {
 		id: executable
 	}
@@ -19,19 +21,15 @@ Item {
 	}
 
 	Component.onCompleted: {
-		executable.exec([
-			'kreadconfig5',
-			'--file',
+		executable.execArgv([
+			"python3",
+			"-c",
+			"import json,sys; print(json.load(open(sys.argv[1]))['KPlugin']['Version'])",
 			metadataFilepath,
-			'--group',
-			'Desktop Entry',
-			'--key',
-			'X-KDE-PluginInfo-Version',
 		], function(cmd, exitCode, exitStatus, stdout) {
 			if (exitCode === 0) {
 				version = executable.trimOutput(stdout)
 			}
 		})
 	}
-
 }

@@ -1,11 +1,10 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Controls.Styles 1.1
-import QtQuick.Dialogs 1.2
-import QtQuick.Layouts 1.0
-import org.kde.kirigami 2.0 as Kirigami
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Dialogs
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 
-import org.kde.kcoreaddons 1.0 as KCoreAddons
+import org.kde.coreaddons as KCoreAddons
 
 import ".."
 import "../lib"
@@ -15,6 +14,28 @@ ConfigPage {
 
 	KCoreAddons.KUser {
 		id: kuser
+	}
+
+	readonly property string localCalendarDir: '/home/' + kuser.loginName + '/.local/share/plasma_org.kde.plasma.eventcalendar'
+
+	function normalizeLocalPath(value) {
+		var path = String(value || "").trim()
+		if (path.indexOf("file://") === 0) {
+			path = path.slice(7)
+		}
+		return path
+	}
+
+	function isAllowedCalendarUrl(value) {
+		var trimmed = String(value || "").trim()
+		if (!trimmed) {
+			return true
+		}
+		if (/^https?:\/\/\S+$/i.test(trimmed)) {
+			return true
+		}
+		var path = normalizeLocalPath(trimmed)
+		return path.indexOf(localCalendarDir + "/") === 0 && /\.ics$/i.test(path)
 	}
 
 	Base64JsonListModel {
@@ -32,8 +53,7 @@ ConfigPage {
 		}
 
 		function addNewCalendar() {
-			var dirPath = '/home/' + kuser.loginName + '/.local/share/plasma_org.kde.plasma.eventcalendar'
-			var icsPath = dirPath + '/calendar.ics'
+			var icsPath = localCalendarDir + '/calendar.ics'
 			addItem({
 				url: icsPath,
 				name: 'Label',
@@ -49,12 +69,12 @@ ConfigPage {
 			text: i18n("Calendars")
 		}
 		Button {
-			iconName: "resource-calendar-insert"
+			icon.name: "resource-calendar-insert"
 			text: i18n("Add Calendar")
 			onClicked: calendarsModel.addCalendar()
 		}
 		Button {
-			iconName: "resource-calendar-insert"
+			icon.name: "resource-calendar-insert"
 			text: i18n("New Calendar")
 			onClicked: calendarsModel.addNewCalendar()
 		}
@@ -74,7 +94,6 @@ ConfigPage {
 					Layout.preferredWidth: height
 					Layout.alignment: Qt.AlignTop
 					checked: show
-					style: CheckBoxStyle {}
 
 					onClicked: {
 						calendarsModel.setProperty(index, 'show', checked)
@@ -94,7 +113,7 @@ ConfigPage {
 							placeholderText: i18n("Calendar Label")
 						}
 						Button {
-							iconName: "trash-empty"
+							icon.name: "trash-empty"
 							onClicked: calendarsModel.removeIndex(index)
 						}
 					}
@@ -103,31 +122,32 @@ ConfigPage {
 							id: calendarUrlField
 							Layout.fillWidth: true
 							text: model.url
-							placeholderText: i18n("Absolute file path or http(s):// URL")
-							validator: RegExpValidator {
-								regExp: /^(|https?:\/\/.+|file:\/\/.+|\/.+)$/
-							}
+							placeholderText: i18n("https:// URL or local %1/*.ics file", localCalendarDir)
 							onTextChanged: {
-								if (text === '' || acceptableInput) {
+								if (isAllowedCalendarUrl(text)) {
 									calendarsModel.setItemProperty(index, 'url', text.trim())
 								}
 							}
 						}
 
 						Button {
-							iconName: "folder-open"
+							icon.name: "folder-open"
 							text: i18n("Browse")
 							onClicked: {
 								filePicker.open()
 							}
 
-							FileDialog {
-								id: filePicker
+								FileDialog {
+									id: filePicker
 
-								nameFilters: [ i18n("iCalendar (*.ics)") ]
+									nameFilters: [ i18n("iCalendar (*.ics)") ]
+									currentFolder: "file://" + localCalendarDir
 
-								onFileUrlChanged: {
-									calendarUrlField.text = fileUrl
+								onAccepted: {
+									var selected = selectedFile.toString()
+									if (isAllowedCalendarUrl(selected)) {
+										calendarUrlField.text = selected
+									}
 								}
 							}
 						}

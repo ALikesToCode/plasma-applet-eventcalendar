@@ -93,6 +93,7 @@ var weatherIconMap = {
 
 
 var weatherIconToTextMap = {}
+var MAX_WEATHERCANADA_HTML_LENGTH = 1024 * 1024
 /* Don't burden translators with these for now.
 var weatherIconToTextMap = {
 	'weather-clear': i18n("Clear"),
@@ -133,24 +134,32 @@ function getInner(html, a, b) {
 	return html.substr(start, end-start)
 }
 
+function assertReasonableHtml(html, label) {
+	if (typeof html !== "string" || !html.length) {
+		throw new Error("Error parsing " + label + ": empty html.")
+	}
+	if (html.length > MAX_WEATHERCANADA_HTML_LENGTH) {
+		throw new Error("Error parsing " + label + ": response too large.")
+	}
+}
+
 function loopInner(html, a, b, callback) {
 	var cursor = 0
-	for (var i = 0; i < 1000; i++) { // Hard limit of 1000 iterations
+	var index = 0
+	while (cursor < html.length) {
 		var start = html.indexOf(a, cursor)
 		if (start == -1) {
 			break
 		}
 		start += a.length
-		// console.log('loop', i, 'with', start, cursor)
 		var end = html.indexOf(b, start)
 		if (end == -1) {
 			break
 		}
 		var innerHtml = html.substr(start, end-start)
-		// console.log(i, start, end, innerHtml)
-		callback(innerHtml, i)
+		callback(innerHtml, index)
 		cursor = end + b.length
-		// console.log('cursor', cursor)
+		index++
 	}
 }
 
@@ -168,6 +177,7 @@ function parseFutureDate(day, month) {
 
 
 function parseDailyHtml(html) {
+	assertReasonableHtml(html, "daily weather page")
 	var weatherData = {
 		list: []
 	}
@@ -357,6 +367,7 @@ function parseDailyHtml(html) {
 
 
 function parseHourlyHtml(html) {
+	assertReasonableHtml(html, "hourly weather page")
 	var tableHtml = getInner(html, '<tbody>', '</tbody>')
 	if (!tableHtml) {
 		throw new Error('Error parsing hourly table')
@@ -364,19 +375,20 @@ function parseHourlyHtml(html) {
 	return parseHourlyTbody(tableHtml)
 }
 function parseHourlyTbody(html) {
+	assertReasonableHtml(html, "hourly weather table")
 	// Iterate all <tr>
 	var cursor = 0
 	var dateStr
 	var weatherData = {
 		list: []
 	}
-	for (var i = 0; i < 1000; i++) { // Hard limit of 1000 iterations
+	while (cursor < html.length) {
 		var start = html.indexOf('<tr>', cursor)
 		if (start == -1) {
 			break
 		}
 		start += '<tr>'.length
-		var end = html.indexOf('</tr>', cursor)
+		var end = html.indexOf('</tr>', start)
 		if (end == -1) {
 			throw new Error('Error parsing hourly row. Closing </tr> not found.')
 		}

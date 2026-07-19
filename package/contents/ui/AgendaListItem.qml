@@ -1,8 +1,8 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents3
+import QtQuick
+import QtQuick.Controls as QQC2
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
 import "Shared.js" as Shared
 import "./weather/WeatherApi.js" as WeatherApi
@@ -46,6 +46,21 @@ GridLayout {
 		newEventForm.active = false
 		agendaListItem.checkIfToday()
 	}
+	function openWeatherForecast() {
+		WeatherApi.openCityUrl(plasmoid.configuration)
+	}
+	function toggleNewEventForm() {
+		newEventForm.active = !newEventForm.active
+	}
+	function fullDateLabel() {
+		return Qt.formatDateTime(agendaItemDate, Locale.LongFormat)
+	}
+	function weatherAccessibleName() {
+		return i18n("Weather forecast for %1", fullDateLabel())
+	}
+	function dateAccessibleDescription() {
+		return i18n("Press to add a new event on %1", fullDateLabel())
+	}
 
 	// readonly property int itemOffset: agendaScrollView.getItemOffsetY(index)
 	// readonly property int scrollOffset: agendaScrollView.scrollY - itemOffset
@@ -53,6 +68,7 @@ GridLayout {
 	// onItemOffsetChanged: console.log(index, 'itemOffset', itemOffset)
 
 	LinkRect {
+		id: weatherLink
 		visible: agendaModel.showDailyWeather
 		Layout.alignment: Qt.AlignTop
 		Layout.column: weatherOnRight ? 2 : 0
@@ -64,6 +80,25 @@ GridLayout {
 			}
 		}
 		implicitHeight: itemWeatherColumn.implicitHeight
+		activeFocusOnTab: visible && enabled
+		Accessible.role: Accessible.Button
+		Accessible.name: weatherAccessibleName()
+		Accessible.description: i18n("Press to open the weather forecast in your browser")
+		Accessible.focusable: activeFocusOnTab
+		Accessible.focused: activeFocus
+		Accessible.onPressAction: openWeatherForecast()
+		Keys.onReturnPressed: function(event) {
+			openWeatherForecast()
+			event.accepted = true
+		}
+		Keys.onEnterPressed: function(event) {
+			openWeatherForecast()
+			event.accepted = true
+		}
+		Keys.onSpacePressed: function(event) {
+			openWeatherForecast()
+			event.accepted = true
+		}
 
 		// readonly property int maxOffset: agendaListItem.height - height
 		// Layout.topMargin: agendaListItem.isCurrentItem ? Math.min(maxOffset, agendaListItem.scrollOffset) : 0
@@ -76,7 +111,7 @@ GridLayout {
 
 			FontIcon {
 				visible: showWeather && plasmoid.configuration.agendaWeatherShowIcon
-				color: agendaItemIsToday ? inProgressColor : PlasmaCore.ColorScope.textColor
+				color: agendaItemIsToday ? inProgressColor : Kirigami.Theme.textColor
 				source: weatherIcon
 				height: appletConfig.agendaWeatherIconSize
 				showOutline: plasmoid.configuration.showOutlines
@@ -87,7 +122,7 @@ GridLayout {
 				id: itemWeatherText
 				visible: showWeather && plasmoid.configuration.agendaWeatherShowText
 				text: weatherText
-				color: agendaItemIsToday ? inProgressColor : PlasmaCore.ColorScope.textColor
+				color: agendaItemIsToday ? inProgressColor : Kirigami.Theme.textColor
 				opacity: agendaItemIsToday ? 1 : 0.75
 				font.pointSize: -1
 				font.pixelSize: appletConfig.agendaFontSize
@@ -103,7 +138,7 @@ GridLayout {
 					var low = isNaN(model.tempLow) ? '?' : model.tempLow + '°'
 					return high + ' | ' + low
 				}
-				color: agendaItemIsToday ? inProgressColor : PlasmaCore.ColorScope.textColor
+				color: agendaItemIsToday ? inProgressColor : Kirigami.Theme.textColor
 				opacity: agendaItemIsToday ? 1 : 0.75
 				font.pointSize: -1
 				font.pixelSize: appletConfig.agendaFontSize
@@ -116,18 +151,34 @@ GridLayout {
 		tooltipSubText: weatherNotes
 
 		onLeftClicked: {
-			// console.log('agendaItem.date.clicked', date)
-			if (true) {
-				// agenda_weather_clicked == "browser_viewcityforecast"
-				WeatherApi.openCityUrl(plasmoid.configuration)
-			}
+			openWeatherForecast()
 		}
 	}
 
 	LinkRect {
+		id: dateLink
 		Layout.alignment: Qt.AlignTop
 		Layout.column: weatherOnRight ? 0 : 1
 		implicitWidth: appletConfig.agendaDateColumnWidth
+		activeFocusOnTab: enabled
+		Accessible.role: Accessible.Button
+		Accessible.name: fullDateLabel()
+		Accessible.description: dateAccessibleDescription()
+		Accessible.focusable: activeFocusOnTab
+		Accessible.focused: activeFocus
+		Accessible.onPressAction: toggleNewEventForm()
+		Keys.onReturnPressed: function(event) {
+			toggleNewEventForm()
+			event.accepted = true
+		}
+		Keys.onEnterPressed: function(event) {
+			toggleNewEventForm()
+			event.accepted = true
+		}
+		Keys.onSpacePressed: function(event) {
+			toggleNewEventForm()
+			event.accepted = true
+		}
 
 		// readonly property int maxOffset: agendaListItem.height - height
 		// Layout.topMargin: agendaListItem.isCurrentItem ? Math.min(maxOffset, agendaListItem.scrollOffset) : 0
@@ -143,7 +194,7 @@ GridLayout {
 			PlasmaComponents3.Label {
 				id: itemDate
 				text: Qt.formatDateTime(date, i18nc("agenda date format line 1", "MMM d"))
-				color: agendaItemIsToday ? inProgressColor : PlasmaCore.ColorScope.textColor
+				color: agendaItemIsToday ? inProgressColor : Kirigami.Theme.textColor
 				opacity: agendaItemIsToday ? 1 : 0.75
 				font.pointSize: -1
 				font.pixelSize: appletConfig.agendaFontSize
@@ -155,7 +206,7 @@ GridLayout {
 			PlasmaComponents3.Label {
 				id: itemDay
 				text: Qt.formatDateTime(date, i18nc("agenda date format line 2", "ddd"))
-				color: agendaItemIsToday ? inProgressColor : PlasmaCore.ColorScope.textColor
+				color: agendaItemIsToday ? inProgressColor : Kirigami.Theme.textColor
 				opacity: agendaItemIsToday ? 1 : 0.5
 				font.pointSize: -1
 				font.pixelSize: appletConfig.agendaFontSize
@@ -166,13 +217,12 @@ GridLayout {
 		}
 
 		onLeftClicked: {
-			// console.log('agendaItem.date.leftClicked', date)
 			if (false) {
 				// agenda_date_clicked == "browser_newevent"
 				Shared.openGoogleCalendarNewEventUrl(date)
 			} else if (true) {
 				// agenda_date_clicked == "agenda_newevent"
-				newEventForm.active = !newEventForm.active
+				toggleNewEventForm()
 			}
 		}
 	}

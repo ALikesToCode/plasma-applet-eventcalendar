@@ -1,9 +1,7 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Controls.Styles 1.0
-import QtQuick.Dialogs 1.0
-import QtQuick.Layouts 1.0
-import org.kde.kirigami 2.0 as Kirigami
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 
 import ".."
 import "../lib"
@@ -21,14 +19,14 @@ ConfigPage {
 	property string timeFormat24hour: 'hh:mm'
 	property string timeFormat12hour: 'h:mm AP'
 
-	property bool showDebug: plasmoid.configuration.debugging
+	property bool showDebug: page.configBridge.read("debugging", false)
 	property int indentWidth: 24 * Kirigami.Units.devicePixelRatio
 
 	function setMouseWheelCommands(up, down) {
-		plasmoid.configuration.clockMouseWheel == 'RunCommands'
+		page.configBridge.write("clockMouseWheel", "RunCommands")
 		clockMousewheelGroupRunCommands.checked = true
-		plasmoid.configuration.clockMouseWheelUp = up
-		plasmoid.configuration.clockMouseWheelDown = down
+		page.configBridge.write("clockMouseWheelUp", up)
+		page.configBridge.write("clockMouseWheelDown", down)
 	}
 
 
@@ -275,14 +273,14 @@ ConfigPage {
 			level: 3
 		}
 		ConfigSection {
-			ExclusiveGroup { id: clockMousewheelGroup }
+			ButtonGroup { id: clockMousewheelGroup }
 
 			RadioButton {
 				id: clockMousewheelGroupRunCommands
 				text: i18n("Run Commands")
-				exclusiveGroup: clockMousewheelGroup
-				checked: plasmoid.configuration.clockMouseWheel == 'RunCommands'
-				onClicked: plasmoid.configuration.clockMouseWheel = 'RunCommands'
+				ButtonGroup.group: clockMousewheelGroup
+				checked: page.configBridge.read("clockMouseWheel", "") == 'RunCommands'
+				onClicked: page.configBridge.write("clockMouseWheel", "RunCommands")
 			}
 			RowLayout {
 				Layout.fillWidth: true
@@ -308,7 +306,7 @@ ConfigPage {
 			}
 
 			RadioButton {
-				exclusiveGroup: clockMousewheelGroup
+				ButtonGroup.group: clockMousewheelGroup
 				checked: false
 				text: i18n("Volume (No UI) (amixer)")
 				property string upCommand:   'amixer -q sset Master 10%+'
@@ -317,7 +315,7 @@ ConfigPage {
 			}
 			
 			RadioButton {
-				exclusiveGroup: clockMousewheelGroup
+				ButtonGroup.group: clockMousewheelGroup
 				checked: false
 				text: i18n("Volume (UI) (qdbus)")
 				property string upCommand:   'qdbus org.kde.kglobalaccel /component/kmix invokeShortcut "increase_volume"'
@@ -336,11 +334,6 @@ ConfigPage {
 			configKey: 'showBackground'
 			Layout.fillWidth: true
 			text: i18n("Desktop Widget: Show background")
-		}
-		ConfigCheckBox {
-			configKey: 'forceExpanded'
-			Layout.fillWidth: true
-			text: i18n("Always keep expanded (panels)")
 		}
 	}
 

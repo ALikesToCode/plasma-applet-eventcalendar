@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event Calendar - Login Complete</title>
+  <style>
+  {{STYLE}}
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <div class="eyebrow">Event Calendar</div>
+      <h1>Login complete</h1>
+      <p>If the widget did not auto-capture, copy the code or token below.</p>
+      <div class="row" style="justify-content: center;">
+        <button class="secondary" onclick="window.close()">Close tab</button>
+      </div>
+    </header>
+    <section class="card helper">
+      <h3>Authorization code</h3>
+      <p>Copy this code and paste it into the widget input if needed.</p>
+      <input id="authCode" type="text" readonly value="{{CODE}}">
+      <div class="row">
+        <button id="copyCodeBtn">Copy code</button>
+        <span class="status" id="codeStatus">Ready.</span>
+      </div>
+    </section>
+    <section class="card helper">
+      <h3>Token JSON (manual fallback)</h3>
+      <p>If the widget did not update, paste this JSON into the widget input field.</p>
+      <textarea id="tokenJson" readonly rows="6">{{TOKEN_JSON}}</textarea>
+      <div class="row">
+        <button id="copyTokenBtn">Copy token JSON</button>
+        <span class="status" id="tokenStatus">Ready.</span>
+      </div>
+    </section>
+    <section class="card">
+      <h3>Next step</h3>
+      <p>Return to the widget settings to finish syncing calendars and tasks.</p>
+    </section>
+  </main>
+  <script>
+    function setStatus(id, message) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.textContent = message;
+      }
+    }
+    function copyValue(id, statusId) {
+      var el = document.getElementById(id);
+      if (!el) {
+        setStatus(statusId, "Missing field.");
+        return;
+      }
+      var value = el.value || el.textContent || "";
+      if (!value) {
+        setStatus(statusId, "Nothing to copy.");
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(function() {
+          setStatus(statusId, "Copied.");
+        }).catch(function() {
+          fallbackCopy(el, value, statusId);
+        });
+      } else {
+        fallbackCopy(el, value, statusId);
+      }
+    }
+    function fallbackCopy(el, value, statusId) {
+      var isInput = el.tagName === "INPUT" || el.tagName === "TEXTAREA";
+      if (!isInput) {
+        var temp = document.createElement("textarea");
+        temp.value = value;
+        document.body.appendChild(temp);
+        temp.select();
+        tryCopy(statusId);
+        document.body.removeChild(temp);
+        return;
+      }
+      el.focus();
+      el.select();
+      tryCopy(statusId);
+    }
+    function tryCopy(statusId) {
+      try {
+        var ok = document.execCommand("copy");
+        setStatus(statusId, ok ? "Copied." : "Copy failed.");
+      } catch (e) {
+        setStatus(statusId, "Copy failed.");
+      }
+    }
+    document.getElementById("copyCodeBtn").addEventListener("click", function() {
+      copyValue("authCode", "codeStatus");
+    });
+    document.getElementById("copyTokenBtn").addEventListener("click", function() {
+      copyValue("tokenJson", "tokenStatus");
+    });
+  </script>
+</body>
+</html>

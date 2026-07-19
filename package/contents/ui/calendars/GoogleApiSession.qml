@@ -1,16 +1,90 @@
-import QtQuick 2.0
+import QtQuick
 
 import "../lib/Requests.js" as Requests
+import "../lib/GoogleOAuthToken.js" as GoogleOAuthToken
 
 QtObject {
 	id: googleApiSession
 
-	readonly property string accessToken: plasmoid.configuration.accessToken
+	property var accountsStore
+	property string accountId: ""
+	property int accountRevision: 0
+	property var connectedStore: null
+	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
+
+	readonly property string accessToken: {
+		// Ensure refreshes propagate when account data updates.
+		var _accountId = accountId
+		var _ = accountRevision
+		var account = getAccount()
+		return account ? account.accessToken : ""
+	}
+
+	function getAccount() {
+		if (!accountsStore || !accountId) {
+			return null
+		}
+		return accountsStore.getAccount(accountId)
+	}
+
+	function readConfig(key, fallback) {
+		if (typeof plasmoid !== "undefined" && plasmoid.configuration) {
+			var value = plasmoid.configuration[key]
+			return (value === undefined || value === null) ? fallback : value
+		}
+		return fallback
+	}
+
+	function normalizedClientValue(value) {
+		return value ? String(value).trim() : ""
+	}
+
+	function resolveRefreshClientSecret(account) {
+		if (!account || account.sessionUsesPkce === true) {
+			return ""
+		}
+		if (account.sessionClientSecret) {
+			return normalizedClientValue(account.sessionClientSecret)
+		}
+		var customClientId = normalizedClientValue(readConfig("customClientId", ""))
+		var customClientSecret = normalizedClientValue(readConfig("customClientSecret", ""))
+		var latestClientId = normalizedClientValue(readConfig("latestClientId", ""))
+		var latestClientSecret = normalizedClientValue(readConfig("latestClientSecret", ""))
+		if (account.sessionClientId === customClientId) {
+			return customClientSecret
+		}
+		if (account.sessionClientId === latestClientId && latestClientSecret) {
+			return latestClientSecret
+		}
+		if (account.sessionClientId === defaultClientId) {
+			return ""
+		}
+		return ""
+	}
 
 	//--- Refresh Credentials
 	function checkAccessToken(callback) {
 		logger.debug('checkAccessToken')
-		if (plasmoid.configuration.accessTokenExpiresAt < Date.now() + 5000) {
+		var account = getAccount()
+		if (!account) {
+			logger.log('checkAccessToken', 'No Google account', accountId)
+			return callback('No Google account.')
+		}
+		if (account.reauthRequired) {
+			return callback(GoogleOAuthToken.refreshErrorMessage(null, {
+				error: "invalid_grant",
+				error_subtype: account.reauthReason || "",
+			}))
+		}
+		if (!account.accessToken && account.refreshToken) {
+			updateAccessToken(callback)
+			return
+		}
+		if (!account.accessToken) {
+			logger.log('checkAccessToken', 'No refresh token', accountId)
+			return callback('No refresh token. Please login again.')
+		}
+		if (account.accessTokenExpiresAt < Date.now() + 5000) {
 			updateAccessToken(callback)
 		} else {
 			callback(null)
@@ -18,25 +92,79 @@ QtObject {
 	}
 
 	function updateAccessToken(callback) {
-		// logger.debug('accessTokenExpiresAt', plasmoid.configuration.accessTokenExpiresAt)
-		// logger.debug('                 now', Date.now())
-		// logger.debug('refreshToken', plasmoid.configuration.refreshToken)
-		if (plasmoid.configuration.refreshToken) {
-			logger.debug('updateAccessToken')
-			fetchNewAccessToken(function(err, data, xhr) {
-				if (err || (!err && data && data.error)) {
-					logger.log('Error when using refreshToken:', err, data)
-					return callback(err)
-				}
-				logger.debug('onAccessToken', data)
-				data = JSON.parse(data)
-
-				googleApiSession.applyAccessToken(data)
-
-				callback(null)
-			})
-		} else {
+		var account = getAccount()
+		if (!(account && account.refreshToken)) {
+			logger.log('updateAccessToken', 'No refresh token', accountId)
 			callback('No refresh token. Cannot update access token.')
+			return
+		}
+		if (refreshInFlight) {
+			refreshCallbacks.push(callback)
+			return
+		}
+		refreshInFlight = true
+		refreshCallbacks = [callback]
+		logger.debug('updateAccessToken')
+		fetchNewAccessToken(function(err, data, xhr) {
+			var parsed = GoogleOAuthToken.parseTokenResponse(data)
+			if (err || (parsed && parsed.error)) {
+				var refreshError = GoogleOAuthToken.refreshErrorMessage(err, parsed)
+				var summary = GoogleOAuthToken.errorSummary(parsed)
+				logger.logJSON('Error when using refreshToken:', {
+					status: xhr ? xhr.status : 0,
+					error: summary.error,
+					errorSubtype: summary.errorSubtype,
+					hasDescription: summary.hasDescription,
+				})
+				finishRefresh(refreshError)
+				if (GoogleOAuthToken.requiresReauthorization(parsed)) {
+					markReauthorizationRequired(summary.errorSubtype || summary.error)
+				}
+				return
+			}
+
+			if (!parsed) {
+				logger.log('Error parsing Google token refresh response.')
+				finishRefresh('Invalid refresh response.')
+				return
+			}
+			if (!parsed.access_token) {
+				logger.log('Missing access token in refresh response:', parsed)
+				finishRefresh('Missing access token.')
+				return
+			}
+
+			logger.debugJSON('onAccessToken', {
+				tokenType: parsed.token_type || '',
+				expiresIn: parsed.expires_in || 0,
+				hasAccessToken: !!parsed.access_token,
+			})
+			var callbacks = refreshCallbacks.slice(0)
+			refreshCallbacks = []
+			refreshInFlight = false
+			googleApiSession.applyAccessToken(parsed)
+			for (var i = 0; i < callbacks.length; i++) {
+				callbacks[i](null)
+			}
+		})
+	}
+
+	function markReauthorizationRequired(reason) {
+		if (!accountsStore || !accountId) {
+			return
+		}
+		accountsStore.updateAccount(accountId, {
+			reauthRequired: true,
+			reauthReason: reason || "invalid_grant",
+		})
+	}
+
+	function finishRefresh(err) {
+		var callbacks = refreshCallbacks.slice(0)
+		refreshCallbacks = []
+		refreshInFlight = false
+		for (var i = 0; i < callbacks.length; i++) {
+			callbacks[i](err)
 		}
 	}
 
@@ -44,26 +172,46 @@ QtObject {
 	signal newAccessToken()
 	signal transactionError(string msg)
 
+	property bool refreshInFlight: false
+	property var refreshCallbacks: []
+
 	onTransactionError: logger.log(msg)
 
 	function applyAccessToken(data) {
-		plasmoid.configuration.accessToken = data.access_token
-		plasmoid.configuration.accessTokenType = data.token_type
-		plasmoid.configuration.accessTokenExpiresAt = Date.now() + data.expires_in * 1000
+		if (!accountsStore || !accountId) {
+			return
+		}
+		var patch = {
+			accessToken: data.access_token,
+			accessTokenType: data.token_type,
+			accessTokenExpiresAt: Date.now() + data.expires_in * 1000,
+		}
+		if (data.refresh_token) {
+			patch.refreshToken = data.refresh_token
+		}
+		accountsStore.updateAccount(accountId, patch)
 		newAccessToken()
 	}
 
 	function fetchNewAccessToken(callback) {
 		logger.debug('fetchNewAccessToken')
-		var url = 'https://www.googleapis.com/oauth2/v4/token'
+		var account = getAccount()
+		var refreshClientSecret = resolveRefreshClientSecret(account)
+		if (account && account.sessionUsesPkce !== true && !refreshClientSecret) {
+			return callback('Saved Google session requires a configured client secret. Please login again.')
+		}
+		var url = 'https://oauth2.googleapis.com/token'
+		var data = {
+			client_id: account ? account.sessionClientId : "",
+			refresh_token: account ? account.refreshToken : "",
+			grant_type: 'refresh_token',
+		}
+		if (refreshClientSecret) {
+			data.client_secret = refreshClientSecret
+		}
 		Requests.post({
 			url: url,
-			data: {
-				client_id: plasmoid.configuration.sessionClientId,
-				client_secret: plasmoid.configuration.sessionClientSecret,
-				refresh_token: plasmoid.configuration.refreshToken,
-				grant_type: 'refresh_token',
-			},
+			data: data,
 		}, callback)
 	}
 
@@ -81,7 +229,7 @@ QtObject {
 	}
 	// https://stackoverflow.com/questions/28507619/how-to-create-delay-function-in-qml
 	function delay(delayTime, callback) {
-		var timer = Qt.createQmlObject("import QtQuick 2.0; Timer {}", googleCalendarManager)
+		var timer = Qt.createQmlObject("import QtQuick; Timer {}", googleCalendarManager)
 		timer.interval = delayTime
 		timer.repeat = false
 		timer.triggered.connect(callback)
@@ -98,5 +246,56 @@ QtObject {
 		delay(timeout, function(){
 			callback()
 		})
+	}
+
+	function handleAccountUpdated(updatedId) {
+		if (updatedId === accountId) {
+			accountRevision += 1
+		}
+	}
+
+	function handleAccountsChanged() {
+		accountRevision += 1
+	}
+
+	function disconnectStore(store) {
+		if (!store) {
+			return
+		}
+		try {
+			store.accountUpdated.disconnect(handleAccountUpdated)
+		} catch (e) {}
+		try {
+			store.accountsChanged.disconnect(handleAccountsChanged)
+		} catch (e) {}
+	}
+
+	function connectStore(store) {
+		if (!store) {
+			return
+		}
+		store.accountUpdated.connect(handleAccountUpdated)
+		store.accountsChanged.connect(handleAccountsChanged)
+	}
+
+	onAccountsStoreChanged: {
+		if (connectedStore === accountsStore) {
+			return
+		}
+		disconnectStore(connectedStore)
+		connectedStore = accountsStore
+		connectStore(connectedStore)
+	}
+
+	Component.onCompleted: {
+		if (connectedStore !== accountsStore) {
+			connectStore(accountsStore)
+			connectedStore = accountsStore
+		}
+	}
+
+	Component.onDestruction: {
+		disconnectStore(connectedStore)
+		connectedStore = null
 	}
 }

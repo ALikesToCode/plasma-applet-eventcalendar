@@ -72,9 +72,6 @@
 		<entry name="showBackground" type="bool">
 			<default>true</default>
 		</entry>
-		<entry name="forceExpanded" type="bool">
-			<default>false</default>
-		</entry>
 		<entry name="topRowHeight" type="uint">
 			<default>100</default>
 		</entry>
@@ -86,6 +83,10 @@
 		</entry>
 		<entry name="rightColumnWidth" type="uint">
 			<default>400</default>
+		</entry>
+		<!-- Added in: v73 -->
+		<entry name="v73Migration" type="bool">
+			<default>false</default>
 		</entry>
 		<!-- Deprecated in: v72 -->
 		<entry name="v72Migration" type="bool">
@@ -247,9 +248,6 @@
 		<entry name="agendaBreakupMultiDayEvents" type="bool">
 			<default>false</default>
 		</entry>
-		<entry name="agendaBreakupReccurentEvents" type="bool">
-			<default>true</default>
-		</entry>
 		<entry name="agendaNewEventRememberCalendar" type="bool">
 			<default>true</default>
 		</entry>
@@ -346,17 +344,39 @@
 			<!-- Fedora: /usr/lib64/qt5/plugins/plasmacalendarplugins/ -->
 			<!-- Previously stored entire filepath before v72 migration -->
 			<label>A list of plugins where additional calendar event data can be sourced.</label>
-			<default>holidaysevents.so</default>
+			<default>holidaysevents.so,pimevents.so</default>
+		</entry>
+		<entry name="enabledCalendarPluginsAllowEmpty" type="bool">
+			<label>Whether an empty enabledCalendarPlugins list is intentional and should disable all Plasma calendar plugins.</label>
+			<default>false</default>
 		</entry>
 	</group>
 
 
 	<group name="Google Calendar">
+		<entry name="googleAccounts" type="string" stringType="base64json">
+			<default></default>
+		</entry>
+		<entry name="googleActiveAccountId" type="string">
+			<default></default>
+		</entry>
+		<entry name="googleRedirectMode" type="string">
+			<default>local</default>
+		</entry>
 		<entry name="latestClientId" type="string">
-			<default>391436299960-k0s16nm589meovhoblpcquqgbbrena17.apps.googleusercontent.com</default>
+			<default>352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com</default>
 		</entry>
 		<entry name="latestClientSecret" type="string">
-			<default>Gdr_7lKIQuGBD4Up3MOiw-7i</default>
+			<default></default>
+		</entry>
+		<entry name="useDesktopClient" type="bool">
+			<default>true</default>
+		</entry>
+		<entry name="customClientId" type="string">
+			<default></default>
+		</entry>
+		<entry name="customClientSecret" type="string">
+			<default></default>
 		</entry>
 		<entry name="sessionClientId" type="string">
 			<default></default>

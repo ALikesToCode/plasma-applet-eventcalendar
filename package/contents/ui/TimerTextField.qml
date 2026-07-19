@@ -1,7 +1,6 @@
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import org.kde.plasma.components 3.0 as PlasmaComponents3
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.components as PlasmaComponents3
 
 PlasmaComponents3.TextField {
 	id: timerTextField
@@ -9,7 +8,7 @@ PlasmaComponents3.TextField {
 	Layout.fillHeight: true
 	font.pointSize: -1
 	font.pixelSize: textFieldRow.fontPixelSize
-	horizontalAlignment: TextInput.AlignHCenter
+	horizontalAlignment: PlasmaComponents3.TextField.AlignHCenter
 	property string defaultText: "00"
 	text: defaultText
 	validator: IntValidator { bottom: 0; top: 59 }
