@@ -52,8 +52,8 @@ select_target_branch() {
     local plasma_major="$1"
     local default_branch="master"
 
-    if [ "$plasma_major" = "6" ]; then
-        echo "plasma-6"
+    if [ "$plasma_major" = "5" ]; then
+        echo "plasma-5"
         return 0
     fi
 
