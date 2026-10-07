@@ -24,6 +24,9 @@ cleanup() {
 
 trap cleanup EXIT
 
+# shellcheck source=lib/package-metadata.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/lib/package-metadata.sh"
+
 detect_plasma_major() {
     local version_line=""
     if command -v plasmashell >/dev/null 2>&1; then
@@ -51,8 +54,8 @@ select_target_branch() {
     local plasma_major="$1"
     local default_branch="master"
 
-    if [ "$plasma_major" = "6" ]; then
-        echo "plasma-6"
+    if [ "$plasma_major" = "5" ]; then
+        echo "plasma-5"
         return 0
     fi
 
@@ -257,7 +260,6 @@ fi
 
 # Parse arguments
 restartPlasmashell=false
-METADATA_FILE="$PWD/package/metadata.json"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -266,24 +268,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Verify metadata file exists
-if [ ! -f "$METADATA_FILE" ]; then
-    log "ERROR: metadata.json file not found"
-    exit 1
-fi
-
 # Install jq if needed
-if ! command -v jq &> /dev/null; then
+if [ ! -f "$PWD/package/metadata.desktop" ] && [ -f "$PWD/package/metadata.json" ] \
+    && ! command -v jq &> /dev/null; then
     log "Installing jq..."
     install_packages "jq"
     check_command_success "$?" "Failed to install jq"
 fi
 
 # Read package information
-packageNamespace=$(jq -r '.KPlugin.Id' "$METADATA_FILE")
-
-if [ -z "$packageNamespace" ]; then
-    log "ERROR: Failed to read package information from metadata.json"
+if ! packageNamespace=$(read_package_namespace "$PWD/package"); then
+    log "ERROR: Failed to read a valid package name from package metadata."
     exit 1
 fi
 
@@ -299,7 +294,7 @@ mkdir -p "$INSTALL_DIR"
 
 if [ -d "$INSTALL_DIR/$packageNamespace" ]; then
     log "Updating existing package..."
-    rm -rf "$INSTALL_DIR/$packageNamespace"
+    rm -rf -- "${INSTALL_DIR:?}/${packageNamespace:?}"
 fi
 
 log "Installing package..."

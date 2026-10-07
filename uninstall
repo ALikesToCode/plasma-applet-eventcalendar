@@ -24,23 +24,15 @@ cleanup() {
 
 trap cleanup EXIT
 
+# shellcheck source=lib/package-metadata.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/lib/package-metadata.sh"
+
 # Configuration
-METADATA_FILE="$PWD/package/metadata.json"
 BACKUP_DIR="$HOME/.local/share/plasma-widget-backups/$(date +%Y%m%d_%H%M%S)"
 
-# Verify metadata file exists
-if [ ! -f "$METADATA_FILE" ]; then
-    log "ERROR: metadata.json file not found in the package directory."
-    exit 1
-fi
-
-# Create backup directory
-mkdir -p "$BACKUP_DIR"
-cp -r "./package" "$BACKUP_DIR/"
-log "Backup created at: $BACKUP_DIR"
-
 # Install jq if needed
-if ! command -v jq &> /dev/null; then
+if [ ! -f "$PWD/package/metadata.desktop" ] && [ -f "$PWD/package/metadata.json" ] \
+    && ! command -v jq &> /dev/null; then
     log "Installing jq..."
     if [ -f /etc/debian_version ]; then
         sudo apt-get install -y jq
@@ -52,12 +44,15 @@ if ! command -v jq &> /dev/null; then
 fi
 
 # Read package information
-packageName=$(jq -r '.KPlugin.Id' "$METADATA_FILE")
-
-if [ -z "$packageName" ]; then
-    log "ERROR: Unable to read the package name from metadata.json."
+if ! packageName=$(read_package_namespace "$PWD/package"); then
+    log "ERROR: Unable to read a valid package name from package metadata."
     exit 1
 fi
+
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+cp -r "./package" "$BACKUP_DIR/"
+log "Backup created at: $BACKUP_DIR"
 
 QDBUS_BIN=$(command -v qdbus || command -v qdbus6) || {
     echo "qdbus not found" >&2
@@ -68,7 +63,7 @@ QDBUS_BIN=$(command -v qdbus || command -v qdbus6) || {
 INSTALL_DIR="$HOME/.local/share/plasma/plasmoids/$packageName"
 if [ -d "$INSTALL_DIR" ]; then
     log "Removing package: $packageName"
-    rm -rf "$INSTALL_DIR"
+    rm -rf -- "${INSTALL_DIR:?}"
     
     # Remove plasmoid instances
     log "Removing plasmoid instances..."
