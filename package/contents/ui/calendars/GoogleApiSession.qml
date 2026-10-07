@@ -1,11 +1,12 @@
 import QtQuick 2.0
 
 import "../lib/Requests.js" as Requests
+import "../lib"
 
 QtObject {
 	id: googleApiSession
 
-	ExecUtil { id: executable }
+	property var executable: ExecUtil { id: executable }
 
 	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
 	property string secretStorePath: plasmoid.file("", "scripts/secret_store.py")
@@ -96,11 +97,7 @@ QtObject {
 
 				callback(null)
 			})
-			})
-		} else {
-			logger.log("updateAccessToken", "No refresh token")
-			callback("No refresh token. Cannot update access token.")
-		}
+		})
 	}
 
 	signal accessTokenError(string msg)
