@@ -1,9 +1,9 @@
 // Version 6
 
-import QtQuick
-import org.kde.plasma.plasma5support as Plasma5Support
+import QtQuick 2.0
+import org.kde.plasma.core 2.0 as PlasmaCore
 
-Plasma5Support.DataSource {
+PlasmaCore.DataSource {
 	id: executable
 	engine: "executable"
 	connectedSources: []
