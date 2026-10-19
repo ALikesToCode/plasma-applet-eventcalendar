@@ -53,7 +53,7 @@ GridLayout {
 		newEventForm.active = !newEventForm.active
 	}
 	function fullDateLabel() {
-		return Qt.formatDateTime(agendaItemDate, Locale.LongFormat)
+		return agendaItemDate.toLocaleString(Qt.locale(), Qt.locale().dateTimeFormat(Locale.LongFormat))
 	}
 	function weatherAccessibleName() {
 		return i18n("Weather forecast for %1", fullDateLabel())
@@ -193,7 +193,7 @@ GridLayout {
 
 			PlasmaComponents3.Label {
 				id: itemDate
-				text: Qt.formatDateTime(date, i18nc("agenda date format line 1", "MMM d"))
+				text: date.toLocaleString(Qt.locale(), i18nc("agenda date format line 1", "MMM d"))
 				color: agendaItemIsToday ? inProgressColor : Kirigami.Theme.textColor
 				opacity: agendaItemIsToday ? 1 : 0.75
 				font.pointSize: -1
@@ -205,7 +205,7 @@ GridLayout {
 
 			PlasmaComponents3.Label {
 				id: itemDay
-				text: Qt.formatDateTime(date, i18nc("agenda date format line 2", "ddd"))
+				text: date.toLocaleString(Qt.locale(), i18nc("agenda date format line 2", "ddd"))
 				color: agendaItemIsToday ? inProgressColor : Kirigami.Theme.textColor
 				opacity: agendaItemIsToday ? 1 : 0.5
 				font.pointSize: -1
