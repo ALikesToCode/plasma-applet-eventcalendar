@@ -1,0 +1,13 @@
+{
+  "kind": "calendar#events",
+  "timeZone": "Etc/UTC",
+  "items": [
+    {"kind":"calendar#event","id":"timed","summary":"Gespräch über Förderung","organizer":{"email":"calendar@example.invalid"},"start":{"dateTime":"2026-10-28T08:30:00Z"},"end":{"dateTime":"2026-10-28T09:30:00Z"}},
+    {"kind":"calendar#event","id":"all-day","summary":"Ganztägiger Termin","organizer":{"email":"calendar@example.invalid"},"start":{"date":"2026-10-28"},"end":{"date":"2026-10-29"}},
+    {"kind":"calendar#event","id":"multi-day","summary":"Mehrere Tage","organizer":{"email":"calendar@example.invalid"},"start":{"date":"2026-10-24"},"end":{"date":"2026-10-27"}},
+    {"kind":"calendar#event","id":"dst-summer","summary":"Vor der Zeitumstellung","organizer":{"email":"calendar@example.invalid"},"start":{"dateTime":"2026-10-25T00:30:00Z"},"end":{"dateTime":"2026-10-25T00:45:00Z"}},
+    {"kind":"calendar#event","id":"dst-winter","summary":"Nach der Zeitumstellung","organizer":{"email":"calendar@example.invalid"},"start":{"dateTime":"2026-10-25T01:30:00Z"},"end":{"dateTime":"2026-10-25T01:45:00Z"}},
+    {"kind":"calendar#event","id":"recurrence-instance","recurringEventId":"weekly-series","summary":"Wöchentliche Besprechung","organizer":{"email":"calendar@example.invalid"},"start":{"dateTime":"2026-10-28T13:00:00Z"},"end":{"dateTime":"2026-10-28T14:00:00Z"}},
+    {"kind":"calendar#event","id":"utc-midnight","summary":"Über Mitternacht UTC","organizer":{"email":"calendar@example.invalid"},"start":{"dateTime":"2026-10-27T23:30:00Z"},"end":{"dateTime":"2026-10-28T00:15:00Z"}}
+  ]
+}
