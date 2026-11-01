@@ -436,7 +436,7 @@ function fetchGoogleCalendarEvent_run(calendarId, eventId, callback) {
 	}
 
 	//--- Parsing Events
-	onCalendarParsing: function(calendarId, data) {
+	function parseCalendarEvents(calendarId, data) {
 		var calendar = getCalendar(calendarId)
 		if (!calendar) {
 			logger.debug('googleCalendarManager.missingCalendar', calendarId)

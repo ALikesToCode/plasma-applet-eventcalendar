@@ -18,8 +18,14 @@ CalendarManager {
 	//---
 	function fetchingDataListener() { eventModel.asyncRequests += 1 }
 	function allDataFetchedListener() { eventModel.asyncRequestsDone += 1 }
-	function calendarFetchedListener(calendarId, data) {
-		eventModel.setCalendarData(calendarId, data)
+	function calendarFetchedListener(calendarManager, calendarId, data) {
+		// Qt 6.12 passes signal arguments of type var as copies. Store the
+		// manager's own (already parsed) object instead, so later
+		// addEvent/removeEvent/update calls on the manager stay visible here.
+		var calendarData = calendarManager.eventsByCalendar[calendarId] || data
+		eventModel.calendarPluginMap[calendarId] = calendarManager
+		eventModel.eventsByCalendar[calendarId] = calendarData
+		eventModel.calendarFetched(calendarId, calendarData)
 	}
 	function eventAddedListener(calendarId, data) {
 		eventModel.mergeEvents()
@@ -44,10 +50,8 @@ CalendarManager {
 		logger.debug('bindSignals', calendarManager)
 		calendarManager.fetchingData.connect(fetchingDataListener)
 		calendarManager.allDataFetched.connect(allDataFetchedListener)
-		calendarManager.calendarFetched.connect(calendarFetchedListener)
-
-		calendarManager.calendarFetched.connect(function(calendarId, data){
-			eventModel.calendarPluginMap[calendarId] = calendarManager
+		calendarManager.calendarFetched.connect(function(calendarId, data) {
+			calendarFetchedListener(calendarManager, calendarId, data)
 		})
 
 		calendarManager.eventAdded.connect(eventAddedListener)

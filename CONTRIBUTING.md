@@ -53,6 +53,7 @@ Run the automated checks that cover your change:
 ```bash
 node --test tests/*.test.js
 python3 -m unittest discover -s tests -p '*_test.py' -v
+qmltestrunner -input tests/tst_calendar_manager_parsing.qml # Qt 6; may be /usr/lib/qt6/bin/qmltestrunner
 find package/contents/ui -name '*.qml' -exec qmllint {} +
 shellcheck --severity=warning install update build package/translate/build package/translate/merge
 ```
