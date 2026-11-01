@@ -5,6 +5,7 @@ import org.kde.kirigami as Kirigami
 
 import ".."
 import "../lib"
+import "../lib/GoogleOAuthConfig.js" as GoogleOAuthConfig
 import "../lib/Requests.js" as Requests
 
 ConfigPage {
@@ -112,13 +113,14 @@ ConfigPage {
 	readonly property string authConfigurationMessage: credentialAuthConfigurationMessage()
 
 	function credentialAuthConfigurationMessage() {
-		var customId = googleLoginManager.normalizedClientValue(customClientIdInput.text)
-		var customSecret = googleLoginManager.normalizedClientValue(customClientSecretInput.text)
-		var latestId = googleLoginManager.normalizedClientValue(page.configBridge.read("latestClientId", ""))
-		var latestSecret = googleLoginManager.normalizedClientValue(page.configBridge.read("latestClientSecret", ""))
-		var clientId = customId ? customId : (!useDesktopClientToggle.checked && latestId ? latestId : googleLoginManager.defaultClientId)
-		var clientSecret = customId ? customSecret : (!useDesktopClientToggle.checked && latestId ? latestSecret : "")
-		return googleLoginManager.authConfigurationErrorFor(clientId, clientSecret)
+		var credentials = GoogleOAuthConfig.effectiveClientCredentials({
+			customClientId: customClientIdInput.text,
+			customClientSecret: customClientSecretInput.text,
+			latestClientId: page.configBridge.read("latestClientId", ""),
+			latestClientSecret: page.configBridge.read("latestClientSecret", ""),
+			useDesktopClient: useDesktopClientToggle.checked,
+		})
+		return googleLoginManager.authConfigurationErrorFor(credentials.clientId)
 	}
 
 	function syncCredentialInputs() {
@@ -366,13 +368,13 @@ ConfigPage {
 				? authConfigurationMessage
 				: googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
 				? ""
-				: page.configBridge.read("latestClientSecret", "")
-					? i18n("Using a previously stored Google OAuth client for compatibility. If login still fails, add your own client ID and client secret.")
-					: i18n("The built-in Google OAuth client is currently rejected by Google because it requires a client secret. Provide your own client ID and client secret to enable Google sync.")
+				: page.configBridge.read("latestClientSecret", "") && !useDesktopClientToggle.checked
+					? i18n("Using a Google OAuth client saved by an older version of the widget. If login fails, choose \"Use the built-in Google client\".")
+					: ""
 		}
 		Label {
 			Layout.fillWidth: true
-			text: i18n("Provide a Google Cloud OAuth Desktop client ID, or a Web client ID and secret with the redirect URI set to %1. Leaving these empty only works if a previously stored secret-based client is available.", googleLoginManager.redirectUri)
+			text: i18n("Leave these empty to use the built-in client. To use your own, enter the ID and secret of a Google Cloud OAuth Desktop client, or of a Web client with the redirect URI set to %1.", googleLoginManager.redirectUri)
 			color: readableNegativeTextColor
 			wrapMode: Text.Wrap
 		}
@@ -385,8 +387,10 @@ ConfigPage {
 		ConfigCheckBox {
 			id: useDesktopClientToggle
 			configKey: "useDesktopClient"
+			// Only matters when an older version saved a client with its secret.
 			visible: !googleLoginManager.normalizedClientValue(page.configBridge.read("customClientId", ""))
-			text: i18n("Try desktop built-in client (no secret)")
+				&& !!googleLoginManager.normalizedClientValue(page.configBridge.read("latestClientSecret", ""))
+			text: i18n("Use the built-in Google client")
 			onCheckedChanged: {
 				if (!credentialsSection.credentialsReady) {
 					return

@@ -2,55 +2,84 @@ const assert = require('assert')
 
 const config = require('../package/contents/ui/lib/GoogleOAuthConfig.js')
 
-const defaultClientId = '352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com'
+const builtIn = {
+	clientId: config.builtInClientId,
+	clientSecret: config.builtInClientSecret,
+}
 
-assert.match(
-	config.authConfigurationError(defaultClientId, '', defaultClientId),
-	/built-in Google OAuth client/
-)
+// The built-in client is a Desktop client, and Google's token endpoint
+// requires its secret.
+assert.match(config.builtInClientId, /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/)
+assert.match(config.builtInClientSecret, /^GOCSPX-\S+$/)
 
-assert.strictEqual(
-	config.authConfigurationError('custom-desktop.apps.googleusercontent.com', '', defaultClientId),
-	''
-)
+// With nothing configured, use the built-in client with its secret.
+assert.deepStrictEqual(config.effectiveClientCredentials({}), builtIn)
+assert.deepStrictEqual(config.effectiveClientCredentials(undefined), builtIn)
+assert.deepStrictEqual(config.effectiveClientCredentials({
+	latestClientId: config.builtInClientId,
+	latestClientSecret: '',
+	useDesktopClient: true,
+}), builtIn)
 
-assert.strictEqual(
-	config.authConfigurationError(defaultClientId, 'stored-secret', defaultClientId),
-	''
-)
+// A client saved without its secret can't sign in, so it falls through to
+// the built-in client.
+assert.deepStrictEqual(config.effectiveClientCredentials({
+	latestClientId: 'old-client.apps.googleusercontent.com',
+	latestClientSecret: '',
+	useDesktopClient: false,
+}), builtIn)
 
-assert.match(
-	config.authConfigurationError('', '', defaultClientId),
-	/Missing Google OAuth client ID/
-)
-
+// A client saved with its secret by an older version is still used, unless
+// the user picks the built-in client.
+const latest = {
+	customClientId: '',
+	customClientSecret: '',
+	latestClientId: 'latest-client.apps.googleusercontent.com',
+	latestClientSecret: 'latest-secret',
+	useDesktopClient: false,
+}
+assert.deepStrictEqual(config.effectiveClientCredentials(latest), {
+	clientId: 'latest-client.apps.googleusercontent.com',
+	clientSecret: 'latest-secret',
+})
 assert.deepStrictEqual(
-	config.effectiveClientCredentials({
-		customClientId: '',
-		customClientSecret: '',
-		latestClientId: 'latest-client.apps.googleusercontent.com',
-		latestClientSecret: 'latest-secret',
-		useDesktopClient: false,
-	}, defaultClientId),
-	{
-		clientId: 'latest-client.apps.googleusercontent.com',
-		clientSecret: 'latest-secret',
-	}
+	config.effectiveClientCredentials(Object.assign({}, latest, { useDesktopClient: true })),
+	builtIn
 )
 
+// The user's own client wins, even without a secret.
 assert.deepStrictEqual(
-	config.effectiveClientCredentials({
-		customClientId: 'custom-client.apps.googleusercontent.com',
-		customClientSecret: '',
-		latestClientId: 'latest-client.apps.googleusercontent.com',
-		latestClientSecret: 'latest-secret',
-		useDesktopClient: false,
-	}, defaultClientId),
+	config.effectiveClientCredentials(Object.assign({}, latest, {
+		customClientId: ' custom-client.apps.googleusercontent.com ',
+	})),
 	{
 		clientId: 'custom-client.apps.googleusercontent.com',
 		clientSecret: '',
 	}
 )
+assert.deepStrictEqual(
+	config.effectiveClientCredentials({
+		customClientId: 'custom-client.apps.googleusercontent.com',
+		customClientSecret: ' custom-secret ',
+	}),
+	{
+		clientId: 'custom-client.apps.googleusercontent.com',
+		clientSecret: 'custom-secret',
+	}
+)
+
+// Entering the built-in client ID without a secret fills in its secret.
+assert.deepStrictEqual(
+	config.effectiveClientCredentials({ customClientId: config.builtInClientId }),
+	builtIn
+)
+assert.strictEqual(config.clientSecretFor(config.builtInClientId, ''), config.builtInClientSecret)
+assert.strictEqual(config.clientSecretFor('other.apps.googleusercontent.com', ''), '')
+
+assert.match(config.authConfigurationError(''), /Missing Google OAuth client ID/)
+assert.match(config.authConfigurationError('   '), /Missing Google OAuth client ID/)
+assert.strictEqual(config.authConfigurationError(config.builtInClientId), '')
+assert.strictEqual(config.authConfigurationError('custom-desktop.apps.googleusercontent.com'), '')
 
 // Request only the narrow scopes declared for OAuth verification, never
 // full calendar access.

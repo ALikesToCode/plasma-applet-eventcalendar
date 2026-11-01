@@ -202,10 +202,7 @@ Item {
 		return value ? String(value).trim() : ""
 	}
 	function currentGoogleCredentials() {
-		return GoogleOAuthConfig.effectiveClientCredentials(
-			plasmoid.configuration,
-			"352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
-		)
+		return GoogleOAuthConfig.effectiveClientCredentials(plasmoid.configuration)
 	}
 	function currentGoogleClientId() {
 		return currentGoogleCredentials().clientId
@@ -235,11 +232,11 @@ Item {
 			if (account.reauthRequired) {
 				return i18n("Google authorization expired or was revoked. Open Event Calendar Settings, select the account, and use Update Selected to reconnect it.")
 			}
-			if (account.sessionUsesPkce === false) {
-				continue
-			}
 			if (account.sessionClientId && account.sessionClientId !== currentGoogleClientId()) {
 				return i18n("Widget has been updated. Please logout and login to Google Calendar again.")
+			}
+			if (account.sessionUsesPkce === false) {
+				continue
 			}
 			if (account.sessionUsesPkce === true && currentGoogleUsesPkce() === false) {
 				return i18n("Widget has been updated. Please logout and login to Google Calendar again.")

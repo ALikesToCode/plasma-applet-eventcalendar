@@ -1,5 +1,6 @@
 import QtQuick
 
+import "../lib/GoogleOAuthConfig.js" as GoogleOAuthConfig
 import "../lib/Requests.js" as Requests
 import "../lib/GoogleOAuthToken.js" as GoogleOAuthToken
 
@@ -10,7 +11,6 @@ QtObject {
 	property string accountId: ""
 	property int accountRevision: 0
 	property var connectedStore: null
-	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
 
 	readonly property string accessToken: {
 		// Ensure refreshes propagate when account data updates.
@@ -40,7 +40,15 @@ QtObject {
 	}
 
 	function resolveRefreshClientSecret(account) {
-		if (!account || account.sessionUsesPkce === true) {
+		if (!account) {
+			return ""
+		}
+		// Use the built-in secret this version ships, not the one saved at
+		// sign-in, so replacing the built-in secret needs no new sign-in.
+		if (account.sessionClientId === GoogleOAuthConfig.builtInClientId) {
+			return GoogleOAuthConfig.builtInClientSecret
+		}
+		if (account.sessionUsesPkce === true) {
 			return ""
 		}
 		if (account.sessionClientSecret) {
@@ -55,9 +63,6 @@ QtObject {
 		}
 		if (account.sessionClientId === latestClientId && latestClientSecret) {
 			return latestClientSecret
-		}
-		if (account.sessionClientId === defaultClientId) {
-			return ""
 		}
 		return ""
 	}
