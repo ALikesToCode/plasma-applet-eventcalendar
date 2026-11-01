@@ -57,7 +57,7 @@ Item {
 	readonly property string redirectUri: normalizedRedirectMode(redirectMode) === "hosted"
 		? hostedRedirectUri
 		: localRedirectUri
-	property string defaultClientId: "352447874752-sej1ldpd6piqgovtpog0dr91tb4sq5q3.apps.googleusercontent.com"
+	readonly property string defaultClientId: GoogleOAuthConfig.builtInClientId
 	property var configBridge: null
 	function normalizedClientValue(value) {
 		return value ? value.trim() : ""
@@ -142,21 +142,15 @@ Item {
 
 	function refreshClientCredentials() {
 		migrateDefaultClientIfNeeded()
-		var useDesktopClient = readConfig("useDesktopClient", false)
-		var customId = normalizedClientValue(readConfig("customClientId", ""))
-		var customSecret = normalizedClientValue(readConfig("customClientSecret", ""))
-		var latestId = normalizedClientValue(readConfig("latestClientId", ""))
-		var latestSecret = normalizedClientValue(readConfig("latestClientSecret", ""))
-		if (customId) {
-			effectiveClientId = customId
-			effectiveClientSecret = customSecret
-		} else if (!useDesktopClient && latestId) {
-			effectiveClientId = latestId
-			effectiveClientSecret = latestSecret
-		} else {
-			effectiveClientId = defaultClientId
-			effectiveClientSecret = ""
-		}
+		var credentials = GoogleOAuthConfig.effectiveClientCredentials({
+			customClientId: readConfig("customClientId", ""),
+			customClientSecret: readConfig("customClientSecret", ""),
+			latestClientId: readConfig("latestClientId", ""),
+			latestClientSecret: readConfig("latestClientSecret", ""),
+			useDesktopClient: readConfig("useDesktopClient", false),
+		})
+		effectiveClientId = credentials.clientId
+		effectiveClientSecret = credentials.clientSecret
 	}
 
 	function migrateDefaultClientIfNeeded() {
@@ -170,11 +164,10 @@ Item {
 			writeConfig("latestClientId", defaultClientId)
 			latestId = defaultClientId
 		}
-		if (latestSecret) {
-			if (readConfig("useDesktopClient", false) !== false) {
-				writeConfig("useDesktopClient", false)
-			}
-		} else if (readConfig("useDesktopClient", false) !== true) {
+		// Without a saved secret only the built-in client can sign in. With
+		// one, keep the user's choice of "Use the built-in Google client":
+		// forcing it off here would undo the checkbox on every refresh.
+		if (!latestSecret && readConfig("useDesktopClient", false) !== true) {
 			writeConfig("useDesktopClient", true)
 		}
 	}
@@ -205,13 +198,14 @@ Item {
 	}
 	function buildAuthContext(modeOverride) {
 		var mode = typeof modeOverride === "string" ? modeOverride : redirectMode
-		var usePkce = !effectiveClientSecret
+		// Always use PKCE, also when the client has a secret: the secret of
+		// an installed app is public, so it can't protect the code.
 		return {
 			clientId: effectiveClientId,
 			clientSecret: effectiveClientSecret,
 			redirectUri: redirectUriForMode(mode),
-			pkceVerifier: usePkce ? pkceVerifier : "",
-			pkceChallenge: usePkce ? pkceChallenge : "",
+			pkceVerifier: pkceVerifier,
+			pkceChallenge: pkceChallenge,
 			state: authState,
 		}
 	}
@@ -226,12 +220,7 @@ Item {
 			throw new Error(configError)
 		}
 		var mode = normalizedRedirectMode(redirectMode)
-		if (!effectiveClientSecret) {
-			resetPkce()
-		} else {
-			pkceVerifier = ""
-			pkceChallenge = ""
-		}
+		resetPkce()
 		resetAuthState()
 		pendingAuthContext = buildAuthContext(mode)
 	}
@@ -239,10 +228,10 @@ Item {
 		return false
 	}
 	function authConfigurationError() {
-		return authConfigurationErrorFor(effectiveClientId, effectiveClientSecret)
+		return authConfigurationErrorFor(effectiveClientId)
 	}
-	function authConfigurationErrorFor(clientId, clientSecret) {
-		return GoogleOAuthConfig.authConfigurationError(clientId, clientSecret, defaultClientId)
+	function authConfigurationErrorFor(clientId) {
+		return GoogleOAuthConfig.authConfigurationError(clientId)
 	}
 	function clearAuthorizationContext() {
 		authState = ""
@@ -340,10 +329,7 @@ Item {
 		if (data && data.error === "invalid_request"
 			&& errorDescription.toLowerCase().indexOf("client_secret is missing") !== -1
 		) {
-			if (!ctx.clientSecret && ctx.clientId === defaultClientId) {
-				return "Google rejected the built-in login because this client now requires a client secret. Add your own Google OAuth client ID and client secret, or switch back to a previously stored secret-based client."
-			}
-			return errorDescription
+			return "Google needs the client secret of this OAuth client. Enter it under Client Credentials, or clear the client ID to use the built-in client."
 		}
 		if (errorDescription) {
 			return errorDescription
