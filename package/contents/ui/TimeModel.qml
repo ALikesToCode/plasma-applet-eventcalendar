@@ -5,8 +5,7 @@ import org.kde.plasma.plasma5support as Plasma5Support
 
 Item {
 	id: timeModel
-	property string timezone: "Local"
-	property var currentTime: dataSource.data[timezone]["DateTime"]
+	property var currentTime: new Date()
 	property alias dataSource: dataSource
 	property var allTimezones: {
 		var timezones = plasmoid.configuration.selectedTimeZones.toString()
@@ -26,17 +25,33 @@ Item {
 	signal dateChanged()
 	signal loaded()
 
+	// Only the tooltip reads this, for the other time zones, which it shows
+	// without seconds.
 	Plasma5Support.DataSource {
 		id: dataSource
 		engine: "time"
 		connectedSources: timeModel.allTimezones
+		interval: 60000
+		intervalAlignment: Plasma5Support.Types.AlignToMinute
+	}
+
+	// A fixed 1000ms interval keeps the phase it started with, so the seconds
+	// could lag the system clock by up to a second. Re-aim each tick at the
+	// start of the next second instead.
+	Timer {
+		id: secondTimer
+		running: !timeModel.testing
+		repeat: true
+		triggeredOnStart: true
 		interval: 1000
-		intervalAlignment: Plasma5Support.Types.NoAlignment
-		onNewData: function(sourceName, data) {
-			if (sourceName === 'Local') {
-				timeModel.tick()
-			}
-		}
+		onTriggered: timeModel.updateCurrentTime()
+	}
+
+	function updateCurrentTime() {
+		var now = new Date()
+		currentTime = now
+		secondTimer.interval = Math.max(10, 1000 - now.getMilliseconds())
+		tick()
 	}
 
 	property bool ready: false
