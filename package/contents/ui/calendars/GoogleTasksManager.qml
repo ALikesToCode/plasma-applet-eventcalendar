@@ -74,6 +74,8 @@ CalendarManager {
 		return {
 			id: scopedTasklistId(tasklist.id),
 			summary: formatTasklistSummary(tasklist),
+			calendarName: tasklist.title,
+			accountLabel: accountLabel,
 			backgroundColor: Kirigami.Theme.highlightColor.toString(),
 			accessRole: 'owner',
 			isTasklist: true,

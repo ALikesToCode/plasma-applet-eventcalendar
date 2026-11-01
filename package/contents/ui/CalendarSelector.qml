@@ -1,6 +1,8 @@
 import QtQuick
 import org.kde.plasma.components as PlasmaComponents3
 
+import "lib/CalendarSelection.js" as CalendarSelection
+
 PlasmaComponents3.ComboBox {
 	id: calendarSelector
 	model: [
@@ -18,27 +20,8 @@ PlasmaComponents3.ComboBox {
 	}
 
 	function populate(calendarList, initialCalendarId) {
-		// logger.debug('CalendarSelector.populate')
-		// logger.debugJSON('calendarList', calendarList)
-		var list = []
-		var selectedIndex = 0
-		calendarList.forEach(function(calendar){
-			var canEditCalendar = calendar.accessRole === 'writer' || calendar.accessRole === 'owner'
-			var isSelected = calendar.id === initialCalendarId
-
-			if (isSelected) {
-				selectedIndex = list.length // set index after insertion
-			}
-
-			if (canEditCalendar || isSelected) {
-				list.push({
-					'calendarId': calendar.id,
-					'text': calendar.summary,
-					'backgroundColor': calendar.backgroundColor,
-					'isTasklist': calendar.isTasklist,
-				})
-			}
-		})
+		var choices = CalendarSelection.buildChoices(calendarList, initialCalendarId)
+		var list = choices.list
 		if (list.length === 0) {
 			list.push({
 				text: i18n("[No Calendars]"),
@@ -47,6 +30,6 @@ PlasmaComponents3.ComboBox {
 			})
 		}
 		calendarSelector.model = list
-		calendarSelector.currentIndex = selectedIndex
+		calendarSelector.currentIndex = choices.selectedIndex
 	}
 }
