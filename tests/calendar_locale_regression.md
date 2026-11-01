@@ -1,8 +1,9 @@
 # Calendar locale regression investigation
 
-The missing Google agenda reported after PR #50 has not been reproduced by
-these tests. The tests cover production calendar fetch orchestration, token
-checks, pagination, date parsing, and agenda population. They also evaluate the
+The missing Google agenda reported in #53 reproduces with these tests on Qt
+6.12; PR #54 fixes it (see "Qt 6.12" below). The tests cover production
+calendar fetch orchestration, token checks, pagination, date parsing, and
+agenda population. They also evaluate the
 checked-out agenda and clock label expressions in Qt, with real ListModel date
 roles and small QtQuick delegates. They do not load the complete Plasma widget,
 perform a live Google sign-in, or reproduce the reporter's installation.
@@ -64,10 +65,16 @@ strings and all-day date strings before `AgendaModel.qml` groups events.
 The two files changed by PR #50 format presentation values downstream of that
 path.
 
+## Qt 6.12
+
+On Qt 6.12.0, `test_paginated_fetch_and_agenda_dates` and
+`test_localized_agenda_and_clock_labels` fail in all three locales: the agenda
+receives 0 rows instead of 4. Qt 6.12 passes signal arguments of type `var` as
+deep copies. `CalendarManager` parsed events in `calendarParsing` signal
+handlers, so `startDateTime` and `endDateTime` never reached the stored events.
+PR #54 parses through direct function calls; with it, all six cases pass in
+each locale. The failure is unrelated to PR #50.
+
 Existing reports reviewed include #23, #30, #31, #33, and #44, and PRs #27,
 #37/#38, #39, #41, #45, #49, and #50. Earlier reports establish that Google
-authentication and disappearing events predate the locale change; they do not
-establish the cause of this report. Further diagnosis needs the installation
-details and redacted error output already requested in the existing email
-conversation. No production correction is included without a matching
-reproduction.
+authentication and disappearing events predate the locale change.
