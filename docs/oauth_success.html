@@ -3,43 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Event Calendar - Login Complete</title>
+  <title>Signed in - Plasma Event Calendar</title>
   <style>
   {{STYLE}}
   </style>
 </head>
-<body>
-  <main>
-    <header class="hero">
-      <div class="eyebrow">Event Calendar</div>
-      <h1>Login complete</h1>
-      <p>If the widget did not auto-capture, copy the code or token below.</p>
-      <div class="row" style="justify-content: center;">
-        <button class="secondary" onclick="window.close()">Close tab</button>
+<body class="signin">
+  <main class="signin-main">
+    <svg class="signin-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="7" fill="#2e3134" />
+      <rect x="6" y="6" width="20" height="14" rx="3" fill="#3daee9" />
+      <rect x="6" y="23" width="6" height="3" rx="1" fill="#92e1c0" />
+      <rect x="13" y="23" width="6" height="3" rx="1" fill="#f691b2" />
+      <rect x="20" y="23" width="6" height="3" rx="1" fill="#fad165" />
+    </svg>
+    <h1>You're signed in</h1>
+    <p>Plasma Event Calendar has your Google sign-in. Go back to the widget's settings to choose which calendars
+      and task lists to show. You can close this tab.</p>
+    <button class="button" type="button" onclick="window.close()">Close this tab</button>
+
+    <details class="helper">
+      <summary>The widget's settings didn't update</summary>
+      <div class="helper-body">
+        <p>Copy this code and paste it into the code field on the widget's Google Calendar settings page.</p>
+        <label for="authCode">Sign-in code</label>
+        <input id="authCode" type="text" readonly spellcheck="false" value="{{CODE}}">
+        <div class="helper-actions">
+          <button id="copyCodeBtn" type="button">Copy code</button>
+          <span class="status" id="codeStatus" role="status"></span>
+        </div>
       </div>
-    </header>
-    <section class="card helper">
-      <h3>Authorization code</h3>
-      <p>Copy this code and paste it into the widget input if needed.</p>
-      <input id="authCode" type="text" readonly value="{{CODE}}">
-      <div class="row">
-        <button id="copyCodeBtn">Copy code</button>
-        <span class="status" id="codeStatus">Ready.</span>
-      </div>
-    </section>
-    <section class="card helper">
-      <h3>Token JSON (manual fallback)</h3>
-      <p>If the widget did not update, paste this JSON into the widget input field.</p>
-      <textarea id="tokenJson" readonly rows="6">{{TOKEN_JSON}}</textarea>
-      <div class="row">
-        <button id="copyTokenBtn">Copy token JSON</button>
-        <span class="status" id="tokenStatus">Ready.</span>
-      </div>
-    </section>
-    <section class="card">
-      <h3>Next step</h3>
-      <p>Return to the widget settings to finish syncing calendars and tasks.</p>
-    </section>
+    </details>
   </main>
   <script>
     function setStatus(id, message) {
@@ -50,53 +44,33 @@
     }
     function copyValue(id, statusId) {
       var el = document.getElementById(id);
-      if (!el) {
-        setStatus(statusId, "Missing field.");
-        return;
-      }
-      var value = el.value || el.textContent || "";
+      var value = el ? el.value : "";
       if (!value) {
-        setStatus(statusId, "Nothing to copy.");
+        setStatus(statusId, "There's no code to copy.");
         return;
       }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(value).then(function() {
           setStatus(statusId, "Copied.");
         }).catch(function() {
-          fallbackCopy(el, value, statusId);
+          fallbackCopy(el, statusId);
         });
       } else {
-        fallbackCopy(el, value, statusId);
+        fallbackCopy(el, statusId);
       }
     }
-    function fallbackCopy(el, value, statusId) {
-      var isInput = el.tagName === "INPUT" || el.tagName === "TEXTAREA";
-      if (!isInput) {
-        var temp = document.createElement("textarea");
-        temp.value = value;
-        document.body.appendChild(temp);
-        temp.select();
-        tryCopy(statusId);
-        document.body.removeChild(temp);
-        return;
-      }
+    function fallbackCopy(el, statusId) {
       el.focus();
       el.select();
-      tryCopy(statusId);
-    }
-    function tryCopy(statusId) {
       try {
         var ok = document.execCommand("copy");
-        setStatus(statusId, ok ? "Copied." : "Copy failed.");
+        setStatus(statusId, ok ? "Copied." : "Couldn't copy. Select the code and press Ctrl+C.");
       } catch (e) {
-        setStatus(statusId, "Copy failed.");
+        setStatus(statusId, "Couldn't copy. Select the code and press Ctrl+C.");
       }
     }
     document.getElementById("copyCodeBtn").addEventListener("click", function() {
       copyValue("authCode", "codeStatus");
-    });
-    document.getElementById("copyTokenBtn").addEventListener("click", function() {
-      copyValue("tokenJson", "tokenStatus");
     });
   </script>
 </body>
