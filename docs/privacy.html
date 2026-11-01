@@ -85,7 +85,8 @@
           <li>Your Google access and refresh tokens are stored in your desktop keyring: Secret Service (for example GNOME
             Keyring or KeePassXC) or KWallet. They are not written to the widget configuration file.</li>
           <li>If you set up your own Google OAuth client, the client ID and client secret you enter are saved in the
-            widget configuration file with your other settings.</li>
+            widget configuration file with your other settings. After you sign in, a copy of the secret is also kept
+            in your keyring with your tokens.</li>
           <li>An account label, your list of calendars and task lists (IDs, names, colours, time zones and access
             level) and which of them you chose are stored in the Plasma widget configuration file,
             <code>~/.config/plasma-org.kde.plasma.desktop-appletsrc</code>.</li>
@@ -151,8 +152,9 @@
         <p>
           If you install the widget from the KDE Store (for example with <strong>Get New Widgets</strong> in Plasma),
           the <a href="https://store.kde.org/privacy">KDE Store privacy policy</a> applies to the download. If you
-          install it from GitHub or the AUR, GitHub's privacy statement applies. The developer can see how many times
-          each release was downloaded, but not who downloaded it.
+          install it from GitHub, GitHub's privacy statement applies. If you get it from another source, such as an AUR
+          package, that service's own privacy policy applies to the download. The developer can see how many times each
+          release was downloaded, but not who downloaded it.
         </p>
       </section>
 
