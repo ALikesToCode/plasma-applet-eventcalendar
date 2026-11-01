@@ -34,5 +34,9 @@ assert.strictEqual(selection.choiceLabel(calendars[1]), 'Family (me@example.com)
 assert.strictEqual(selection.choiceLabel(calendars[3]), 'My Tasks (me@example.com)')
 assert.strictEqual(selection.choiceLabel(calendars[2]), account)
 assert.strictEqual(selection.choiceLabel({ summary: 'Local' }), 'Local')
+// A calendar named like the account keeps the suffix unless it is the
+// primary calendar, and a renamed primary calendar still names its account.
+assert.strictEqual(selection.choiceLabel({ calendarName: account, accountLabel: account, primary: false }), account + ' (' + account + ')')
+assert.strictEqual(selection.choiceLabel({ calendarName: 'Personal', accountLabel: account, primary: true }), 'Personal (' + account + ')')
 
 console.log('PASS calendar_selection')

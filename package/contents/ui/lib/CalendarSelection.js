@@ -6,8 +6,12 @@ function choiceLabel(calendar) {
 	var name = calendar.calendarName
 	var account = calendar.accountLabel
 	if (name && account) {
-		// A primary calendar is named after the account.
-		return name === account ? name : name + " (" + account + ")"
+		// A primary calendar is named after its account by default, so the
+		// account is shown once. Other calendars always name their account.
+		if (calendar.primary === true && name === account) {
+			return name
+		}
+		return name + " (" + account + ")"
 	}
 	return calendar.summary
 }
