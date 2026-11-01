@@ -52,4 +52,16 @@ assert.deepStrictEqual(
 	}
 )
 
+// Request only the narrow scopes declared for OAuth verification, never
+// full calendar access.
+assert.deepStrictEqual(config.requestedScopes, [
+	'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+	'https://www.googleapis.com/auth/calendar.events',
+	'https://www.googleapis.com/auth/tasks',
+])
+assert.strictEqual(
+	config.authorizationScope(),
+	'https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks'
+)
+
 console.log('PASS google_oauth_config')
