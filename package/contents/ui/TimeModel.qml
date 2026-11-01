@@ -49,8 +49,13 @@ Item {
 
 	function updateCurrentTime() {
 		var now = new Date()
+		secondTimer.interval = Math.max(5, 1000 - now.getMilliseconds())
+		// Qt's coarse timers can fire up to 5% early, which lands just before
+		// the boundary. If this second is already shown, only re-aim.
+		if (ready && Math.floor(now.getTime() / 1000) === Math.floor(currentTime.getTime() / 1000)) {
+			return
+		}
 		currentTime = now
-		secondTimer.interval = Math.max(10, 1000 - now.getMilliseconds())
 		tick()
 	}
 
