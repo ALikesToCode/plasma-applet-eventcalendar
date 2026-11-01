@@ -1,4 +1,6 @@
 const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 
 const config = require('../package/contents/ui/lib/GoogleOAuthConfig.js')
 
@@ -91,6 +93,17 @@ assert.deepStrictEqual(config.requestedScopes, [
 assert.strictEqual(
 	config.authorizationScope(),
 	'https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks'
+)
+
+// "Use the built-in Google client" picks the built-in client over one saved
+// by an older version. Refreshing the credentials must not untick it.
+const loginManager = fs.readFileSync(
+	path.join(__dirname, '../package/contents/ui/config/GoogleLoginManager.qml'),
+	'utf8'
+)
+assert.ok(
+	!loginManager.includes('writeConfig("useDesktopClient", false)'),
+	'GoogleLoginManager must not switch the built-in client choice off'
 )
 
 console.log('PASS google_oauth_config')

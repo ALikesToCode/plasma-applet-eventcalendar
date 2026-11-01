@@ -164,11 +164,10 @@ Item {
 			writeConfig("latestClientId", defaultClientId)
 			latestId = defaultClientId
 		}
-		if (latestSecret) {
-			if (readConfig("useDesktopClient", false) !== false) {
-				writeConfig("useDesktopClient", false)
-			}
-		} else if (readConfig("useDesktopClient", false) !== true) {
+		// Without a saved secret only the built-in client can sign in. With
+		// one, keep the user's choice of "Use the built-in Google client":
+		// forcing it off here would undo the checkbox on every refresh.
+		if (!latestSecret && readConfig("useDesktopClient", false) !== true) {
 			writeConfig("useDesktopClient", true)
 		}
 	}
