@@ -85,6 +85,8 @@ CalendarManager {
 		}
 		decorated.id = scopedCalendarId(calendar.id)
 		decorated.summary = formatCalendarSummary(calendar)
+		decorated.calendarName = calendar.summary
+		decorated.accountLabel = accountLabel
 		decorated.isTasklist = false
 		return decorated
 	}
