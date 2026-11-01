@@ -14,187 +14,350 @@
   <meta property="og:title" content="Plasma Event Calendar">
   <meta property="og:description"
     content="A KDE Plasma widget with agenda, weather, and Google Calendar sync. Includes an OAuth helper.">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/toolbar/prism-toolbar.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/command-line/prism-command-line.min.css">
+  <meta name="theme-color" content="#eff0f1">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="vendor/prism/prism-tomorrow.min.css">
+  <link rel="stylesheet" href="vendor/prism/prism-toolbar.min.css">
+  <link rel="stylesheet" href="vendor/prism/prism-command-line.min.css">
   <link rel="stylesheet" href="css/style.css">
-  <script src="js/main.js" defer></script>
 </head>
 
 <body data-prismjs-copy="Copy" data-prismjs-copy-error="Press Ctrl+C to copy" data-prismjs-copy-success="Copied"
   data-prismjs-copy-timeout="1400">
 
-  <!-- Top Navigation (Required for Compliance) -->
-  <nav class="main-nav">
-    <div class="nav-content">
-      <a href="index.html" class="nav-logo">Plasma Event Calendar</a>
-      <div class="nav-links">
-        <a href="privacy.html">Privacy Policy</a>
-        <a href="terms.html">Terms</a>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="desktop">
+    <nav class="site-nav" aria-label="Site">
+      <a class="wordmark" href="./"><img src="icon.svg" alt="" width="28" height="28">Plasma Event Calendar</a>
+      <ul>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#google">Google Calendar</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">GitHub</a></li>
+      </ul>
+    </nav>
+
+    <div class="desktop-stage">
+      <div class="hero-copy">
+        <h1>Plasma Event Calendar</h1>
+        <p class="hero-lead">Your agenda, a month view and the weather forecast, one click from the clock in your
+          KDE Plasma panel. Events and tasks sync with Google Calendar and Google Tasks.</p>
+        <p class="hero-actions">
+          <a class="button button-primary" href="#install">Install</a>
+          <a class="button" href="#google">Connect Google Calendar</a>
+        </p>
+        <p class="hero-note">Free software for Plasma 6. There's also a branch for Plasma 5.</p>
+      </div>
+
+      <div class="popup" id="demo-popup" role="img"
+        aria-label="Preview of the widget's popup: an hourly weather chart, an agenda of upcoming events and tasks, and a month calendar with today highlighted.">
+        <div class="popup-inner">
+          <div class="popup-left">
+            <svg class="meteogram" viewBox="0 0 320 90" aria-hidden="true">
+              <g stroke="#41464b" stroke-width="1">
+                <line x1="22" y1="10" x2="314" y2="10" /><line x1="22" y1="30" x2="314" y2="30" />
+                <line x1="22" y1="50" x2="314" y2="50" stroke="#5b6268" /><line x1="22" y1="70" x2="314" y2="70" />
+              </g>
+              <text x="16" y="13" text-anchor="end">8°</text><text x="16" y="33" text-anchor="end">4°</text>
+              <text x="16" y="53" text-anchor="end">0°</text><text x="16" y="73" text-anchor="end">-4°</text>
+              <g fill="#5d7a99" fill-opacity="0.55"><rect x="54.5" y="68.4" width="8" height="3.6" /><rect x="66.7" y="61.2" width="8" height="10.8" /><rect x="78.8" y="52.2" width="8" height="19.8" /><rect x="91.0" y="48.6" width="8" height="23.4" /><rect x="103.2" y="55.8" width="8" height="16.2" /><rect x="115.3" y="64.8" width="8" height="7.2" /><rect x="127.5" y="70.2" width="8" height="1.8" /><rect x="188.3" y="69.3" width="8" height="2.7" /><rect x="200.5" y="63.9" width="8" height="8.1" /><rect x="212.7" y="59.4" width="8" height="12.6" /><rect x="224.8" y="63.0" width="8" height="9" /><rect x="237.0" y="67.5" width="8" height="4.5" /></g>
+              <clipPath id="above-zero"><rect x="0" y="0" width="320" height="50" /></clipPath>
+              <clipPath id="below-zero"><rect x="0" y="50" width="320" height="40" /></clipPath>
+              <path d="M22 30.0 L34.2 27.5 L46.3 22.5 L58.5 17.5 L70.7 15.0 L82.8 12.5 L95.0 12.5 L107.2 15.0 L119.3 20.0 L131.5 25.0 L143.7 30.0 L155.8 32.5 L168.0 35.0 L180.2 37.5 L192.3 40.0 L204.5 42.5 L216.7 45.0 L228.8 47.5 L241.0 50.0 L253.2 52.5 L265.3 57.5 L277.5 60.0 L289.7 62.5 L301.8 60.0 L314.0 55.0" fill="none" stroke="#e5485b" stroke-width="2" stroke-linejoin="round" clip-path="url(#above-zero)" />
+              <path d="M22 30.0 L34.2 27.5 L46.3 22.5 L58.5 17.5 L70.7 15.0 L82.8 12.5 L95.0 12.5 L107.2 15.0 L119.3 20.0 L131.5 25.0 L143.7 30.0 L155.8 32.5 L168.0 35.0 L180.2 37.5 L192.3 40.0 L204.5 42.5 L216.7 45.0 L228.8 47.5 L241.0 50.0 L253.2 52.5 L265.3 57.5 L277.5 60.0 L289.7 62.5 L301.8 60.0 L314.0 55.0" fill="none" stroke="#3daee9" stroke-width="2" stroke-linejoin="round" clip-path="url(#below-zero)" />
+              <g><text x="22.0" y="86" text-anchor="middle">9</text><text x="58.5" y="86" text-anchor="middle">12</text><text x="95.0" y="86" text-anchor="middle">3</text><text x="131.5" y="86" text-anchor="middle">6</text><text x="168.0" y="86" text-anchor="middle">9</text><text x="204.5" y="86" text-anchor="middle">12</text><text x="241.0" y="86" text-anchor="middle">3</text><text x="277.5" y="86" text-anchor="middle">6</text><text x="314.0" y="86" text-anchor="middle">9</text></g>
+            </svg>
+            <ol class="agenda">
+              <li class="agenda-day is-today">
+                <div class="agenda-date" data-offset="0"><b>Nov 1</b><span>Sun</span>
+                  <span class="temp"><em class="hi">8°</em> -3°</span></div>
+                <ul class="agenda-events">
+                  <li class="agenda-event is-task src-google"><b>Water the plants</b><span>Due today</span></li>
+                  <li class="agenda-event src-google"><b>Book club</b><span data-start="19:00"
+                      data-end="20:30">7:00 PM – 8:30 PM</span></li>
+                </ul>
+              </li>
+              <li class="agenda-day">
+                <div class="agenda-date" data-offset="1"><b>Nov 2</b><span>Mon</span>
+                  <span class="temp"><em class="hi">9°</em> -1°</span></div>
+                <ul class="agenda-events">
+                  <li class="agenda-event src-ical"><b>Bin day</b><span>All day</span></li>
+                  <li class="agenda-event src-google"><b>Dentist</b><span data-start="10:00"
+                      data-end="10:30">10:00 AM – 10:30 AM</span></li>
+                </ul>
+              </li>
+              <li class="agenda-day">
+                <div class="agenda-date" data-offset="2"><b>Nov 3</b><span>Tue</span>
+                  <span class="temp"><em class="hi">7°</em> -2°</span></div>
+                <ul class="agenda-events">
+                  <li class="agenda-event src-google"><b>Release planning</b><span data-start="14:00"
+                      data-end="15:00">2:00 PM – 3:00 PM</span></li>
+                </ul>
+              </li>
+              <li class="agenda-day">
+                <div class="agenda-date" data-offset="3"><b>Nov 4</b><span>Wed</span>
+                  <span class="temp"><em class="hi">8°</em> 1°</span></div>
+                <ul class="agenda-events">
+                  <li class="agenda-event src-plasma"><b>Public holiday</b><span>All day</span></li>
+                </ul>
+              </li>
+            </ol>
+          </div>
+
+          <div class="popup-right">
+            <div class="month-head">
+              <h2>November 1, 2026</h2>
+              <span class="month-arrows" aria-hidden="true">
+                <svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+                <svg viewBox="0 0 16 16"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+              </span>
+            </div>
+            <ul class="month-grid">
+            <li class="weekday">Sun</li>
+            <li class="weekday">Mon</li>
+            <li class="weekday">Tue</li>
+            <li class="weekday">Wed</li>
+            <li class="weekday">Thu</li>
+            <li class="weekday">Fri</li>
+            <li class="weekday">Sat</li>
+            <li class="day is-today">1<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day">2<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day">3<span class="stripes"><i class="src-ical"></i></span></li>
+            <li class="day">4<span class="stripes"><i class="src-google"></i><i class="src-plasma"></i></span></li>
+            <li class="day">5</li>
+            <li class="day">6</li>
+            <li class="day">7<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day">8<span class="stripes"><i class="src-ical"></i></span></li>
+            <li class="day">9<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day">10<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day">11</li>
+            <li class="day">12</li>
+            <li class="day">13<span class="stripes"><i class="src-google"></i><i class="src-ical"></i><i class="src-plasma"></i></span></li>
+            <li class="day">14</li>
+            <li class="day">15</li>
+            <li class="day">16<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day">17</li>
+            <li class="day">18<span class="stripes"><i class="src-ical"></i></span></li>
+            <li class="day">19<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day">20</li>
+            <li class="day">21</li>
+            <li class="day">22<span class="stripes"><i class="src-google"></i><i class="src-plasma"></i></span></li>
+            <li class="day">23<span class="stripes"><i class="src-google"></i><i class="src-ical"></i></span></li>
+            <li class="day">24</li>
+            <li class="day">25<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day">26</li>
+            <li class="day">27</li>
+            <li class="day">28<span class="stripes"><i class="src-google"></i><i class="src-ical"></i></span></li>
+            <li class="day">29</li>
+            <li class="day">30<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day is-other">1<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day is-other">2<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day is-other">3<span class="stripes"><i class="src-ical"></i></span></li>
+            <li class="day is-other">4<span class="stripes"><i class="src-google"></i><i class="src-plasma"></i></span></li>
+            <li class="day is-other">5</li>
+            <li class="day is-other">6</li>
+            <li class="day is-other">7<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day is-other">8<span class="stripes"><i class="src-ical"></i></span></li>
+            <li class="day is-other">9<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day is-other">10<span class="stripes"><i class="src-google"></i></span></li>
+            <li class="day is-other">11</li>
+            <li class="day is-other">12</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
-  </nav>
 
-  <main>
-    <!-- Hero Section -->
-    <header class="hero">
-      <div class="hero-media">
-        <img class="hero-logo" src="kde_plasma_calendar.png" alt="Plasma Event Calendar logo">
-      </div>
-      <div class="hero-copy">
-        <div class="eyebrow">Updated for Plasma 6</div>
-        <h1>Plasma Event Calendar</h1>
-        <p>A feature-rich Plasmoid for calendar, agenda, and weather. Now featuring fixed Google Calendar sync and
-          quality-of-life improvements.</p>
-        <div class="row" style="justify-content: center;">
-          <a href="#install" role="button"><button>Install Now</button></a>
-          <a href="#oauth-helper" role="button"><button class="secondary">Configure Google Calendar</button></a>
-        </div>
-      </div>
-    </header>
+    <div class="panel">
+      <span class="panel-item" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <rect x="4" y="4" width="4" height="4" rx="1" /><rect x="10" y="4" width="4" height="4" rx="1" />
+          <rect x="16" y="4" width="4" height="4" rx="1" /><rect x="4" y="10" width="4" height="4" rx="1" />
+          <rect x="10" y="10" width="4" height="4" rx="1" /><rect x="16" y="10" width="4" height="4" rx="1" />
+          <rect x="4" y="16" width="4" height="4" rx="1" /><rect x="10" y="16" width="4" height="4" rx="1" />
+          <rect x="16" y="16" width="4" height="4" rx="1" />
+        </svg>
+      </span>
+      <span class="panel-tasks" aria-hidden="true">
+        <span class="panel-task panel-item is-active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="12" cy="12" r="8" /><path d="M4 12h16M12 4c2.5 2.4 2.5 13.6 0 16M12 4c-2.5 2.4-2.5 13.6 0 16" />
+          </svg>
+        </span>
+        <span class="panel-task panel-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M3.5 7.5v10a1 1 0 0 0 1 1h15a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-8l-2-2h-5a1 1 0 0 0-1 1Z" />
+          </svg>
+        </span>
+        <span class="panel-task panel-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="3.5" y="5" width="17" height="14" rx="1.5" /><path d="m7 10 3 2.5L7 15M12 15h5" />
+          </svg>
+        </span>
+      </span>
+      <span class="panel-tray" aria-hidden="true">
+        <span class="panel-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4ZM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+          </svg>
+        </span>
+        <span class="panel-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M3 9.5a13 13 0 0 1 18 0M6 12.8a8.5 8.5 0 0 1 12 0M9 16a4 4 0 0 1 6 0" /><circle cx="12" cy="19" r="1" fill="currentColor" />
+          </svg>
+        </span>
+        <span class="panel-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="3" y="7.5" width="16" height="9" rx="1.5" /><path d="M21 10.5v3" /><rect x="5" y="9.5" width="9" height="5" fill="currentColor" stroke="none" />
+          </svg>
+        </span>
+      </span>
+      <button class="panel-clock" id="panel-clock" type="button" aria-expanded="true" aria-controls="demo-popup"
+        aria-label="Calendar popup"><span class="clock-date">Sun 1</span><span class="clock-time">10:25 AM</span></button>
+    </div>
+  </header>
 
-    <!-- Features Section -->
-    <section id="features">
-      <h2 class="section-title">Features</h2>
-      <div class="features-grid">
-        <div class="feature-card">
-          <h3>Google Calendar Sync</h3>
-          <p>Seamlessly sync your events and tasks. Includes fixes for recent API changes.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Weather Integration</h3>
-          <p>Built-in weather forecast powered by OpenWeatherMap.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Plasma 6 Ready</h3>
-          <p>Fully updated compatible with the latest KDE Plasma desktop environment.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Agenda View</h3>
-          <p>Clean and organized agenda view to keep track of your daily schedule.</p>
-        </div>
+  <main id="main">
+    <section class="section" id="features" aria-labelledby="features-title">
+      <div class="section-head">
+        <h2 id="features-title">What opens from the clock</h2>
+        <p>Plasma Event Calendar replaces the panel clock. Click it to see everything coming up, gathered from the
+          places you keep it.</p>
       </div>
+      <ul class="agenda-rows">
+        <li class="agenda-row src-google">
+          <h3>Google Calendar</h3>
+          <p>Events from the calendars you choose, in the colours you gave them in Google Calendar. Add an event by
+            typing a sentence like “Lunch on Friday at 1pm”, and edit or delete events from the agenda.</p>
+        </li>
+        <li class="agenda-row src-google">
+          <h3>Google Tasks</h3>
+          <p>Tasks sit in the agenda next to your events. Tick them off, edit them or delete them without opening a
+            browser.</p>
+        </li>
+        <li class="agenda-row src-weather">
+          <h3>Weather</h3>
+          <p>An hourly chart of temperature and rain, and a forecast beside each day in the agenda, from
+            OpenWeatherMap or Environment Canada.</p>
+        </li>
+        <li class="agenda-row src-ical">
+          <h3>iCalendar feeds</h3>
+          <p>Add any .ics link, such as a school timetable or a bin collection schedule, and its events join the
+            agenda.</p>
+        </li>
+        <li class="agenda-row src-plasma">
+          <h3>Plasma calendars</h3>
+          <p>Public holidays and the other calendars you turn on in Plasma show up as well.</p>
+        </li>
+        <li class="agenda-row src-clock">
+          <h3>Clock and timer</h3>
+          <p>Write your own clock format across one or two lines, run a countdown timer with one-click presets, and
+            see other time zones when you hover over the clock.</p>
+        </li>
+      </ul>
     </section>
 
-    <!-- Screenshots Section -->
-    <section id="screenshots">
-      <h2 class="section-title">Screenshots</h2>
-      <div class="screenshot-grid">
-        <div class="screenshot-frame">
-          <img src="https://i.imgur.com/qdJ71sb.jpg" alt="Event Calendar Month View" loading="lazy">
+    <section class="section" id="install" aria-labelledby="install-title">
+      <div class="install">
+        <div class="install-text">
+          <h2 id="install-title">Install</h2>
+          <p>You need Plasma 6, git and Python 3. The install script adds the widget for your user and restarts
+            Plasma Shell, so you don't have to log out. It may ask for your password to install
+            <code>jq</code> or <code>kpackagetool6</code> if they're missing.</p>
+          <p>Then right-click your panel, choose <strong>Add Widgets</strong> and drag <strong>Event
+              Calendar</strong> onto the panel. It works well in place of the Digital Clock.</p>
+          <ul>
+            <li><code>./update</code> fetches the latest version and reinstalls it. It notices which Plasma you run
+              and switches branch if it needs to.</li>
+            <li><code>./uninstall</code> removes the widget.</li>
+          </ul>
         </div>
-        <div class="screenshot-frame">
-          <img src="https://i.imgur.com/Ow8UlFj.jpg" alt="Event Calendar Agenda View" loading="lazy">
-        </div>
-      </div>
-    </section>
 
-    <!-- Installation Section -->
-    <section id="install">
-      <h2 class="section-title">Installation</h2>
-
-      <div class="card">
-        <h3>Install via GitHub</h3>
-        <p style="margin-bottom: 12px;">Run the following commands in your terminal:</p>
-        <pre class="code-block command-line" data-prompt="$"><code class="language-bash">git clone -b master https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
+        <div class="terminals">
+          <figure class="terminal">
+            <figcaption>Install on Plasma 6 <span class="window-buttons" aria-hidden="true">
+                <svg viewBox="0 0 10 10"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+                <svg viewBox="0 0 10 10"><path d="M1 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+                <svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+              </span></figcaption>
+            <pre class="code-block command-line" data-prompt="$"><code class="language-bash">git clone -b master https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
 cd eventcalendar
 ./install</code></pre>
+          </figure>
 
-        <h3>Updating</h3>
-        <p style="margin-bottom: 12px;">To update to the latest version:</p>
-        <pre class="code-block command-line" data-prompt="$"><code class="language-bash">cd eventcalendar
+          <figure class="terminal">
+            <figcaption>Update <span class="window-buttons" aria-hidden="true">
+                <svg viewBox="0 0 10 10"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+                <svg viewBox="0 0 10 10"><path d="M1 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+                <svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+              </span></figcaption>
+            <pre class="code-block command-line" data-prompt="$"><code class="language-bash">cd eventcalendar
 ./update</code></pre>
-        <p class="status">Note: The install script will restart Plasmashell so you don't have to relog.</p>
-      </div>
-    </section>
+          </figure>
 
-    <!-- Configuration Section -->
-    <section id="config">
-      <h2 class="section-title">Configuration</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>Weather Setup</h3>
-          <ol class="steps-list">
-            <li>Open the widget settings.</li>
-            <li>Go to the <strong>Weather</strong> tab.</li>
-            <li>Enter your OpenWeatherMap city ID.</li>
-            <li>If needed, search for your city ID on <a href="https://openweathermap.org/find" target="_blank"
-                rel="noopener">OpenWeatherMap.org</a>.</li>
-          </ol>
-        </div>
-        <div class="card">
-          <h3>Google Calendar Setup</h3>
-          <ol class="steps-list">
-            <li>Right click the widget > <strong>Settings</strong> > <strong>Google Calendar</strong>.</li>
-            <li>Open the login link in your browser.</li>
-            <li>Sign in and grant access.</li>
-            <li>Use the <strong>OAuth Helper</strong> below to extract your code.</li>
-          </ol>
+          <figure class="terminal">
+            <figcaption>Install on Plasma 5 <span class="window-buttons" aria-hidden="true">
+                <svg viewBox="0 0 10 10"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+                <svg viewBox="0 0 10 10"><path d="M1 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+                <svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+              </span></figcaption>
+            <pre class="code-block command-line" data-prompt="$"><code class="language-bash">git clone -b plasma-5 https://github.com/ALikesToCode/plasma-applet-eventcalendar.git eventcalendar
+cd eventcalendar
+./install</code></pre>
+          </figure>
         </div>
       </div>
     </section>
 
-    <!-- OAuth Helper Section -->
-    <section id="oauth-helper" class="oauth-container">
-      <div class="oauth-inner">
-        <div class="hero-copy" style="text-align: center; margin-bottom: 32px;">
-          <div class="eyebrow">OAuth Helper</div>
-          <h2 style="font-size: 2rem;">Extract Authorization Code</h2>
-          <p>Paste the redirect URL from your Google login to generate the code for the widget.</p>
-        </div>
+    <section class="section" id="google" aria-labelledby="google-title">
+      <div class="section-head">
+        <h2 id="google-title">Connect Google Calendar</h2>
+        <p>Sign in once from the widget's settings. Your events and tasks then appear in the agenda and stay up to
+          date on their own.</p>
+      </div>
+      <ol class="steps">
+        <li><p>Right-click the clock and choose <strong>Configure Event Calendar</strong>, then open the
+            <strong>Google Calendar</strong> page.</p></li>
+        <li><p>Press <strong>Login</strong>. Your browser opens Google's sign-in page.</p></li>
+        <li><p>Choose your account. Google lists what the widget will be able to do. Press
+            <strong>Allow</strong>.</p></li>
+        <li><p>Go back to the settings, choose the calendars and task lists to show, and press
+            <strong>Apply</strong>.</p></li>
+      </ol>
+      <p class="after-steps">The widget picks up your sign-in through a temporary address on your own computer, so
+        there's nothing to copy. If your browser shows a code instead, or the settings didn't change, use the helper
+        below.</p>
 
-        <div class="grid">
-          <div class="card helper">
-            <h3>Paste Redirect URL</h3>
-            <label for="redirectUrl">URL from browser address bar:</label>
-            <textarea id="redirectUrl"
-              placeholder="https://alikestocode.github.io/plasma-applet-eventcalendar/?code=..."></textarea>
-            <div class="row">
-              <button id="extractBtn">Extract Code</button>
-              <button class="secondary" id="clearBtn">Clear</button>
-            </div>
-
-            <label for="authCode" style="margin-top: 16px;">Authorization Code:</label>
-            <input id="authCode" type="text" readonly placeholder="Code will appear here">
-            <div class="row">
-              <button id="copyBtn">Copy Code</button>
-              <button class="secondary" id="sendBtn">Send to Widget</button>
-              <span class="status" id="status">Waiting for input.</span>
-            </div>
+      <details class="helper" id="oauth-helper">
+        <summary>The settings didn't pick up my sign-in</summary>
+        <div class="helper-body">
+          <p>Copy the whole address from your browser's address bar after signing in, and paste it here. This runs
+            in your browser, and the code goes only to the widget on your computer.</p>
+          <label for="redirectUrl">Address after signing in</label>
+          <textarea id="redirectUrl" spellcheck="false"
+            placeholder="https://alikestocode.github.io/plasma-applet-eventcalendar/?code=..."></textarea>
+          <div class="helper-actions">
+            <button id="extractBtn" type="button">Get code</button>
+            <button id="clearBtn" type="button">Clear</button>
           </div>
-
-          <div class="card">
-            <h3>Troubleshooting</h3>
-            <p class="status" style="margin-bottom: 16px;">
-              This tool runs locally in your browser. It parses the URL to extract the code needed for the widget.
-            </p>
-            <details>
-              <summary>How to use</summary>
-              <ol class="steps-list">
-                <li>Login to Google via the link in the widget.</li>
-                <li>You will be redirected to a page (either this one or localhost).</li>
-                <li>Copy the <strong>entire URL</strong> from your browser's address bar.</li>
-                <li>Paste it into the box on the left.</li>
-                <li>Copy the extracted code back to the widget.</li>
-              </ol>
-            </details>
-            <details>
-              <summary>HTTP 400 Error?</summary>
-              <ul>
-                <li>Ensure you copied the full URL.</li>
-                <li>If using a custom client ID, ensure the redirect URI matches exactly.</li>
-              </ul>
-            </details>
+          <label for="authCode">Sign-in code</label>
+          <input id="authCode" type="text" readonly spellcheck="false" placeholder="The code appears here">
+          <div class="helper-actions">
+            <button id="sendBtn" class="button-primary" type="button">Send to widget</button>
+            <button id="copyBtn" type="button">Copy code</button>
+            <span class="status" id="status" role="status">Paste the address to get the code.</span>
           </div>
         </div>
-      </div>
+      </details>
     </section>
 
-    <!-- Privacy Section -->
-    <section id="privacy" style="margin-bottom: 40px;">
-      <h2 class="section-title">Privacy & Data</h2>
-      <div class="card">
-        <h3>Privacy Policy</h3>
+    <section class="section" id="privacy" aria-labelledby="privacy-title">
+      <div class="section-head">
+        <h2 id="privacy-title">Your calendar stays between you and Google</h2>
+      </div>
+      <div class="data-note">
         <p>
           Plasma Event Calendar runs on your computer and has no server of its own. Your Google Calendar and Google
           Tasks data goes only between your computer and Google. The developer never receives it. Read the full
@@ -208,22 +371,26 @@ cd eventcalendar
         </p>
       </div>
     </section>
-
-    <footer>
-      Plasma Event Calendar &copy; 2025
-      <br>
-      <a href="privacy.html">Privacy Policy</a> |
-      <a href="terms.html">Terms of Service</a> |
-      <a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">GitHub Repository</a>
-    </footer>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/toolbar/prism-toolbar.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/command-line/prism-command-line.min.js"></script>
+  <footer class="site-footer">
+    <ul>
+      <li><a href="privacy.html">Privacy Policy</a></li>
+      <li><a href="terms.html">Terms of Service</a></li>
+      <li><a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">Source code on GitHub</a></li>
+      <li><a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar/issues">Report a problem</a></li>
+    </ul>
+    <p>Plasma Event Calendar &copy; 2025. Free software under the GNU GPL, version 2 or later. It isn't made or
+      endorsed by KDE or Google.</p>
+  </footer>
 
+  <script src="vendor/prism/prism-core.min.js"></script>
+  <script src="vendor/prism/prism-bash.min.js"></script>
+  <script src="vendor/prism/prism-toolbar.min.js"></script>
+  <script src="vendor/prism/prism-copy-to-clipboard.min.js"></script>
+  <script src="vendor/prism/prism-command-line.min.js"></script>
+  <script src="js/desktop.js"></script>
+  <script src="js/main.js"></script>
 </body>
 
 </html>

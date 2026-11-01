@@ -7,154 +7,179 @@
   <title>Plasma Event Calendar - Privacy Policy</title>
   <meta name="description"
     content="Privacy policy for the Plasma Event Calendar widget for KDE Plasma and its OAuth helper page.">
+  <meta name="theme-color" content="#eff0f1">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
 
-  <main>
-    <header>
-      <div class="eyebrow">Plasma Event Calendar</div>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header>
+    <nav class="site-nav" aria-label="Site">
+      <a class="wordmark" href="./"><img src="icon.svg" alt="" width="28" height="28">Plasma Event Calendar</a>
+      <ul>
+        <li><a href="index.html#install">Install</a></li>
+        <li><a href="index.html#google">Google Calendar</a></li>
+        <li><a href="privacy.html" aria-current="page">Privacy Policy</a></li>
+        <li><a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">GitHub</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="main" class="doc">
+    <div class="doc-title">
       <h1>Privacy Policy</h1>
       <p>Last updated: 2026-11-01</p>
-    </header>
+    </div>
 
-    <section class="card">
-      <h2>Summary</h2>
-      <p>
-        Plasma Event Calendar is a free, open-source calendar widget for the KDE Plasma desktop. It is maintained by
-        ALikesToCode on <a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">GitHub</a>.
-        The widget runs entirely on your computer. It has no server of its own. Your Google data travels only between
-        your computer and Google, and the developer never receives it.
-      </p>
-      <p>
-        Plasma Event Calendar's use and transfer to any other app of information received from Google APIs will adhere
-        to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User
-          Data Policy</a>, including the Limited Use requirements.
-      </p>
-    </section>
+    <div class="doc-body">
+      <section>
+        <h2>Summary</h2>
+        <p>
+          Plasma Event Calendar is a free, open-source calendar widget for the KDE Plasma desktop. It is maintained by
+          ALikesToCode on <a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">GitHub</a>.
+          The widget runs entirely on your computer. It has no server of its own. Your Google data travels only between
+          your computer and Google, and the developer never receives it.
+        </p>
+        <p>
+          Plasma Event Calendar's use and transfer to any other app of information received from Google APIs will adhere
+          to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User
+            Data Policy</a>, including the Limited Use requirements.
+        </p>
+      </section>
 
-    <section class="card">
-      <h2>Google Calendar and Google Tasks</h2>
-      <p>
-        The widget does not connect to Google unless you sign in from its settings
-        (<strong>Settings &gt; Google Calendar</strong>). Signing in opens Google's own sign-in page in your web
-        browser, where Google shows you the access the widget is asking for. You can decline.
-      </p>
+      <section class="src src-google">
+        <h2>Google Calendar and Google Tasks</h2>
+        <p>
+          The widget does not connect to Google unless you sign in from its settings
+          (<strong>Settings &gt; Google Calendar</strong>). Signing in opens Google's own sign-in page in your web
+          browser, where Google shows you the access the widget is asking for. You can decline.
+        </p>
 
-      <h3>Data the widget accesses</h3>
-      <ul>
-        <li>Your list of calendars: names, colours, time zones and your access level, so you can choose which
-          calendars to show.</li>
-        <li>Events in the calendars you choose, as Google returns them, such as the title, time, location,
-          description, attendees and video call links.</li>
-        <li>Your task lists and the tasks in the lists you choose.</li>
-      </ul>
+        <h3>Data the widget accesses</h3>
+        <ul>
+          <li>Your list of calendars: names, colours, time zones and your access level, so you can choose which
+            calendars to show.</li>
+          <li>Events in the calendars you choose, as Google returns them, such as the title, time, location,
+            description, attendees and video call links.</li>
+          <li>Your task lists and the tasks in the lists you choose.</li>
+        </ul>
 
-      <h3>How the widget uses this data</h3>
-      <ul>
-        <li>To show your events and tasks in the Plasma panel, the calendar popup and the agenda.</li>
-        <li>To make the changes you ask for in the widget: adding, editing or deleting an event, and adding, editing,
-          completing or deleting a task. The widget never changes your data on its own.</li>
-        <li>To refresh this information from time to time, and when you press <strong>Refresh</strong>.</li>
-      </ul>
-      <p>
-        The widget does not use Google data for advertising. It does not sell it, and it does not use it to develop,
-        improve or train generalized artificial intelligence or machine learning models. No person reads your data.
-      </p>
+        <h3>How the widget uses this data</h3>
+        <ul>
+          <li>To show your events and tasks in the Plasma panel, the calendar popup and the agenda.</li>
+          <li>To make the changes you ask for in the widget: adding, editing or deleting an event, and adding, editing,
+            completing or deleting a task. The widget never changes your data on its own.</li>
+          <li>To refresh this information from time to time, and when you press <strong>Refresh</strong>.</li>
+        </ul>
+        <p>
+          The widget does not use Google data for advertising. It does not sell it, and it does not use it to develop,
+          improve or train generalized artificial intelligence or machine learning models. No person reads your data.
+        </p>
 
-      <h3>Where the data is stored</h3>
-      <ul>
-        <li>Your Google access and refresh tokens are stored in your desktop keyring: Secret Service (for example GNOME
-          Keyring or KeePassXC) or KWallet. They are not written to the widget configuration file.</li>
-        <li>If you set up your own Google OAuth client, the client ID and client secret you enter are saved in the
-          widget configuration file with your other settings. After you sign in, a copy of the secret is also kept
-          in your keyring with your tokens.</li>
-        <li>An account label, your list of calendars and task lists (IDs, names, colours, time zones and access
-          level) and which of them you chose are stored in the Plasma widget configuration file,
-          <code>~/.config/plasma-org.kde.plasma.desktop-appletsrc</code>.</li>
-        <li>Events and tasks are kept in memory only while Plasma is running. They are not written to disk, and they
-          are downloaded again when the widget refreshes.</li>
-      </ul>
+        <h3>Where the data is stored</h3>
+        <ul>
+          <li>Your Google access and refresh tokens are stored in your desktop keyring: Secret Service (for example GNOME
+            Keyring or KeePassXC) or KWallet. They are not written to the widget configuration file.</li>
+          <li>If you set up your own Google OAuth client, the client ID and client secret you enter are saved in the
+            widget configuration file with your other settings. After you sign in, a copy of the secret is also kept
+            in your keyring with your tokens.</li>
+          <li>An account label, your list of calendars and task lists (IDs, names, colours, time zones and access
+            level) and which of them you chose are stored in the Plasma widget configuration file,
+            <code>~/.config/plasma-org.kde.plasma.desktop-appletsrc</code>.</li>
+          <li>Events and tasks are kept in memory only while Plasma is running. They are not written to disk, and they
+            are downloaded again when the widget refreshes.</li>
+        </ul>
 
-      <h3>Sharing</h3>
-      <p>
-        All requests go directly from your computer to Google's APIs over HTTPS. The widget does not send Google data
-        to the developer or to anyone else. It does not use analytics or tracking.
-      </p>
+        <h3>Sharing</h3>
+        <p>
+          All requests go directly from your computer to Google's APIs over HTTPS. The widget does not send Google data
+          to the developer or to anyone else. It does not use analytics or tracking.
+        </p>
 
-      <h3>Signing in</h3>
-      <p>
-        After you sign in, Google sends a one-time authorization code to a temporary address on your own computer
-        (<code>http://127.0.0.1</code>). The widget exchanges that code with Google for tokens. If you paste a
-        redirect URL into the OAuth helper on this website instead, the code is read by JavaScript in your browser and
-        is not sent to any server run by the developer. This website is hosted by GitHub Pages, which may log visits as
-        described in the
-        <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub
-          Privacy Statement</a>.
-      </p>
+        <h3>Signing in</h3>
+        <p>
+          After you sign in, Google sends a one-time authorization code to a temporary address on your own computer
+          (<code>http://127.0.0.1</code>). The widget exchanges that code with Google for tokens. If you paste a
+          redirect URL into the OAuth helper on this website instead, the code is read by JavaScript in your browser and
+          is not sent to any server run by the developer. This website is hosted by GitHub Pages, which may log visits as
+          described in the
+          <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub
+            Privacy Statement</a>.
+        </p>
 
-      <h3>Removing your data and revoking access</h3>
-      <ul>
-        <li>In the widget, open <strong>Settings &gt; Google Calendar</strong>, select the account and press
-          <strong>Remove</strong>. This deletes its tokens from your keyring and its calendar list from the widget
-          configuration. Removing the widget from your panel removes its configuration but leaves the tokens in your
-          keyring, so remove the account first, or delete the keyring entries whose names start with
-          <code>plasma-applet-eventcalendar</code>.</li>
-        <li>To revoke the widget's access on Google's side, go to
-          <a href="https://myaccount.google.com/connections">myaccount.google.com/connections</a>, choose
-          <strong>Plasma Event Calendar</strong> and remove its access. The widget then stops receiving data until you
-          sign in again.</li>
-      </ul>
+        <h3>Removing your data and revoking access</h3>
+        <ul>
+          <li>In the widget, open <strong>Settings &gt; Google Calendar</strong>, select the account and press
+            <strong>Remove</strong>. This deletes its tokens from your keyring and its calendar list from the widget
+            configuration. Removing the widget from your panel removes its configuration but leaves the tokens in your
+            keyring, so remove the account first, or delete the keyring entries whose names start with
+            <code>plasma-applet-eventcalendar</code>.</li>
+          <li>To revoke the widget's access on Google's side, go to
+            <a href="https://myaccount.google.com/connections">myaccount.google.com/connections</a>, choose
+            <strong>Plasma Event Calendar</strong> and remove its access. The widget then stops receiving data until you
+            sign in again.</li>
+        </ul>
 
-      <h3>What the developer can see</h3>
-      <p>
-        The Google Cloud console shows the developer aggregate numbers for the widget's OAuth client: how many API
-        requests were made and how many failed, by API method and HTTP status code. These numbers are totals for all
-        users. They do not include who made a request or any calendar or task content.
-      </p>
-    </section>
+        <h3>What the developer can see</h3>
+        <p>
+          The Google Cloud console shows the developer aggregate numbers for the widget's OAuth client: how many API
+          requests were made and how many failed, by API method and HTTP status code. These numbers are totals for all
+          users. They do not include who made a request or any calendar or task content.
+        </p>
+      </section>
 
-    <section class="card">
-      <h2>Other online services</h2>
-      <p>
-        These features are off by default. When you turn one on, the widget connects directly to that service, which
-        can see your IP address and the request.
-      </p>
-      <ul>
-        <li><strong>Weather:</strong> if you choose a city, the widget downloads forecasts from OpenWeatherMap
-          (<a href="https://openweathermap.org/privacy-policy">privacy policy</a>) or Environment and Climate Change
-          Canada (weather.gc.ca), depending on the provider you choose.</li>
-        <li><strong>iCalendar feeds:</strong> if you add an iCal URL, the widget downloads it from the server that
-          hosts it.</li>
-      </ul>
-    </section>
+      <section>
+        <h2>Other online services</h2>
+        <p>
+          These features are off by default. When you turn one on, the widget connects directly to that service, which
+          can see your IP address and the request.
+        </p>
+        <ul>
+          <li class="src src-weather"><strong>Weather:</strong> if you choose a city, the widget downloads forecasts from OpenWeatherMap
+            (<a href="https://openweathermap.org/privacy-policy">privacy policy</a>) or Environment and Climate Change
+            Canada (weather.gc.ca), depending on the provider you choose.</li>
+          <li class="src src-ical"><strong>iCalendar feeds:</strong> if you add an iCal URL, the widget downloads it from the server that
+            hosts it.</li>
+        </ul>
+      </section>
 
-    <section class="card">
-      <h2>Downloads</h2>
-      <p>
-        If you install the widget from the KDE Store (for example with <strong>Get New Widgets</strong> in Plasma),
-        the <a href="https://store.kde.org/privacy">KDE Store privacy policy</a> applies to the download. If you
-        install it from GitHub, GitHub's privacy statement applies. If you get it from another source, such as an AUR
-        package, that service's own privacy policy applies to the download. The developer can see how many times each
-        release was downloaded, but not who downloaded it.
-      </p>
-    </section>
+      <section>
+        <h2>Downloads</h2>
+        <p>
+          If you install the widget from the KDE Store (for example with <strong>Get New Widgets</strong> in Plasma),
+          the <a href="https://store.kde.org/privacy">KDE Store privacy policy</a> applies to the download. If you
+          install it from GitHub, GitHub's privacy statement applies. If you get it from another source, such as an AUR
+          package, that service's own privacy policy applies to the download. The developer can see how many times each
+          release was downloaded, but not who downloaded it.
+        </p>
+      </section>
 
-    <section class="card">
-      <h2>Changes and contact</h2>
-      <p>
-        If this policy changes, the new version will be published on this page with a new date. Questions and
-        requests can be raised as an
-        <a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar/issues">issue on GitHub</a>.
-      </p>
-    </section>
-
-    <footer>
-      <a href="index.html">Home</a> |
-      <a href="terms.html">Terms of Service</a>
-    </footer>
+      <section>
+        <h2>Changes and contact</h2>
+        <p>
+          If this policy changes, the new version will be published on this page with a new date. Questions and
+          requests can be raised as an
+          <a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar/issues">issue on GitHub</a>.
+        </p>
+      </section>
+    </div>
   </main>
+
+  <footer class="site-footer">
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="privacy.html">Privacy Policy</a></li>
+      <li><a href="terms.html">Terms of Service</a></li>
+      <li><a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">Source code on GitHub</a></li>
+      <li><a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar/issues">Report a problem</a></li>
+    </ul>
+    <p>Plasma Event Calendar &copy; 2025. Free software under the GNU GPL, version 2 or later. It isn't made or
+      endorsed by KDE or Google.</p>
+  </footer>
 
 </body>
 
