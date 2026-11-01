@@ -7,14 +7,14 @@
     // Configuration
     const CONSTANTS = {
         localEndpoint: "http://127.0.0.1:53682/",
-        statusWait: "Waiting for input.",
-        statusExtracted: "Code extracted. Copy it into the widget or send it automatically.",
-        statusSending: "Sending code to the widget...",
-        statusSent: "Sent to widget. You can return to the settings window.",
-        statusError: "Could not reach the widget. Copy the code manually.",
-        statusNoCode: "No code to send yet.",
-        statusNoCopy: "No code to copy yet.",
-        statusCopied: "Copied. Paste into the widget."
+        statusWait: "Paste the address to get the code.",
+        statusExtracted: "Code found. Send it to the widget, or copy it into the widget's settings.",
+        statusSending: "Sending the code to the widget...",
+        statusSent: "Sent. Go back to the widget's settings.",
+        statusError: "The widget isn't listening. Copy the code and paste it into the widget's settings.",
+        statusNoCode: "There's no code to send yet. Paste the address first.",
+        statusNoCopy: "There's no code to copy yet. Paste the address first.",
+        statusCopied: "Copied. Paste it into the widget's settings."
     };
 
     // Elements
@@ -25,7 +25,8 @@
         extractBtn: document.getElementById("extractBtn"),
         copyBtn: document.getElementById("copyBtn"),
         clearBtn: document.getElementById("clearBtn"),
-        sendBtn: document.getElementById("sendBtn")
+        sendBtn: document.getElementById("sendBtn"),
+        helper: document.getElementById("oauth-helper")
     };
 
     // Utility to safely get elements (in case script runs on a page without them)
@@ -66,7 +67,7 @@
         elements.codeOutput.dataset.state = state;
 
         if (code) {
-            elements.status.innerHTML = CONSTANTS.statusExtracted;
+            elements.status.textContent = CONSTANTS.statusExtracted;
             if (elements.sendBtn) elements.sendBtn.disabled = false;
             if (elements.copyBtn) elements.copyBtn.disabled = false;
         } else {
@@ -97,7 +98,7 @@
             // Add visual feedback
             if (elements.sendBtn) {
                 const originalText = elements.sendBtn.innerText;
-                elements.sendBtn.innerText = "Sent!";
+                elements.sendBtn.innerText = "Sent";
                 setTimeout(() => elements.sendBtn.innerText = originalText, 2000);
             }
 
@@ -123,7 +124,7 @@
                 document.execCommand("copy");
                 elements.status.textContent = CONSTANTS.statusCopied;
             } catch (e) {
-                elements.status.textContent = "Failed to copy.";
+                elements.status.textContent = "Couldn't copy. Select the code and press Ctrl+C.";
             }
         }
     }
@@ -155,7 +156,12 @@
         const code = params.get("code");
         const state = params.get("state") || "";
         if (code) {
-            // Start flow automatically
+            // Google sent the browser here with a sign-in code: show the
+            // helper and pass the code to the widget straight away.
+            if (elements.helper) {
+                elements.helper.open = true;
+                elements.helper.scrollIntoView({ block: "start" });
+            }
             elements.urlInput.value = window.location.href;
             updateFromInput();
             sendToWidget(code, state);
