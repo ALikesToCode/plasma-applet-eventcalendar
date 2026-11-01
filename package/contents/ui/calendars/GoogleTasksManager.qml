@@ -306,7 +306,7 @@ CalendarManager {
 			// The due date only records date information; the time portion of the timestamp is discarded when setting the due date.
 			// It isn't possible to read or write the time that a task is due via the API.
 			var dueDateString = taskData.due.substring(0, 10)
-			// Use local time zone, like we do in CalendarManager.onEventParsing.
+			// Use local time zone, like we do in CalendarManager.defaultEventParsing.
 			eventData.dueDate = dueDateString
 			eventData.dueDateTime = new Date(eventData.dueDate + ' 00:00:00')
 			// All day event, due at end of day.
