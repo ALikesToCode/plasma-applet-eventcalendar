@@ -463,6 +463,11 @@ ConfigPage {
 		}
 		LinkText {
 			Layout.fillWidth: true
+			text: i18n("Signing in lets the widget read your calendar list, the events in the calendars you choose and your tasks, and change events and tasks when you ask it to. Your data goes only between this computer and Google. See the <a href=\"%1\">privacy policy</a>.", "https://plasma-applet-eventcalendar.alikestocode.in/privacy.html")
+			wrapMode: Text.Wrap
+		}
+		LinkText {
+			Layout.fillWidth: true
 			text: localRedirect
 				? i18n("Click Login (Auto) to open <a href=\"%1\">%2</a>. After you grant access, the browser redirects to a localhost URL. If auto-capture succeeds you can ignore the field below; otherwise copy the full URL (or just the code) and paste it.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
 				: i18n("Click Login (Auto) to open <a href=\"%1\">%2</a>. After you grant access, the browser redirects to the helper page and will try to send the code back automatically. If it fails, copy the code and paste it below.", googleLoginManager.authorizationCodeUrl, 'https://accounts.google.com/...')
