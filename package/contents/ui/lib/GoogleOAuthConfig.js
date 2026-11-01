@@ -1,3 +1,18 @@
+// The narrowest scopes that cover what the widget does. Google's OAuth
+// verification rejects broader scopes than an app needs.
+// - calendar.calendarlist.readonly: calendarList.list, to pick calendars.
+// - calendar.events: list, get, quickAdd, update and delete events.
+// - tasks: list task lists, and list, create, update and delete tasks.
+var requestedScopes = [
+	"https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+	"https://www.googleapis.com/auth/calendar.events",
+	"https://www.googleapis.com/auth/tasks",
+]
+
+function authorizationScope() {
+	return requestedScopes.join(" ")
+}
+
 var builtInClientUnavailableMessage = "The built-in Google OAuth client is currently rejected by Google because it requires a client secret. Add your own Google OAuth client ID, or switch back to a previously stored secret-based client."
 
 function normalizedClientValue(value) {
@@ -42,6 +57,8 @@ function authConfigurationError(clientId, clientSecret, defaultClientId) {
 
 if (typeof module !== "undefined") {
 	module.exports = {
+		requestedScopes: requestedScopes,
+		authorizationScope: authorizationScope,
 		builtInClientUnavailableMessage: builtInClientUnavailableMessage,
 		effectiveClientCredentials: effectiveClientCredentials,
 		authConfigurationError: authConfigurationError,

@@ -272,7 +272,7 @@ Item {
 	}
 	function buildAuthorizationUrl(ctx) {
 		var url = 'https://accounts.google.com/o/oauth2/v2/auth'
-		url += '?scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks')
+		url += '?scope=' + encodeURIComponent(GoogleOAuthConfig.authorizationScope())
 		url += '&response_type=code'
 		url += '&redirect_uri=' + encodeURIComponent(ctx.redirectUri)
 		url += '&access_type=offline'
