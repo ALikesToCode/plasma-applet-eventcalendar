@@ -32,7 +32,7 @@
   <main id="main" class="doc">
     <div class="doc-title">
       <h1>Privacy Policy</h1>
-      <p>Last updated: 2026-11-01</p>
+      <p>Last updated: 2026-11-02</p>
     </div>
 
     <div class="doc-body">
@@ -41,8 +41,8 @@
         <p>
           Plasma Event Calendar is a free, open-source calendar widget for the KDE Plasma desktop. It is maintained by
           ALikesToCode on <a href="https://github.com/ALikesToCode/plasma-applet-eventcalendar">GitHub</a>.
-          The widget runs entirely on your computer. It has no server of its own. Your Google data travels only between
-          your computer and Google, and the developer never receives it.
+          The widget runs entirely on your computer. It has no server of its own. Your Google Calendar and Google Tasks
+          content travels directly between your computer and Google, and the developer never receives it.
         </p>
         <p>
           Plasma Event Calendar's use and transfer to any other app of information received from Google APIs will adhere
@@ -77,7 +77,8 @@
         </ul>
         <p>
           The widget does not use Google data for advertising. It does not sell it, and it does not use it to develop,
-          improve or train generalized artificial intelligence or machine learning models. No person reads your data.
+          improve or train generalized artificial intelligence or machine learning models. The developer does not
+          receive or read your calendar or task data.
         </p>
 
         <h3>Where the data is stored</h3>
@@ -94,19 +95,43 @@
             are downloaded again when the widget refreshes.</li>
         </ul>
 
-        <h3>Sharing</h3>
+        <h3 id="google-data-sharing">Sharing, transfer and disclosure of Google user data</h3>
         <p>
-          All requests go directly from your computer to Google's APIs over HTTPS. The widget does not send Google data
-          to the developer or to anyone else. It does not use analytics or tracking.
+          Plasma Event Calendar does not sell or rent Google user data. The developer does not receive your Google
+          Calendar or Google Tasks data, access tokens or refresh tokens. The widget does not share, transfer or
+          disclose Google user data to advertisers, data brokers or analytics providers. Its data recipients and
+          purposes are limited to those described here:
+        </p>
+        <ul>
+          <li><strong>Google:</strong> the widget connects directly to Google's OAuth service, Google Calendar API and
+            Google Tasks API over HTTPS. Sign-in codes and tokens are exchanged with Google to authorize access. Calendar
+            and task requests, including the event or task data you ask the widget to create, edit, complete or delete,
+            are sent to Google to keep your account in sync. Google's handling of this data is covered by the
+            <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.</li>
+          <li><strong>Your desktop:</strong> KDE Plasma displays the calendars, events and tasks on your computer. Your
+            desktop keyring stores the sign-in tokens locally, as described above. This does not send them to the
+            developer or to a developer-operated server.</li>
+          <li><strong>People with access to a shared calendar:</strong> if you create or edit an event in a shared Google
+            calendar, people who already have access may see it according to your Google Calendar sharing settings.
+            The widget does not change who has access to your calendars.</li>
+        </ul>
+        <p>
+          Google Calendar and Google Tasks content, access tokens and refresh tokens are not sent to GitHub Pages,
+          weather providers or iCalendar feed hosts. These services are separate from the Google integration. The
+          widget and this website do not use analytics or tracking. The OAuth helper's handling of a sign-in code is
+          described below.
         </p>
 
         <h3>Signing in</h3>
         <p>
           After you sign in, Google sends a one-time authorization code to a temporary address on your own computer
           (<code>http://127.0.0.1</code>). The widget exchanges that code with Google for tokens. If you paste a
-          redirect URL into the OAuth helper on this website instead, the code is read by JavaScript in your browser and
-          is not sent to any server run by the developer. This website is hosted by GitHub Pages, which may log visits as
-          described in the
+          redirect URL into the OAuth helper's form on this website instead, the code is read by JavaScript in your
+          browser and is sent only to the widget's listener on your own computer. If you use the hosted redirect option,
+          or open the website with a sign-in code in its URL, GitHub Pages receives that URL, including the code, when
+          serving the page. The helper then forwards the code to the widget on your computer. It does not exchange the
+          code for tokens on the website. GitHub Pages may log website requests, including your IP address and request
+          URL, as described in the
           <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub
             Privacy Statement</a>.
         </p>
