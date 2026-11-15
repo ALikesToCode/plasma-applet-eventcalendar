@@ -9,8 +9,10 @@ Item {
 	property Item appletItem
 	property int preferredTextWidth: Kirigami.Units.gridUnit * 20
 
-	width: childrenRect.width + Kirigami.Units.gridUnit
-	height: childrenRect.height + Kirigami.Units.gridUnit
+	// The tooltip window sizes itself from the implicit size, then resizes this
+	// item, so the size must not depend on width/height (issue #64).
+	implicitWidth: columnLayout.implicitWidth + Kirigami.Units.gridUnit
+	implicitHeight: columnLayout.implicitHeight + Kirigami.Units.gridUnit
 
 	LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
 	LayoutMirroring.childrenInherit: true
